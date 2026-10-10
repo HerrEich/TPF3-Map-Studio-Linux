@@ -100,6 +100,11 @@ def _required_tiles(
     liefert Ost/Nord, zone_for(mittlere_laenge) die Kennzahl des Rasters.
     """
 
+    if float(getattr(selection, "scale_factor", 1.0) or 1.0) > 1.0001:
+        raise Dgm1Error(
+            tr("Bei gestauchter Karte (Stauchfaktor > 1) bitte Copernicus als Hoehenquelle waehlen.")
+        )
+
     corners = list(selection.corners_latlon())
 
     if len(corners) != 4:
