@@ -277,12 +277,20 @@ def thin_forest_by_height(
     water_level_m: float,
     limit_m: float,
     replacement_biome: int = 0,
+    band_m: float = 0.0,
+    pixel_m: float = 8.0,
+    patch_m: float = 24.0,
 ) -> np.ndarray:
     """
     Ersetzt Biom 1 (Wiese mit Baumgruppen) durch ein Biom ohne Baeume, wo
     das Gelaende mindestens limit_m ueber dem Wasserspiegel liegt. Das
-    Hoehenraster darf eine andere Groesse als die Maske haben (Nächster
+    Hoehenraster darf eine andere Groesse als die Maske haben (Naechster
     Nachbar). Liefert eine neue Kopie.
+
+    Mit band_m > 0 wird der Uebergang weich: In den band_m Metern unter der
+    Grenze werden die Baumgruppen nach oben hin allmaehlich weniger (Flecken
+    von etwa patch_m Metern, pixel_m = Meter pro Maskenpixel). Mit
+    band_m = 0 bleibt es eine harte Linie.
     """
 
     result = index.copy()
@@ -298,7 +306,50 @@ def thin_forest_by_height(
         - np.float32(water_level_m)
     )
 
-    result[(result == 1) & (above >= np.float32(limit_m))] = replacement_biome
+    limit = np.float32(limit_m)
+    forest = result == 1
+
+    result[forest & (above >= limit)] = replacement_biome
+
+    if band_m <= 0:
+        return result
+
+    band = np.float32(band_m)
+    zone = forest & (above >= limit - band) & (above < limit)
+
+    if not zone.any():
+        return result
+
+    # Rauschen nur im Umgriff des Bandes rechnen (spart Speicher).
+    row_hit = np.flatnonzero(zone.any(axis=1))
+    col_hit = np.flatnonzero(zone.any(axis=0))
+    r0, r1 = int(row_hit[0]), int(row_hit[-1]) + 1
+    c0, c1 = int(col_hit[0]), int(col_hit[-1]) + 1
+
+    from scipy.ndimage import gaussian_filter
+
+    rng = np.random.default_rng(12345)
+    noise = rng.standard_normal((r1 - r0, c1 - c0)).astype(np.float32)
+
+    sigma = float(patch_m) / max(float(pixel_m), 1e-6)
+
+    if sigma >= 0.3:
+        noise = gaussian_filter(noise, sigma=sigma, mode="reflect")
+
+    sub_zone = zone[r0:r1, c0:c1]
+    values = noise[sub_zone]
+
+    # Gleichverteilung 0..1 ueber die Rangfolge, damit der Anteil stimmt.
+    ranks = values.argsort().argsort().astype(np.float32)
+    uniform = (ranks + 0.5) / float(values.size)
+
+    share = (above[r0:r1, c0:c1][sub_zone] - (limit - band)) / band
+
+    replace = np.zeros(sub_zone.shape, dtype=bool)
+    replace[sub_zone] = uniform < share
+
+    sub_result = result[r0:r1, c0:c1]
+    sub_result[replace] = replacement_biome
 
     return result
 

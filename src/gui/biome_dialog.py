@@ -130,6 +130,18 @@ class BiomeMaskDialog(QDialog):
         self.thin_limit_input.setValue(float(default_limit_m))
         form.addRow(tr("Baumgrenze (m über Wasser):"), self.thin_limit_input)
 
+        self.thin_band_input = QDoubleSpinBox()
+        self.thin_band_input.setRange(0.0, 300.0)
+        self.thin_band_input.setDecimals(0)
+        self.thin_band_input.setSuffix(" m")
+        self.thin_band_input.setValue(40.0)
+        self.thin_band_input.setToolTip(
+            tr("Auf dieser Strecke unter der Baumgrenze werden die "
+               "Baumgruppen nach oben hin allmählich weniger, statt an einer "
+               "harten Linie zu enden. 0 = harte Linie.")
+        )
+        form.addRow(tr("Weicher Übergang (m darunter):"), self.thin_band_input)
+
         self.thin_biome_box = QComboBox()
         self.thin_biome_box.addItem(BIOME_NAMES[0], 0)
         self.thin_biome_box.addItem(BIOME_NAMES[2], 2)
@@ -209,6 +221,8 @@ class BiomeMaskDialog(QDialog):
                 self._water_level_m,
                 self.thin_limit_input.value(),
                 int(self.thin_biome_box.currentData()),
+                band_m=self.thin_band_input.value(),
+                pixel_m=meters_per_pixel,
             )
 
         self._index = index
