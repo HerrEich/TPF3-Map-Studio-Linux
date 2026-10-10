@@ -530,7 +530,7 @@ def collect_stations(osm, selection, radius_m: float = 250.0, platform_radius_m:
     return {
         "version": STATION_VERSION,
         "map": {"center_lat": center_lat, "center_lon": center_lon,
-                "width_m": selection.width_m, "height_m": selection.height_m,
+                "width_m": selection.width_m, "height_m": selection.height_m, "scale_factor": getattr(selection, "scale_factor", 1.0),
                 "rotation_deg": selection.rotation_deg},
         "radius_m": radius_m,
         "stations": stations,

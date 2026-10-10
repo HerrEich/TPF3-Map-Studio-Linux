@@ -28,7 +28,8 @@ def station_marker_data(data: dict) -> list[dict]:
 
     info = data["map"]
     geometry = TPF2Geometry(
-        info["center_lat"], info["center_lon"], info.get("rotation_deg", 0.0)
+        info["center_lat"], info["center_lon"], info.get("rotation_deg", 0.0),
+        info.get("scale_factor", 1.0),
     )
 
     result = []

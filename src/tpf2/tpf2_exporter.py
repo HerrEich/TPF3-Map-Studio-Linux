@@ -11,8 +11,14 @@ class TPF2Exporter:
     STREET_TYPE = "standard/town_medium_new.lua"
     TRACK_TYPE = "standard.lua"
 
-    def __init__(self, origin_lat: float, origin_lon: float, rotation_deg: float = 0.0):
-        self.geometry = TPF2Geometry(origin_lat, origin_lon, rotation_deg)
+    def __init__(
+        self,
+        origin_lat: float,
+        origin_lon: float,
+        rotation_deg: float = 0.0,
+        scale: float = 1.0,
+    ):
+        self.geometry = TPF2Geometry(origin_lat, origin_lon, rotation_deg, scale)
 
     @classmethod
     def from_coordinates(cls, coordinates, rotation_deg: float = 0.0):
@@ -35,7 +41,12 @@ class TPF2Exporter:
         (was bei einem gedrehten Band den falschen Ursprung ergaebe).
         """
         center_lat, center_lon = selection.center
-        return cls(center_lat, center_lon, selection.rotation_deg)
+        return cls(
+            center_lat,
+            center_lon,
+            selection.rotation_deg,
+            getattr(selection, "scale_factor", 1.0),
+        )
 
     @classmethod
     def from_export_data(cls, export_data):

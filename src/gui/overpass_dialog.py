@@ -108,6 +108,18 @@ class OverpassQueryDialog(QDialog):
 
         layout.addWidget(categories_group)
 
+        self.scale_hint = QLabel()
+        self.scale_hint.setWordWrap(True)
+        self.scale_hint.setVisible(False)
+        layout.addWidget(self.scale_hint)
+
+        self.scale_off_button = QPushButton(
+            tr("Geb\u00e4ude, Parks, Fl\u00e4chennutzung und Vegetation abschalten")
+        )
+        self.scale_off_button.setVisible(False)
+        self.scale_off_button.clicked.connect(self._switch_off_heavy_categories)
+        layout.addWidget(self.scale_off_button)
+
         # -------------------------------------------------
         # Vorschau
         # -------------------------------------------------
@@ -137,6 +149,7 @@ class OverpassQueryDialog(QDialog):
 
         self._apply_config(self.controller.overpass_config)
         self._refresh_template_list()
+        self._apply_scale_hint()
         self._update_preview()
 
     # ---------------------------------------------------------
@@ -170,6 +183,49 @@ class OverpassQueryDialog(QDialog):
     # ---------------------------------------------------------
     # Vorschau
     # ---------------------------------------------------------
+
+    def _current_selection(self):
+
+        selection = getattr(self.controller, "selection", None)
+
+        if callable(selection):
+            selection = selection()
+
+        if selection is None:
+            project = getattr(self.controller, "project", None)
+            selection = getattr(project, "selection", None)
+
+        return selection
+
+    def _apply_scale_hint(self):
+
+        selection = self._current_selection()
+
+        if selection is None or not getattr(selection, "is_scaled", False):
+            return
+
+        area_km2 = (
+            (selection.real_width_m or 0.0)
+            * (selection.real_height_m or 0.0)
+            / 1_000_000.0
+        )
+
+        self.scale_hint.setText(
+            tr(
+                "Gestauchte Karte: Faktor {f:.1f}, reale Fl\u00e4che {a:.0f} km\u00b2. "
+                "Geb\u00e4ude, Parks, Fl\u00e4chennutzung und Vegetation erzeugen hier "
+                "sehr gro\u00dfe Datenmengen; f\u00fcr Gel\u00e4nde, Orte, Gleise und "
+                "Stra\u00dfen gen\u00fcgen die \u00fcbrigen Kategorien."
+            ).format(f=selection.scale_factor, a=area_km2)
+        )
+        self.scale_hint.setVisible(True)
+        self.scale_off_button.setVisible(True)
+
+    def _switch_off_heavy_categories(self):
+
+        for key in ("buildings", "parks", "landuse", "vegetation"):
+            if key in self.checkboxes:
+                self.checkboxes[key].setChecked(False)
 
     def _update_preview(self):
 

@@ -1331,6 +1331,8 @@ guide of the heightmap dialog (F1).</p>
     'Bei gestauchter Karte (Stauchfaktor > 1) bitte Copernicus als Hoehenquelle waehlen.': 'For a compressed map (factor > 1) please choose Copernicus as height source.',
     'Wie oft die Kartengröße in das reale Gebiet passt. Beispiel: 3,6 km Spielkarte mit Faktor 20 ergibt 72 km reales Gebiet. Netz, Städte und Gelände werden entsprechend verkleinert.': 'How many times the map size fits into the real area. Example: a 3.6 km game map with factor 20 covers 72 km of real terrain. Network, towns and terrain are shrunk accordingly.',
     'Vorbelegt mit 1 / Stauchfaktor, damit die Berge im Verhältnis bleiben. Kleiner = flacher, 1 = reale Höhen.': 'Preset to 1 / compression factor so mountains keep their proportions. Smaller = flatter, 1 = real heights.',
+    'Gebäude, Parks, Flächennutzung und Vegetation abschalten': 'Switch off buildings, parks, land use and vegetation',
+    'Gestauchte Karte: Faktor {f:.1f}, reale Fläche {a:.0f} km². Gebäude, Parks, Flächennutzung und Vegetation erzeugen hier sehr große Datenmengen; für Gelände, Orte, Gleise und Straßen genügen die übrigen Kategorien.': 'Compressed map: factor {f:.1f}, real area {a:.0f} km². Buildings, parks, land use and vegetation produce very large amounts of data here; the other categories are enough for terrain, places, tracks and roads.',
     'Gelände glätten und Höhen stauchen':
         'Smooth terrain and compress elevations',
     'Glätten gegen Treppenstufen und Kristallflächen an Hängen (das Copernicus-Modell hat nur etwa 30 m pro Pixel). Höhen stauchen drückt alle Höhen über dem Wasserspiegel auf einen Anteil, falls Hochflächen im Spiel über die Schneegrenze ragen (weiße Flächen). Die Hänge werden dabei flacher.':
