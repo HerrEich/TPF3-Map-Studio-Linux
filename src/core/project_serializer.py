@@ -98,7 +98,9 @@ class ProjectSerializer:
                     "width_m": project.selection.width_m,
                     "height_m": project.selection.height_m,
                     "center_lat": project.selection.center_lat,
-                    "center_lon": project.selection.center_lon
+                    "center_lon": project.selection.center_lon,
+                    "scale_factor": getattr(project.selection, "scale_factor", 1.0),
+                    "height_scale": getattr(project.selection, "height_scale", 1.0)
                 }
                 if project.selection
                 else None
@@ -404,7 +406,15 @@ class ProjectSerializer:
 
                 center_lon=selection_data.get(
                     "center_lon"
-                )
+                ),
+
+                scale_factor=selection_data.get(
+                    "scale_factor", 1.0
+                ) or 1.0,
+
+                height_scale=selection_data.get(
+                    "height_scale", 1.0
+                ) or 1.0
 
             )
 

@@ -40,6 +40,8 @@ class RectangleToolDialog(QDialog):
         prefill_center = initial_center
         prefill_size = None
         prefill_rotation = None
+        prefill_scale = 1.0
+        prefill_height = None
 
         if initial_selection is not None:
             prefill_center = initial_selection.center
@@ -50,6 +52,8 @@ class RectangleToolDialog(QDialog):
                     initial_selection.height_m,
                 )
                 prefill_rotation = initial_selection.rotation_deg
+                prefill_scale = getattr(initial_selection, "scale_factor", 1.0) or 1.0
+                prefill_height = getattr(initial_selection, "height_scale", None)
 
         # Ein explizit uebergebener Mittelpunkt (z.B. die Position eines
         # Markers) hat Vorrang vor dem Mittelpunkt der Auswahl. Groesse
@@ -120,6 +124,64 @@ class RectangleToolDialog(QDialog):
         self._update_size_label(self.size_combo.currentText())
 
         # -------------------------------------------------
+        # Karte stauchen
+        # -------------------------------------------------
+
+        self._setting_height = False
+        self._height_manual = False
+
+        self.scale_input = QDoubleSpinBox()
+        self.scale_input.setRange(1.0, 200.0)
+        self.scale_input.setDecimals(2)
+        self.scale_input.setSingleStep(0.5)
+        self.scale_input.setValue(max(1.0, float(prefill_scale)))
+        self.scale_input.setToolTip(
+            tr(
+                "Wie oft die Kartengr\u00f6\u00dfe in das reale Gebiet passt. "
+                "Beispiel: 3,6 km Spielkarte mit Faktor 20 ergibt 72 km reales Gebiet. "
+                "Netz, St\u00e4dte und Gel\u00e4nde werden entsprechend verkleinert."
+            )
+        )
+
+        form.addRow(
+            tr("Stauchfaktor (1 = Originalma\u00dfstab):"), self.scale_input
+        )
+
+        self.height_scale_input = QDoubleSpinBox()
+        self.height_scale_input.setRange(0.01, 2.0)
+        self.height_scale_input.setDecimals(3)
+        self.height_scale_input.setSingleStep(0.05)
+        self.height_scale_input.setToolTip(
+            tr(
+                "Vorbelegt mit 1 / Stauchfaktor, damit die Berge im Verh\u00e4ltnis "
+                "bleiben. Kleiner = flacher, 1 = reale H\u00f6hen."
+            )
+        )
+
+        auto_height = round(1.0 / self.scale_input.value(), 3)
+
+        if (
+            prefill_height is not None
+            and abs(float(prefill_height) - auto_height) > 0.002
+        ):
+            self._height_manual = True
+            self.height_scale_input.setValue(float(prefill_height))
+        else:
+            self.height_scale_input.setValue(auto_height)
+
+        form.addRow(tr("H\u00f6hen-Faktor:"), self.height_scale_input)
+
+        self.real_label = QLabel()
+        form.addRow("", self.real_label)
+
+        self.scale_input.valueChanged.connect(self._on_scale_changed)
+        self.height_scale_input.valueChanged.connect(self._on_height_changed)
+        self.size_combo.currentTextChanged.connect(
+            lambda _text: self._update_real_label()
+        )
+        self._update_real_label()
+
+        # -------------------------------------------------
         # Drehwinkel
         # -------------------------------------------------
 
@@ -168,6 +230,40 @@ class RectangleToolDialog(QDialog):
         else:
             self.size_label.setText("")
 
+    def _on_scale_changed(self, value: float):
+        if not self._height_manual:
+            self._setting_height = True
+            self.height_scale_input.setValue(round(1.0 / max(value, 1.0), 3))
+            self._setting_height = False
+
+        self._update_real_label()
+
+    def _on_height_changed(self, _value: float):
+        if not self._setting_height:
+            self._height_manual = True
+
+        self._update_real_label()
+
+    def _update_real_label(self):
+        size = get_by_label(self.size_combo.currentText())
+
+        if size is None:
+            self.real_label.setText("")
+            return
+
+        factor = self.scale_input.value()
+
+        text = tr("Reale Fl\u00e4che: {w:.1f} x {h:.1f} km, H\u00f6hen x{f:.3f}").format(
+            w=size.width_m * factor / 1000.0,
+            h=size.height_m * factor / 1000.0,
+            f=self.height_scale_input.value(),
+        )
+
+        if factor > 1.0001:
+            text += tr(" - nur Copernicus als H\u00f6henquelle")
+
+        self.real_label.setText(text)
+
     def values(self) -> dict:
         """Gibt die eingegebenen Werte zurueck, passend zu
         MapController.set_rotated_selection(**dialog.values())."""
@@ -181,4 +277,6 @@ class RectangleToolDialog(QDialog):
             "height_m": size.height_m,
             "rotation_deg": self.rotation_input.value(),
             "margin_m": self.margin_input.value(),
+            "scale_factor": self.scale_input.value(),
+            "height_scale": self.height_scale_input.value(),
         }

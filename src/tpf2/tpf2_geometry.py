@@ -26,10 +26,16 @@ class TPF2Geometry:
         origin_lat,
         origin_lon,
         rotation_deg=0.0,
+        scale=1.0,
     ):
         self.origin_lat = float(origin_lat)
         self.origin_lon = float(origin_lon)
         self.rotation_deg = float(rotation_deg)
+
+        # Stauchfaktor: reale Meter geteilt durch scale = Spielkarten-Meter.
+        # Bei 1.0 (Vorgabe) bleibt alles wie bisher.
+        scale = float(scale) if scale else 1.0
+        self.scale = scale if scale > 0 else 1.0
 
         # Längengrad wird abhängig von der
         # geografischen Breite skaliert.
@@ -91,8 +97,8 @@ class TPF2Geometry:
         # Dann in das (ggf. gedrehte) Kartenband-Koordinatensystem
         # drehen. Bei rotation_deg=0 ist das die Identitaet (x=e, y=n),
         # also exakt das bisherige Verhalten.
-        x = e * self._right[0] + n * self._right[1]
-        y = e * self._up[0] + n * self._up[1]
+        x = (e * self._right[0] + n * self._right[1]) / self.scale
+        y = (e * self._up[0] + n * self._up[1]) / self.scale
 
         return (
             x,
@@ -119,8 +125,8 @@ class TPF2Geometry:
         Koordinatensystem bilden (die Transponierte ist die Inverse).
         """
 
-        x = float(x)
-        y = float(y)
+        x = float(x) * self.scale
+        y = float(y) * self.scale
 
         e = x * self._right[0] + y * self._up[0]
         n = x * self._right[1] + y * self._up[1]

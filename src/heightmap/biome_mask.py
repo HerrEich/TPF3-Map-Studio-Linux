@@ -179,7 +179,7 @@ def build_biome_index(
     assignment = dict(DEFAULT_ASSIGNMENT if assignment is None else assignment)
 
     center_lat, center_lon = selection.center
-    geometry = TPF2Geometry(center_lat, center_lon, selection.rotation_deg)
+    geometry = TPF2Geometry(center_lat, center_lon, selection.rotation_deg, getattr(selection, "scale_factor", 1.0))
     width_m, height_m = selection.width_m, selection.height_m
 
     def node_points(node_ids):

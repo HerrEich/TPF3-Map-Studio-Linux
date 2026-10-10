@@ -1188,6 +1188,8 @@ class MapController(QObject):
         height_m: float,
         rotation_deg: float,
         margin_m: float = 500.0,
+        scale_factor: float = 1.0,
+        height_scale: float | None = None,
     ):
         """
         Erstellt ein gedrehtes Kartenband (Rechteck-Tool) als aktuelle
@@ -1207,6 +1209,8 @@ class MapController(QObject):
             height_m=height_m,
             rotation_deg=rotation_deg,
             margin_m=margin_m,
+            scale_factor=scale_factor,
+            height_scale=height_scale,
         )
 
         self.project.set_selection(
@@ -1231,8 +1235,8 @@ class MapController(QObject):
         self.api.enable_rectangle_editing(
             center_lat,
             center_lon,
-            width_m,
-            height_m,
+            width_m * scale_factor,
+            height_m * scale_factor,
             rotation_deg,
         )
 
@@ -1260,6 +1264,14 @@ class MapController(QObject):
         # im Rechteck-Tool-Dialog.
         margin_m = 500.0
 
+        # Die Karte meldet die reale Groesse; gespeichert werden
+        # Spielkarten-Meter plus unveraenderter Stauchfaktor.
+        previous = self.project.selection
+        scale_factor = getattr(previous, "scale_factor", 1.0) if previous else 1.0
+        height_scale = getattr(previous, "height_scale", 1.0) if previous else 1.0
+        width_m = width_m / scale_factor
+        height_m = height_m / scale_factor
+
         selection = Selection.from_center(
             center_lat=center_lat,
             center_lon=center_lon,
@@ -1267,6 +1279,8 @@ class MapController(QObject):
             height_m=height_m,
             rotation_deg=rotation_deg,
             margin_m=margin_m,
+            scale_factor=scale_factor,
+            height_scale=height_scale,
         )
 
         self.project.set_selection(
@@ -1387,8 +1401,8 @@ class MapController(QObject):
                 self.api.enable_rectangle_editing(
                     center_lat,
                     center_lon,
-                    selection.width_m,
-                    selection.height_m,
+                    selection.real_width_m,
+                    selection.real_height_m,
                     selection.rotation_deg,
                 )
 

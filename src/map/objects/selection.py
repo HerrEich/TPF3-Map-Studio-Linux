@@ -42,6 +42,12 @@ class Selection:
     center_lat: float | None = None
     center_lon: float | None = None
 
+    # Karte stauchen: width_m/height_m bleiben Spielkarten-Meter. Die reale
+    # Flaeche ist scale_factor-mal so gross. height_scale wird auf alle
+    # Hoehen angewendet (Vorgabe 1 / scale_factor).
+    scale_factor: float = 1.0
+    height_scale: float = 1.0
+
     # ------------------------------------------------------------
     # Bestehende Eigenschaften (unverändert)
     # ------------------------------------------------------------
@@ -71,6 +77,24 @@ class Selection:
     def is_rotated(self) -> bool:
         return bool(self.rotation_deg)
 
+    @property
+    def real_width_m(self) -> float | None:
+        """Reale Breite in Metern (Spielkarte mal Stauchfaktor)."""
+        if not self.width_m:
+            return self.width_m
+        return self.width_m * (self.scale_factor or 1.0)
+
+    @property
+    def real_height_m(self) -> float | None:
+        """Reale Hoehe in Metern (Spielkarte mal Stauchfaktor)."""
+        if not self.height_m:
+            return self.height_m
+        return self.height_m * (self.scale_factor or 1.0)
+
+    @property
+    def is_scaled(self) -> bool:
+        return abs((self.scale_factor or 1.0) - 1.0) > 1e-9
+
     @classmethod
     def from_center(
         cls,
@@ -80,6 +104,8 @@ class Selection:
         height_m: float,
         rotation_deg: float = 0.0,
         margin_m: float = 0.0,
+        scale_factor: float = 1.0,
+        height_scale: float | None = None,
     ) -> "Selection":
         """Erstellt eine (ggf. gedrehte) Auswahl aus Mittelpunkt, realer
         Größe in Metern und Drehwinkel.
@@ -91,6 +117,14 @@ class Selection:
         tpf-map-studio-Schwesterprojekt — an den Kartenrändern fehlen
         sonst leicht echte Nachbarwerte).
         """
+        scale_factor = float(scale_factor)
+
+        if scale_factor <= 0:
+            raise ValueError("scale_factor muss groesser als 0 sein.")
+
+        if height_scale is None:
+            height_scale = 1.0 / scale_factor
+
         selection = cls(
             min_lat=0.0, min_lon=0.0, max_lat=0.0, max_lon=0.0,
             rotation_deg=rotation_deg,
@@ -98,6 +132,8 @@ class Selection:
             height_m=height_m,
             center_lat=center_lat,
             center_lon=center_lon,
+            scale_factor=scale_factor,
+            height_scale=float(height_scale),
         )
         corners = selection.corners_latlon()
         lats = [c[0] for c in corners]
@@ -136,7 +172,9 @@ class Selection:
         up = (math.sin(theta), math.cos(theta))
         right = (math.sin(theta + math.pi / 2), math.cos(theta + math.pi / 2))
         cos0 = math.cos(math.radians(center_lat))
-        hx, hy = self.width_m / 2, self.height_m / 2
+        # Reale Ausdehnung: bei scale_factor == 1 wie bisher.
+        scale = self.scale_factor or 1.0
+        hx, hy = self.width_m * scale / 2, self.height_m * scale / 2
 
         def local_to_latlon(x: float, y: float) -> tuple[float, float]:
             e = right[0] * x + up[0] * y

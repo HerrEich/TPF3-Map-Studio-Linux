@@ -270,7 +270,7 @@ def collect_stations(osm, selection, radius_m: float = 250.0, platform_radius_m:
     """
 
     center_lat, center_lon = selection.center
-    geometry = TPF2Geometry(center_lat, center_lon, selection.rotation_deg)
+    geometry = TPF2Geometry(center_lat, center_lon, selection.rotation_deg, getattr(selection, "scale_factor", 1.0))
     half_w, half_h = selection.width_m / 2.0, selection.height_m / 2.0
 
     def local(node):

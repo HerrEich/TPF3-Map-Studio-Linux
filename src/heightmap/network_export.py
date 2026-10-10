@@ -991,7 +991,7 @@ def collect_network(osm, selection, options: NetworkOptions | None = None) -> Ne
     opt = options or NetworkOptions()
 
     center_lat, center_lon = selection.center
-    geometry = TPF2Geometry(center_lat, center_lon, selection.rotation_deg)
+    geometry = TPF2Geometry(center_lat, center_lon, selection.rotation_deg, getattr(selection, "scale_factor", 1.0))
 
     half_w = selection.width_m / 2 - opt.edge_margin_m
     half_h = selection.height_m / 2 - opt.edge_margin_m

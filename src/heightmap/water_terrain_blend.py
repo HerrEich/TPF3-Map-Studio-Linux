@@ -181,7 +181,7 @@ def build_water_mask(
     """
 
     center_lat, center_lon = selection.center
-    geometry = TPF2Geometry(center_lat, center_lon, selection.rotation_deg)
+    geometry = TPF2Geometry(center_lat, center_lon, selection.rotation_deg, getattr(selection, "scale_factor", 1.0))
     width_m, height_m = selection.width_m, selection.height_m
 
     mask_img = Image.new("L", (w_px, h_px), 0)

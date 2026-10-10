@@ -77,12 +77,43 @@ def pixel_size_for_selection(selection: Selection) -> tuple[int, int]:
     return w_px, h_px
 
 
+# Hoehenmodelle sind etwa 30 m fein. Bei gestauchter Karte liegt zwischen
+# zwei Rasterpunkten ein Vielfaches davon; ohne Mittelung wuerden Haenge
+# ausfransen.
+DEM_RESOLUTION_M = 30.0
+MAX_OVERSAMPLE = 3
+
+
+def oversample_for_selection(selection: Selection) -> int:
+    """Teilpunkte je Achse und Rasterpixel (1 = keine Mittelung)."""
+
+    scale = float(getattr(selection, "scale_factor", 1.0) or 1.0)
+    pitch_real_m = METERS_PER_PIXEL * scale
+
+    if pitch_real_m <= DEM_RESOLUTION_M:
+        return 1
+
+    return int(min(MAX_OVERSAMPLE, np.ceil(pitch_real_m / DEM_RESOLUTION_M)))
+
+
+def _apply_height_scale(heights: np.ndarray, selection: Selection) -> np.ndarray:
+    """Skaliert alle Hoehen mit selection.height_scale (1.0 = unveraendert)."""
+
+    factor = float(getattr(selection, "height_scale", 1.0) or 1.0)
+
+    if abs(factor - 1.0) < 1e-9:
+        return heights
+
+    return (heights * np.float32(factor)).astype(np.float32, copy=False)
+
+
 def _sample_grid(
     selection: Selection,
     mosaic: DemMosaic,
     w_px: int,
     h_px: int,
     chunk: int = 300,
+    oversample: int = 1,
 ) -> np.ndarray:
     """
     Gemeinsame Kernrechnung fuer build_heightmap_array() und
@@ -93,28 +124,54 @@ def _sample_grid(
     """
 
     center_lat, center_lon = selection.center
-    geometry = TPF2Geometry(center_lat, center_lon, selection.rotation_deg)
+    scale = float(getattr(selection, "scale_factor", 1.0) or 1.0)
+    geometry = TPF2Geometry(
+        center_lat, center_lon, selection.rotation_deg, scale
+    )
 
+    # Das Raster ist in Spielkarten-Metern definiert; abgetastet wird die
+    # reale Flaeche (scale mal groesser). Bei scale == 1 wie bisher.
     hx, hy = selection.width_m / 2, selection.height_m / 2
+    pitch_x = selection.width_m / w_px
+    pitch_y = selection.height_m / h_px
+
+    n_sub = max(1, int(oversample))
+    offsets = [(k + 0.5) / n_sub - 0.5 for k in range(n_sub)]
 
     out = np.zeros((h_px, w_px), dtype=np.float32)
     cols = np.arange(w_px)
-    x_local = -hx + (cols + 0.5) * (selection.width_m / w_px)
 
     for r0 in range(0, h_px, chunk):
         r1 = min(h_px, r0 + chunk)
         rows = np.arange(r0, r1)
-        y_local = hy - (rows + 0.5) * (selection.height_m / h_px)
-        xl, yl = np.meshgrid(x_local, y_local)
 
-        # Vektorisiert dieselbe Rechnung wie TPF2Geometry.inverse(),
-        # da diese nur einzelne Punkte kann.
-        e = geometry.right_vector[0] * xl + geometry.up_vector[0] * yl
-        n = geometry.right_vector[1] * xl + geometry.up_vector[1] * yl
-        lat = center_lat + n / geometry.METERS_PER_DEGREE_LAT
-        lon = center_lon + e / geometry.longitude_scale
+        acc = None
 
-        out[r0:r1, :] = mosaic.sample_grid(lat, lon)
+        for oy in offsets:
+            y_local = (hy - (rows + 0.5 + oy) * pitch_y) * scale
+
+            for ox in offsets:
+                x_local = (-hx + (cols + 0.5 + ox) * pitch_x) * scale
+                xl, yl = np.meshgrid(x_local, y_local)
+
+                # Vektorisiert dieselbe Rechnung wie TPF2Geometry.inverse(),
+                # da diese nur einzelne Punkte kann.
+                e = geometry.right_vector[0] * xl + geometry.up_vector[0] * yl
+                n = geometry.right_vector[1] * xl + geometry.up_vector[1] * yl
+                lat = center_lat + n / geometry.METERS_PER_DEGREE_LAT
+                lon = center_lon + e / geometry.longitude_scale
+
+                values = np.array(mosaic.sample_grid(lat, lon), dtype=np.float32)
+
+                if acc is None:
+                    acc = values
+                else:
+                    acc += values
+
+        if n_sub > 1:
+            acc /= np.float32(n_sub * n_sub)
+
+        out[r0:r1, :] = acc
 
     return out
 
@@ -141,12 +198,23 @@ def build_heightmap_array_ex(
 
     w_px, h_px = pixel_size_for_selection(selection)
 
+    if (
+        source != SOURCE_COPERNICUS
+        and float(getattr(selection, "scale_factor", 1.0) or 1.0) > 1.0001
+    ):
+        raise Dgm1Error(
+            tr("Bei gestauchter Karte (Stauchfaktor > 1) bitte Copernicus als Hoehenquelle waehlen.")
+        )
+
     if source == SOURCE_COPERNICUS:
 
         tile_paths = download_tiles_for_selection(selection, cache_dir)
         mosaic = DemMosaic.from_paths(tile_paths)
 
-        out = _sample_grid(selection, mosaic, w_px, h_px)
+        out = _sample_grid(
+            selection, mosaic, w_px, h_px,
+            oversample=oversample_for_selection(selection),
+        )
 
         info = HeightmapBuildInfo(source=source)
 
@@ -187,7 +255,10 @@ def build_heightmap_array_ex(
 
         mosaic = _FallbackMosaic(dgm1, make_fallback)
 
-        out = _sample_grid(selection, mosaic, w_px, h_px)
+        out = _sample_grid(
+            selection, mosaic, w_px, h_px,
+            oversample=oversample_for_selection(selection),
+        )
 
         info = HeightmapBuildInfo(
             source=source,
@@ -206,6 +277,8 @@ def build_heightmap_array_ex(
             tr("Hoehendaten decken den Kartenausschnitt nicht vollstaendig ab "
             "(evtl. fehlt eine Randkachel).")
         )
+
+    out = _apply_height_scale(out, selection)
 
     return out, info
 
@@ -257,7 +330,7 @@ def build_heightmap_array_preview(
 
     out = _sample_grid(selection, mosaic, w_px, h_px, chunk=max(h_px, 1))
 
-    return out
+    return _apply_height_scale(out, selection)
 
 
 def export_heightmap_png(

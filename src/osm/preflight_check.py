@@ -53,7 +53,10 @@ def _estimate_area_km2(selection) -> float | None:
         return None
 
     if selection.width_m and selection.height_m:
-        return selection.width_m * selection.height_m / 1_000_000
+        return (
+            selection.width_m * selection.height_m / 1_000_000
+            * (getattr(selection, "scale_factor", 1.0) or 1.0) ** 2
+        )
 
     lat_span_m = (selection.max_lat - selection.min_lat) * 111_320
     center_lat = (selection.min_lat + selection.max_lat) / 2

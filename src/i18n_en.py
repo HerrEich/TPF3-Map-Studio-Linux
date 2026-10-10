@@ -1324,6 +1324,13 @@ guide of the heightmap dialog (F1).</p>
         'Soft transition (m below):',
     'Auf dieser Strecke unter der Baumgrenze werden die Baumgruppen nach oben hin allmählich weniger, statt an einer harten Linie zu enden. 0 = harte Linie.':
         'Over this distance below the tree limit the tree groups thin out gradually towards the top instead of ending at a hard line. 0 = hard line.',
+    'Stauchfaktor (1 = Originalmaßstab):': 'Compression factor (1 = original scale):',
+    'Höhen-Faktor:': 'Height factor:',
+    'Reale Fläche: {w:.1f} x {h:.1f} km, Höhen x{f:.3f}': 'Real area: {w:.1f} x {h:.1f} km, heights x{f:.3f}',
+    ' - nur Copernicus als Höhenquelle': ' - Copernicus only as height source',
+    'Bei gestauchter Karte (Stauchfaktor > 1) bitte Copernicus als Hoehenquelle waehlen.': 'For a compressed map (factor > 1) please choose Copernicus as height source.',
+    'Wie oft die Kartengröße in das reale Gebiet passt. Beispiel: 3,6 km Spielkarte mit Faktor 20 ergibt 72 km reales Gebiet. Netz, Städte und Gelände werden entsprechend verkleinert.': 'How many times the map size fits into the real area. Example: a 3.6 km game map with factor 20 covers 72 km of real terrain. Network, towns and terrain are shrunk accordingly.',
+    'Vorbelegt mit 1 / Stauchfaktor, damit die Berge im Verhältnis bleiben. Kleiner = flacher, 1 = reale Höhen.': 'Preset to 1 / compression factor so mountains keep their proportions. Smaller = flatter, 1 = real heights.',
     'Gelände glätten und Höhen stauchen':
         'Smooth terrain and compress elevations',
     'Glätten gegen Treppenstufen und Kristallflächen an Hängen (das Copernicus-Modell hat nur etwa 30 m pro Pixel). Höhen stauchen drückt alle Höhen über dem Wasserspiegel auf einen Anteil, falls Hochflächen im Spiel über die Schneegrenze ragen (weiße Flächen). Die Hänge werden dabei flacher.':
