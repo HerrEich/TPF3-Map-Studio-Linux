@@ -41,6 +41,7 @@ from src.heightmap.biome_mask import (
     thin_forest_by_height,
 )
 from src.heightmap.tpf3_paths import find_tpf3_heightmaps_folder
+from src.file_names import ascii_safe_path
 from src.i18n import tr
 
 # Anzeige -> Meter pro Pixel
@@ -303,6 +304,8 @@ class BiomeMaskDialog(QDialog):
         if not path:
             return
 
+        path, renamed = ascii_safe_path(path)
+
         try:
             save_biome_png(path, self._index)
         except OSError as error:
@@ -316,5 +319,11 @@ class BiomeMaskDialog(QDialog):
         QMessageBox.information(
             self,
             tr("Biome-Maske"),
-            tr("Gespeichert:\n{path}\n\nIm Spiel: Karteneditor → Heightmap importieren → Reiter Biome → bei \"Biome\" diese Datei wählen, Berge und Flüsse leer lassen → Anwenden.").format(path=path),
+            tr("Gespeichert:\n{path}\n\nIm Spiel: Karteneditor → Heightmap importieren → Reiter Biome → bei \"Biome\" diese Datei wählen, Berge und Flüsse leer lassen → Anwenden.").format(path=path)
+            + (
+                tr("\n\nDer Dateiname wurde ohne Umlaute und Sonderzeichen "
+                   "gespeichert, weil sie im Spiel Probleme machen k\u00f6nnen.")
+                if renamed
+                else ""
+            ),
         )

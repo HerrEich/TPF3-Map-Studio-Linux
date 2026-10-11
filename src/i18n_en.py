@@ -1339,6 +1339,15 @@ guide of the heightmap dialog (F1).</p>
     'Nur für sehr große Gebiete verwenden, z. B. 80 x 80 km auf eine Spielkarte. Bei normalen Karten bitte auf 1 lassen, sonst wird das Gebiet verkleinert.': 'Only use this for very large areas, e.g. 80 x 80 km on one game map. For normal maps please leave it at 1, otherwise the area is shrunk.',
     'Die Karte wird gestaucht: {w:.1f} x {h:.1f} km reales Gebiet werden auf {gw:.1f} x {gh:.1f} km Spielkarte verkleinert. Das ist nur für sehr große Gebiete gedacht (z. B. 80 x 80 km). Für eine normale Karte den Stauchfaktor auf 1 setzen. Trotzdem stauchen?': 'The map will be compressed: {w:.1f} x {h:.1f} km of real terrain will be shrunk onto a {gw:.1f} x {gh:.1f} km game map. This is only meant for very large areas (e.g. 80 x 80 km). For a normal map set the compression factor to 1. Compress anyway?',
     'Karte stauchen?': 'Compress map?',
+    'Beispielwert Fisch/Maschinen (bisher)': 'Example value fish/machines (previous)',
+    'Weglassen (Spiel entscheidet)': 'Omit (game decides)',
+    'Leer (keine festen Forderungen)': 'Empty (no fixed demands)',
+    'Zufall (pro Stadt)': 'Random (per town)',
+    'Seed (0 = zufällig):': 'Seed (0 = random):',
+    'Nur für den Modus Zufall: gleicher Seed ergibt bei gleicher Stadtliste dieselben Warenforderungen. 0 = bei jedem Export anders.': 'Random mode only: the same seed gives the same cargo demands for the same town list. 0 = different on every export.',
+    'Warenforderung:': 'Cargo demand:',
+    'Welche Waren die Städte nachfragen. Bisher bekam jede Stadt denselben Beispielwert aus dem Umbauplan. Ob das Spiel die Zeile weggelassen oder leer akzeptiert, ist nicht geprüft: ausprobieren und beim Import auf Fehler achten.': 'Which goods the towns demand. So far every town got the same example value from the conversion plan. Whether the game accepts the line omitted or empty is not checked: try it and watch for errors on import.',
+    '\n\nDer Dateiname wurde ohne Umlaute und Sonderzeichen gespeichert, weil sie im Spiel Probleme machen können.': '\n\nThe file name was saved without umlauts and special characters because they can cause problems in the game.',
     'Gelände glätten und Höhen stauchen':
         'Smooth terrain and compress elevations',
     'Glätten gegen Treppenstufen und Kristallflächen an Hängen (das Copernicus-Modell hat nur etwa 30 m pro Pixel). Höhen stauchen drückt alle Höhen über dem Wasserspiegel auf einen Anteil, falls Hochflächen im Spiel über die Schneegrenze ragen (weiße Flächen). Die Hänge werden dabei flacher.':

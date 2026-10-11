@@ -24,6 +24,7 @@ der Beispieldatei (Faktor 1.0 und die Frachtbeduerfnisse).
 
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -44,6 +45,76 @@ DEFAULT_KINDS = ("city", "town", "village")
 
 # Aus der Beispieldatei im Umbauplan, Bedeutung fuer die Spielmechanik offen.
 DEFAULT_NEEDS = '{ com = { { "fish", 1 } }, ind = { { "machines", 0.5 } } }'
+
+# Wie die Warenforderung (landUse2CargoNeedsCategories) je Stadt geschrieben
+# wird. Welche Variante das Spiel annimmt und wie es sie auswertet, ist nicht
+# geprueft - darum waehlbar.
+NEEDS_MODES = (
+    ("random", "Zufall (pro Stadt)"),
+    ("example", "Beispielwert Fisch/Maschinen (bisher)"),
+    ("omit", "Weglassen (Spiel entscheidet)"),
+    ("empty", "Leer (keine festen Forderungen)"),
+)
+
+DEFAULT_NEEDS_MODE = "random"
+
+# Waren fuer den Zufallsmodus, getrennt nach Kategorie (com / ind).
+# Hier die echten TPF3-Warennamen eintragen. Im Spiel geprueft ist nur
+# fish (com) und machines (ind) aus der Beispieldatei.
+RANDOM_GOODS = {
+    "com": ("fish",),
+    "ind": ("machines",),
+}
+
+# Je Kategorie und Stadt 1 bis RANDOM_MAX_GOODS Waren (begrenzt durch die Liste).
+RANDOM_MAX_GOODS = 2
+
+# Menge je Ware (gleiche Groessenordnung wie im Beispielwert 0.5 bis 1).
+RANDOM_AMOUNT_RANGE = (0.3, 1.5)
+
+
+def _random_needs(rng: random.Random) -> str:
+    """Zufaellige Warenforderung im Format der Beispielzeile."""
+
+    low, high = RANDOM_AMOUNT_RANGE
+    parts = []
+
+    for category in ("com", "ind"):
+        goods = RANDOM_GOODS.get(category, ())
+
+        if not goods:
+            continue
+
+        count = rng.randint(1, min(RANDOM_MAX_GOODS, len(goods)))
+        chosen = rng.sample(list(goods), count)
+        items = ", ".join(
+            '{ "%s", %.2f }' % (good, round(rng.uniform(low, high), 2))
+            for good in chosen
+        )
+        parts.append("%s = { %s }" % (category, items))
+
+    if not parts:
+        return "{}"
+
+    return "{ " + ", ".join(parts) + " }"
+
+
+def _needs_line(mode: str, rng: random.Random | None = None) -> str:
+    """Erste Zeile des Stadteintrags je nach Warenforderungs-Modus."""
+
+    if mode == "omit":
+        return "    {"
+
+    if mode == "empty":
+        return "    { landUse2CargoNeedsCategories = {},"
+
+    if mode == "random":
+        if rng is None:
+            rng = random.Random()
+
+        return f"    {{ landUse2CargoNeedsCategories = {_random_needs(rng)},"
+
+    return f"    {{ landUse2CargoNeedsCategories = {DEFAULT_NEEDS},"
 
 # Im Spiel entspricht der mittlere Faktor 1 etwa 100 Einwohnern (linear bis 30).
 INHABITANTS_PER_FACTOR = 100.0
@@ -193,8 +264,12 @@ def towns_lua(
     use_population: bool = True,
     scale: float = DEFAULT_SCALE,
     min_factor: float = DEFAULT_MIN_FACTOR,
+    needs_mode: str = DEFAULT_NEEDS_MODE,
+    seed: int | None = None,
 ) -> str:
     """Baut den Inhalt der Lua-Datei (Staedte, keine Industrien)."""
+
+    rng = random.Random(seed)
 
     lines = [
         "function data()",
@@ -205,9 +280,7 @@ def towns_lua(
     ]
 
     for place in places:
-        lines.append(
-            f"    {{ landUse2CargoNeedsCategories = {DEFAULT_NEEDS},"
-        )
+        lines.append(_needs_line(needs_mode, rng))
         lines.append(
             f"      name = {_lua_string(place.name)}, "
             f"position = {{ x = {place.x:.2f}, y = {place.y:.2f} }},"
@@ -232,12 +305,17 @@ def write_towns_lua(
     use_population: bool = True,
     scale: float = DEFAULT_SCALE,
     min_factor: float = DEFAULT_MIN_FACTOR,
+    needs_mode: str = DEFAULT_NEEDS_MODE,
+    seed: int | None = None,
 ) -> Path:
 
     path = Path(path)
 
     path.write_text(
-        towns_lua(places, max_factor, use_population, scale, min_factor),
+        towns_lua(
+            places, max_factor, use_population, scale, min_factor, needs_mode,
+            seed,
+        ),
         encoding="utf-8",
     )
 

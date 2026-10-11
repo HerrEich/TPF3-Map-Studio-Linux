@@ -14,6 +14,7 @@ from pathlib import Path
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QDoubleSpinBox,
     QDialog,
     QFileDialog,
@@ -31,7 +32,9 @@ from src.heightmap.towns_export import (
     DEFAULT_KINDS,
     DEFAULT_MAX_FACTOR,
     DEFAULT_MIN_FACTOR,
+    DEFAULT_NEEDS_MODE,
     DEFAULT_SCALE,
+    NEEDS_MODES,
     PLACE_KINDS,
     collect_places,
     size_factor,
@@ -157,6 +160,42 @@ class TownsDialog(QDialog):
         factor_row.addWidget(self.max_factor_spin)
 
         factor_row.addStretch(1)
+
+        needs_row = QHBoxLayout()
+        layout.addLayout(needs_row)
+
+        needs_row.addWidget(QLabel(tr("Warenforderung:")))
+
+        self.needs_box = QComboBox()
+
+        for key, label in NEEDS_MODES:
+            self.needs_box.addItem(tr(label), key)
+
+        self.needs_box.setCurrentIndex(
+            [key for key, _label in NEEDS_MODES].index(DEFAULT_NEEDS_MODE)
+        )
+        self.needs_box.setToolTip(
+            tr("Welche Waren die St\u00e4dte nachfragen. Bisher bekam jede Stadt "
+               "denselben Beispielwert aus dem Umbauplan. Ob das Spiel die "
+               "Zeile weggelassen oder leer akzeptiert, ist nicht gepr\u00fcft: "
+               "ausprobieren und beim Import auf Fehler achten.")
+        )
+        needs_row.addWidget(self.needs_box)
+
+        needs_row.addWidget(QLabel(tr("Seed (0 = zuf\u00e4llig):")))
+
+        self.seed_spin = QSpinBox()
+        self.seed_spin.setRange(0, 2147483647)
+        self.seed_spin.setValue(0)
+        self.seed_spin.setMinimumWidth(110)
+        self.seed_spin.setToolTip(
+            tr("Nur f\u00fcr den Modus Zufall: gleicher Seed ergibt bei "
+               "gleicher Stadtliste dieselben Warenforderungen. 0 = bei "
+               "jedem Export anders.")
+        )
+        needs_row.addWidget(self.seed_spin)
+
+        needs_row.addStretch(1)
 
         self.list_widget = QListWidget()
         self.list_widget.itemChanged.connect(self._on_item_changed)
@@ -342,6 +381,8 @@ class TownsDialog(QDialog):
                 self.size_checkbox.isChecked(),
                 self.scale_spin.value(),
                 self.min_factor_spin.value(),
+                self.needs_box.currentData(),
+                self.seed_spin.value() or None,
             )
         except OSError as error:
             QMessageBox.warning(

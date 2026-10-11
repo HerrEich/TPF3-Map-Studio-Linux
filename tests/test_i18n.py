@@ -41,7 +41,11 @@ SAME_IN_BOTH = {
 
 # Texte, die nicht als tr("...") im Quelltext stehen, sondern zur Laufzeit
 # uebersetzt werden (Layer.label ruft tr(self.value) auf).
-DYNAMIC_FILES = {"map/layer.py", "gui/feature_overview_dialog.py"}
+DYNAMIC_FILES = {
+    "map/layer.py",
+    "gui/feature_overview_dialog.py",
+    "gui/towns_dialog.py",
+}
 
 # Tabellen, deren Texte erst beim Aufbau des Fensters durch tr() laufen:
 # Datei -> Namen der Konstanten.
@@ -98,6 +102,17 @@ def collect_keys():
             if isinstance(node, ast.Assign) and getattr(node.targets[0], "id", "") in names:
                 for leaf in _string_leaves(ast.literal_eval(node.value)):
                     keys.setdefault(leaf, []).append(relative)
+    # NEEDS_MODES: nur die Anzeigetexte (zweites Element), nicht die Schluessel.
+    export_tree = ast.parse(
+        (SRC / "heightmap/towns_export.py").read_text(encoding="utf-8")
+    )
+    for node in export_tree.body:
+        if (
+            isinstance(node, ast.Assign)
+            and getattr(node.targets[0], "id", "") == "NEEDS_MODES"
+        ):
+            for _key, label in ast.literal_eval(node.value):
+                keys.setdefault(label, []).append("heightmap/towns_export.py")
     return keys, unresolved
 
 
