@@ -17,7 +17,9 @@ from pathlib import Path
 from src.map.objects.selection import Selection
 
 
-TEMPLATES_PATH = Path.home() / ".tpf2_map_studio" / "overpass_templates.json"
+from src.app_paths import APP_DIR  # noqa: E402
+
+TEMPLATES_PATH = APP_DIR / "overpass_templates.json"
 
 LANDUSE_VALUES = (
     "farmland|farmyard|grass|meadow|orchard|vineyard|"

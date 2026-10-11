@@ -2,7 +2,7 @@
 Zentrales Logging fuer TPF3-Map-Studio.
 
 Schreibt alles in eine rotierende Logdatei unter
-~/.tpf2_map_studio/logs/ (derselbe Basisordner wie der DEM-Cache) -
+~/.tpf3_map_studio/logs/ (derselbe Basisordner wie der DEM-Cache) -
 auch aus der per PyInstaller mit console=False gebauten exe, in der es
 kein sichtbares stdout/stderr gibt. Damit koennen Nutzer bei Problemen
 einfach die Logdatei schicken (Hilfe > Log-Ordner öffnen).
@@ -22,7 +22,9 @@ import sys
 import threading
 from pathlib import Path
 
-LOG_DIR = Path.home() / ".tpf2_map_studio" / "logs"
+from src.app_paths import APP_DIR  # noqa: E402
+
+LOG_DIR = APP_DIR / "logs"
 LOG_FILE = LOG_DIR / "tpf3-map-studio.log"
 
 _MAX_BYTES = 2 * 1024 * 1024

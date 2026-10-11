@@ -27,7 +27,10 @@ class OverpassClient:
 
     def __init__(self):
 
-        self.timeout = 60
+        # (Verbinden, Antwort abwarten): Overpass schickt bei grossen
+        # Gebieten erst nach der Berechnung Daten; die Abfrage selbst
+        # erlaubt 180 s ([timeout:180]).
+        self.timeout = (15, 200)
         self.parser = OSMParser()
 
         # Zuletzt erfolgreicher Server wird beim naechsten Download

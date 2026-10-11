@@ -22,7 +22,9 @@ from src.mods.mod_checker import run_check
 from src.i18n import tr
 
 
-SETTINGS_PATH = Path.home() / ".tpf2_map_studio" / "mod_checker_settings.json"
+from src.app_paths import APP_DIR  # noqa: E402
+
+SETTINGS_PATH = APP_DIR / "mod_checker_settings.json"
 
 DEFAULT_WORKSHOP_PATH = (
     r"C:\Program Files (x86)\Steam\steamapps\workshop\content\1066780"

@@ -139,7 +139,7 @@ class RectangleToolDialog(QDialog):
         self.scale_input.setToolTip(
             tr(
                 "Wie oft die Kartengr\u00f6\u00dfe in das reale Gebiet passt. "
-                "Beispiel: 3,6 km Spielkarte mit Faktor 20 ergibt 72 km reales Gebiet. "
+                "Beispiel: 14,3 km Spielkarte mit Faktor 5 ergibt 71,7 km reales Gebiet. "
                 "Netz, St\u00e4dte und Gel\u00e4nde werden entsprechend verkleinert."
             )
         )

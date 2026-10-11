@@ -19,7 +19,9 @@ from src.osm.converter_command import build_converter_command
 from src.i18n import tr
 
 
-SETTINGS_PATH = Path.home() / ".tpf2_map_studio" / "converter_command_settings.json"
+from src.app_paths import APP_DIR  # noqa: E402
+
+SETTINGS_PATH = APP_DIR / "converter_command_settings.json"
 
 EXE_OPTIONS = (
     ("main.exe", tr("main.exe (vorkompiliert, aus den Releases)")),

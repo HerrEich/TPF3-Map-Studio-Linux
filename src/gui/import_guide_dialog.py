@@ -18,7 +18,9 @@ from PySide6.QtWidgets import (
 from src.i18n import tr
 
 
-SETTINGS_PATH = Path.home() / ".tpf2_map_studio" / "import_guide_settings.json"
+from src.app_paths import APP_DIR  # noqa: E402
+
+SETTINGS_PATH = APP_DIR / "import_guide_settings.json"
 
 # (Feldname, Beschriftung, Standardwert) - siehe
 # res/scripts/osm_importer/README.md des OSM-TPF2-Importer-Projekts,

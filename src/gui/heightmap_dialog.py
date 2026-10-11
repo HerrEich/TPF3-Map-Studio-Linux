@@ -87,9 +87,11 @@ from src.heightmap.water_slope_compensation import (
     DEFAULT_SMOOTHING_M,
 )
 
-DEFAULT_CACHE_DIR = Path.home() / ".tpf2_map_studio" / "dem_cache"
-DEFAULT_DGM1_CACHE_DIR = Path.home() / ".tpf2_map_studio" / "dgm1_cache"
-DEFAULT_SWISS_CACHE_DIR = Path.home() / ".tpf2_map_studio" / "swissalti3d_cache"
+from src.app_paths import APP_DIR  # noqa: E402
+
+DEFAULT_CACHE_DIR = APP_DIR / "dem_cache"
+DEFAULT_DGM1_CACHE_DIR = APP_DIR / "dgm1_cache"
+DEFAULT_SWISS_CACHE_DIR = APP_DIR / "swissalti3d_cache"
 # Grober Umriss Deutschlands (Breite von/bis, Laenge von/bis): nur dafuer, die
 # DGM1-Auswahl nur bei Karten in Deutschland anzubieten.
 GERMANY_BOUNDS = (47.2, 55.1, 5.8, 15.1)

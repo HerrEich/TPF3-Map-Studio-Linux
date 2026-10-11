@@ -19,7 +19,9 @@ from src.core.project_summary import scan_projects_folder
 from src.i18n import tr
 
 
-SETTINGS_PATH = Path.home() / ".tpf2_map_studio" / "dashboard_settings.json"
+from src.app_paths import APP_DIR  # noqa: E402
+
+SETTINGS_PATH = APP_DIR / "dashboard_settings.json"
 
 
 class ProjectDashboardDialog(QDialog):
