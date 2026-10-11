@@ -23,8 +23,11 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMessageBox,
+    QFrame,
     QPushButton,
+    QScrollArea,
     QVBoxLayout,
+    QWidget,
 )
 
 from src.heightmap.biome_mask import (
@@ -71,7 +74,24 @@ class BiomeMaskDialog(QDialog):
 
         self.setWindowTitle(tr("Biome-Maske aus OSM"))
 
-        layout = QVBoxLayout(self)
+        # Die Einstellungen liegen in einem Scrollbereich, damit der Dialog
+        # auch auf kleinen Bildschirmen bedienbar bleibt. Statuszeile und
+        # Knoepfe stehen darunter und bleiben immer sichtbar.
+        outer = QVBoxLayout(self)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        content = QWidget()
+        scroll.setWidget(content)
+        outer.addWidget(scroll, 1)
+
+        layout = QVBoxLayout(content)
+
+        self.setMinimumWidth(560)
+        self.resize(640, 780)
 
         info = QLabel(
             tr("Erzeugt aus der geladenen OSM-Landnutzung eine Maske für den "
@@ -153,10 +173,10 @@ class BiomeMaskDialog(QDialog):
 
         self.status_label = QLabel("")
         self.status_label.setWordWrap(True)
-        layout.addWidget(self.status_label)
+        outer.addWidget(self.status_label)
 
         row = QHBoxLayout()
-        layout.addLayout(row)
+        outer.addLayout(row)
 
         self.preview_button = QPushButton(tr("Vorschau"))
         self.preview_button.clicked.connect(self._make_preview)
