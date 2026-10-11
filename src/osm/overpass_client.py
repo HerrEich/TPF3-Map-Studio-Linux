@@ -1,3 +1,5 @@
+import threading
+
 import requests
 
 from src.http_identity import USER_AGENT
@@ -6,6 +8,10 @@ from src.osm.osm_parser import OSMParser
 from src.osm.objects.osm_data import OSMData
 from src.osm.overpass_query_builder import OverpassQueryConfig, build_query
 from src.i18n import tr
+
+
+class OverpassCancelled(Exception):
+    """Der Benutzer hat den OSM-Download abgebrochen."""
 
 
 class OverpassClient:
@@ -30,13 +36,41 @@ class OverpassClient:
         # bei jedem Download erneut abgewartet werden.
         self._preferred_server = None
 
+        # Wird vom GUI-Thread gesetzt (cancel()), der Download-Thread
+        # prueft ihn zwischen den Schritten.
+        self._cancel = threading.Event()
+
     # ---------------------------------------------------------
+
+    def cancel(self):
+        """Bricht den laufenden Download ab (aus jedem Thread aufrufbar)."""
+        self._cancel.set()
+
+    def reset_cancel(self):
+        self._cancel.clear()
+
+    def _check_cancel(self):
+        if self._cancel.is_set():
+            raise OverpassCancelled()
 
     def download(
         self,
         selection: Selection,
         config: OverpassQueryConfig | None = None,
     ) -> OSMData:
+
+        try:
+            return self._download(selection, config)
+        finally:
+            self._cancel.clear()
+
+    def _download(
+        self,
+        selection: Selection,
+        config: OverpassQueryConfig | None = None,
+    ) -> OSMData:
+
+        self._check_cancel()
 
         query = build_query(selection, config)
 
@@ -53,27 +87,23 @@ class OverpassClient:
 
         for server in servers:
 
+            self._check_cancel()
+
             print()
             print("=" * 60)
             print("Versuche Server:", server)
 
             try:
 
-                response = requests.post(
-                    server,
-                    data={"data": query},
-                    headers={
-                        "User-Agent": USER_AGENT,
-                        "Accept": "application/json",
-                    },
-                    timeout=self.timeout,
-                )
+                response = self._post(server, query)
 
                 print("HTTP:", response.status_code)
 
                 response.raise_for_status()
 
                 json_data = response.json()
+
+                self._check_cancel()
 
                 print("JSON erfolgreich empfangen.")
 
@@ -110,3 +140,40 @@ class OverpassClient:
         raise RuntimeError(
             tr("Keiner der Overpass-Server war erreichbar.")
         ) from last_exception
+
+    def _post(self, server: str, query: str):
+        """
+        POST in einem Hilfs-Thread, damit ein Abbruch sofort wirkt, auch
+        wenn der Server minutenlang nicht antwortet. Die abgebrochene
+        Anfrage laeuft im Hintergrund aus, ihr Ergebnis wird verworfen.
+        """
+
+        box = {}
+
+        def work():
+            try:
+                box["response"] = requests.post(
+                    server,
+                    data={"data": query},
+                    headers={
+                        "User-Agent": USER_AGENT,
+                        "Accept": "application/json",
+                    },
+                    timeout=self.timeout,
+                )
+            except Exception as exc:  # noqa: BLE001
+                box["error"] = exc
+
+        thread = threading.Thread(
+            target=work, name="overpass-post", daemon=True
+        )
+        thread.start()
+
+        while thread.is_alive():
+            thread.join(0.2)
+            self._check_cancel()
+
+        if "error" in box:
+            raise box["error"]
+
+        return box["response"]

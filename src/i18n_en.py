@@ -177,6 +177,9 @@ CATALOG = {
         'OSM download failed: {message}',
     'OSM-Download läuft':
         'OSM download in progress',
+    'OSM-Laden abbrechen': 'Cancel OSM download',
+    'OSM-Download wird abgebrochen...': 'Cancelling OSM download...',
+    'OSM-Download abgebrochen. Die bisherigen Daten bleiben unverändert.': 'OSM download cancelled. The existing data is unchanged.',
     'Overpass-Abfrage...':
         'Overpass query...',
     'Projekt geladen.':
@@ -1333,6 +1336,9 @@ guide of the heightmap dialog (F1).</p>
     'Vorbelegt mit 1 / Stauchfaktor, damit die Berge im Verhältnis bleiben. Kleiner = flacher, 1 = reale Höhen.': 'Preset to 1 / compression factor so mountains keep their proportions. Smaller = flatter, 1 = real heights.',
     'Gebäude, Parks, Flächennutzung und Vegetation abschalten': 'Switch off buildings, parks, land use and vegetation',
     'Gestauchte Karte: Faktor {f:.1f}, reale Fläche {a:.0f} km². Gebäude, Parks, Flächennutzung und Vegetation erzeugen hier sehr große Datenmengen; für Gelände, Orte, Gleise und Straßen genügen die übrigen Kategorien.': 'Compressed map: factor {f:.1f}, real area {a:.0f} km². Buildings, parks, land use and vegetation produce very large amounts of data here; the other categories are enough for terrain, places, tracks and roads.',
+    'Nur für sehr große Gebiete verwenden, z. B. 80 x 80 km auf eine Spielkarte. Bei normalen Karten bitte auf 1 lassen, sonst wird das Gebiet verkleinert.': 'Only use this for very large areas, e.g. 80 x 80 km on one game map. For normal maps please leave it at 1, otherwise the area is shrunk.',
+    'Die Karte wird gestaucht: {w:.1f} x {h:.1f} km reales Gebiet werden auf {gw:.1f} x {gh:.1f} km Spielkarte verkleinert. Das ist nur für sehr große Gebiete gedacht (z. B. 80 x 80 km). Für eine normale Karte den Stauchfaktor auf 1 setzen. Trotzdem stauchen?': 'The map will be compressed: {w:.1f} x {h:.1f} km of real terrain will be shrunk onto a {gw:.1f} x {gh:.1f} km game map. This is only meant for very large areas (e.g. 80 x 80 km). For a normal map set the compression factor to 1. Compress anyway?',
+    'Karte stauchen?': 'Compress map?',
     'Gelände glätten und Höhen stauchen':
         'Smooth terrain and compress elevations',
     'Glätten gegen Treppenstufen und Kristallflächen an Hängen (das Copernicus-Modell hat nur etwa 30 m pro Pixel). Höhen stauchen drückt alle Höhen über dem Wasserspiegel auf einen Anteil, falls Hochflächen im Spiel über die Schneegrenze ragen (weiße Flächen). Die Hänge werden dabei flacher.':

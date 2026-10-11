@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
     QMessageBox,
+    QPushButton,
     QStatusBar,
     QListWidgetItem,
     QMenu,
@@ -35,6 +36,7 @@ from src.gui.rectangle_dialog import RectangleToolDialog
 from src.gui.heightmap_dialog import HeightmapDialog
 from src.gui.mod_checker_dialog import ModCheckerDialog
 from src.gui.overpass_dialog import OverpassQueryDialog
+from src.osm.overpass_client import OverpassCancelled  # noqa: F401
 from src.export.osm_xml_exporter import export_osm_xml
 from src.gui.short_segment_dialog import ShortSegmentDialog
 from src.gui.converter_command_dialog import ConverterCommandDialog
@@ -104,13 +106,31 @@ class _OsmWorker(QThread):
 
     loaded = Signal(object)   # OSMData
     failed = Signal(str)
+    cancelled = Signal()
 
     def __init__(self, controller, selection, config, parent=None):
         super().__init__(parent)
 
+        self._cancelled = False
+
+        client = getattr(controller, "overpass", None)
+
+        if client is not None and hasattr(client, "reset_cancel"):
+            client.reset_cancel()
+
         self._controller = controller
         self._selection = selection
         self._config = config
+
+    def cancel(self):
+        """Bricht den Download ab (vom GUI-Thread aufgerufen)."""
+
+        self._cancelled = True
+
+        client = getattr(self._controller, "overpass", None)
+
+        if client is not None and hasattr(client, "cancel"):
+            client.cancel()
 
     def run(self):
 
@@ -125,9 +145,21 @@ class _OsmWorker(QThread):
 
         except Exception as exc:
 
+            if self._cancelled or isinstance(exc, OverpassCancelled):
+
+                self.cancelled.emit()
+
+                return
+
             traceback.print_exc()
 
             self.failed.emit(str(exc))
+
+            return
+
+        if self._cancelled:
+
+            self.cancelled.emit()
 
             return
 
@@ -226,6 +258,18 @@ class MainWindow(QMainWindow):
 
         status.addPermanentWidget(
             self.measure_status
+        )
+
+        self.osm_cancel_button = QPushButton(tr("OSM-Laden abbrechen"))
+
+        self.osm_cancel_button.setVisible(False)
+
+        self.osm_cancel_button.clicked.connect(
+            self._cancel_osm
+        )
+
+        status.addPermanentWidget(
+            self.osm_cancel_button
         )
 
         self.setStatusBar(status)
@@ -827,6 +871,16 @@ class MainWindow(QMainWindow):
             tr("OSM laden")
         )
 
+        self.osm_cancel_action = tools_menu.addAction(
+            tr("OSM-Laden abbrechen")
+        )
+
+        self.osm_cancel_action.setEnabled(False)
+
+        self.osm_cancel_action.triggered.connect(
+            self._cancel_osm
+        )
+
         overpass_config_action = tools_menu.addAction(
             tr("Overpass-Abfrage...")
         )
@@ -1036,7 +1090,7 @@ class MainWindow(QMainWindow):
 
             return
 
-        self.osm_action.setEnabled(False)
+        self._set_osm_running(True)
 
         filter_text = (
             tr("gedrehtes Polygon (poly-Filter)")
@@ -1065,6 +1119,10 @@ class MainWindow(QMainWindow):
 
         self._osm_worker.failed.connect(
             self._on_osm_failed
+        )
+
+        self._osm_worker.cancelled.connect(
+            self._on_osm_cancelled
         )
 
         self._osm_worker.finished.connect(
@@ -1148,9 +1206,43 @@ class MainWindow(QMainWindow):
             tr("OSM-Download fehlgeschlagen.")
         )
 
+    def _set_osm_running(self, running: bool):
+        """Schaltet Menue und Abbruch-Knopf je nach laufendem Download."""
+
+        self.osm_action.setEnabled(not running)
+
+        self.osm_cancel_action.setEnabled(running)
+
+        self.osm_cancel_button.setEnabled(True)
+
+        self.osm_cancel_button.setVisible(running)
+
+    def _cancel_osm(self):
+
+        worker = self._osm_worker
+
+        if worker is None or not worker.isRunning():
+            return
+
+        worker.cancel()
+
+        self.osm_cancel_action.setEnabled(False)
+
+        self.osm_cancel_button.setEnabled(False)
+
+        self.statusBar().showMessage(
+            tr("OSM-Download wird abgebrochen...")
+        )
+
+    def _on_osm_cancelled(self):
+
+        self.statusBar().showMessage(
+            tr("OSM-Download abgebrochen. Die bisherigen Daten bleiben unver\u00e4ndert.")
+        )
+
     def _on_osm_worker_finished(self):
 
-        self.osm_action.setEnabled(True)
+        self._set_osm_running(False)
 
     # ---------------------------------------------------------
     # Overpass-Abfrage-Baukasten
@@ -2040,6 +2132,7 @@ class MainWindow(QMainWindow):
 
         # Laufenden OSM-Download nicht mitten im Thread abschiessen
         if self._osm_worker is not None and self._osm_worker.isRunning():
+            self._osm_worker.cancel()
             self._osm_worker.wait(5000)
 
         try:

@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDialogButtonBox,
     QLabel,
+    QMessageBox,
 )
 
 from src.gui.map_size_presets import ALL_MAP_SIZES, get_by_label
@@ -147,6 +148,17 @@ class RectangleToolDialog(QDialog):
             tr("Stauchfaktor (1 = Originalma\u00dfstab):"), self.scale_input
         )
 
+        self.scale_hint = QLabel(
+            tr(
+                "Nur f\u00fcr sehr gro\u00dfe Gebiete verwenden, z. B. 80 x 80 km auf "
+                "eine Spielkarte. Bei normalen Karten bitte auf 1 lassen, sonst "
+                "wird das Gebiet verkleinert."
+            )
+        )
+        self.scale_hint.setWordWrap(True)
+        self.scale_hint.setStyleSheet("color: #d9a400;")
+        form.addRow("", self.scale_hint)
+
         self.height_scale_input = QDoubleSpinBox()
         self.height_scale_input.setRange(0.01, 2.0)
         self.height_scale_input.setDecimals(3)
@@ -216,7 +228,7 @@ class RectangleToolDialog(QDialog):
         buttons = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel
         )
-        buttons.accepted.connect(self.accept)
+        buttons.accepted.connect(self._confirm_and_accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
 
@@ -229,6 +241,39 @@ class RectangleToolDialog(QDialog):
             )
         else:
             self.size_label.setText("")
+
+    def _confirm_and_accept(self):
+
+        factor = self.scale_input.value()
+        size = get_by_label(self.size_combo.currentText())
+
+        if factor > 1.0001 and size is not None:
+
+            text = tr(
+                "Die Karte wird gestaucht: {w:.1f} x {h:.1f} km reales Gebiet "
+                "werden auf {gw:.1f} x {gh:.1f} km Spielkarte verkleinert. "
+                "Das ist nur f\u00fcr sehr gro\u00dfe Gebiete gedacht (z. B. 80 x 80 km). "
+                "F\u00fcr eine normale Karte den Stauchfaktor auf 1 setzen. "
+                "Trotzdem stauchen?"
+            ).format(
+                w=size.width_m * factor / 1000.0,
+                h=size.height_m * factor / 1000.0,
+                gw=size.width_m / 1000.0,
+                gh=size.height_m / 1000.0,
+            )
+
+            answer = QMessageBox.question(
+                self,
+                tr("Karte stauchen?"),
+                text,
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+
+            if answer != QMessageBox.Yes:
+                return
+
+        self.accept()
 
     def _on_scale_changed(self, value: float):
         if not self._height_manual:

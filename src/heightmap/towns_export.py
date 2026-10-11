@@ -35,6 +35,9 @@ PLACE_KINDS = {
     "town": "Stadt (town)",
     "village": "Dorf (village)",
     "hamlet": "Weiler (hamlet)",
+    "suburb": "Stadtteil (suburb)",
+    "quarter": "Viertel (quarter)",
+    "neighbourhood": "Nachbarschaft (neighbourhood)",
 }
 
 DEFAULT_KINDS = ("city", "town", "village")
@@ -56,7 +59,15 @@ DEFAULT_MIN_FACTOR = 0.2
 DEFAULT_SCALE = 0.03
 
 # Schaetzwert, wenn OSM keine Einwohnerzahl hat (nicht im Spiel geprueft).
-FALLBACK_FACTOR = {"city": 10.0, "town": 4.0, "village": 0.5, "hamlet": 0.2}
+FALLBACK_FACTOR = {
+    "city": 10.0,
+    "town": 4.0,
+    "village": 0.5,
+    "hamlet": 0.2,
+    "suburb": 2.0,
+    "quarter": 1.0,
+    "neighbourhood": 0.5,
+}
 
 
 @dataclass
@@ -108,7 +119,7 @@ def collect_places(
     min_population: int = 0,
 ) -> list[Place]:
     """
-    Sucht Orte (Knoten mit place=city/town/village/hamlet und Namen) im
+    Sucht Orte (Knoten mit place=city/town/village/hamlet/suburb/quarter/neighbourhood und Namen) im
     Auswahlrechteck und rechnet sie in Meter ab der Kartenmitte um.
     Gibt eine leere Liste zurueck, wenn die geladenen OSM-Daten keine
     Orts-Knoten enthalten.

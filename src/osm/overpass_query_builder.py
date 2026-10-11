@@ -24,7 +24,7 @@ LANDUSE_VALUES = (
     "plant_nursery|greenhouse_horticulture|forest|reservoir"
 )
 WATER_VALUES = "lake|pond|reservoir|basin"
-PLACE_VALUES = "city|town|village|hamlet"
+PLACE_VALUES = "city|town|village|hamlet|suburb|quarter|neighbourhood"
 
 # Zusaetzliche Flaechen fuer die Biome-Maske aus OSM (Siedlung, Heide, Moor,
 # Fels, Sand). Nur geschlossene Flaechen werden in der Maske verwendet.

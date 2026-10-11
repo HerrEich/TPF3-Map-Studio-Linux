@@ -19,3 +19,8 @@ update_tmp/
 
 *.tpf2ms
 *.sha256.txt
+
+patch_*.py
+*_info.txt
+*_info2.txt
+*_info3.txt
