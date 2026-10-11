@@ -59,33 +59,55 @@ NEEDS_MODES = (
 DEFAULT_NEEDS_MODE = "random"
 
 # Waren fuer den Zufallsmodus, getrennt nach Kategorie (com / ind).
-# Hier die echten TPF3-Warennamen eintragen. Im Spiel geprueft ist nur
-# fish (com) und machines (ind) aus der Beispieldatei.
+# Im Spiel gesehen (Test 11.10.2026): Die Kategorie bestimmt die Zeile im
+# Versorgungsfenster, das Spiel nimmt jede Ware in jeder Kategorie an. Die
+# Einteilung ist deshalb nur eine sinnvolle Vorgabe (Konsum / Industrie).
 RANDOM_GOODS = {
-    "com": ("fish",),
-    "ind": ("machines",),
+    "com": (
+        "fish", "meat", "beverages", "vegetables",
+        "clothes", "tinned_food", "tools", "furniture",
+    ),
+    "ind": (
+        "machines", "sheet_metal", "steel", "planks",
+        "chemicals", "fuel", "glass", "bricks",
+    ),
 }
 
-# Je Kategorie und Stadt 1 bis RANDOM_MAX_GOODS Waren (begrenzt durch die Liste).
-RANDOM_MAX_GOODS = 2
+# Im Spiel erst spaeter freigeschaltet (Log: "Couldn't find cargo type for
+# category ..."). Nur mit dem Haekchen im Dialog.
+RANDOM_LATE_GOODS = {
+    "com": ("books",),
+    "ind": ("plastic", "tires", "cement"),
+}
+
+# Je Kategorie und Stadt zwischen RANDOM_MIN_GOODS und RANDOM_MAX_GOODS Waren.
+# Am Anfang nur 2 Waren je Stadt (1 com + 1 ind); weitere kommen im Spiel selbst.
+RANDOM_MIN_GOODS = 1
+RANDOM_MAX_GOODS = 1
 
 # Menge je Ware (gleiche Groessenordnung wie im Beispielwert 0.5 bis 1).
 RANDOM_AMOUNT_RANGE = (0.3, 1.5)
 
 
-def _random_needs(rng: random.Random) -> str:
+def _random_needs(rng: random.Random, include_late: bool = False) -> str:
     """Zufaellige Warenforderung im Format der Beispielzeile."""
 
     low, high = RANDOM_AMOUNT_RANGE
     parts = []
 
     for category in ("com", "ind"):
-        goods = RANDOM_GOODS.get(category, ())
+        goods = tuple(RANDOM_GOODS.get(category, ()))
+
+        if include_late:
+            goods += tuple(RANDOM_LATE_GOODS.get(category, ()))
 
         if not goods:
             continue
 
-        count = rng.randint(1, min(RANDOM_MAX_GOODS, len(goods)))
+        count = rng.randint(
+            min(RANDOM_MIN_GOODS, len(goods)),
+            min(RANDOM_MAX_GOODS, len(goods)),
+        )
         chosen = rng.sample(list(goods), count)
         items = ", ".join(
             '{ "%s", %.2f }' % (good, round(rng.uniform(low, high), 2))
@@ -99,7 +121,11 @@ def _random_needs(rng: random.Random) -> str:
     return "{ " + ", ".join(parts) + " }"
 
 
-def _needs_line(mode: str, rng: random.Random | None = None) -> str:
+def _needs_line(
+    mode: str,
+    rng: random.Random | None = None,
+    include_late: bool = False,
+) -> str:
     """Erste Zeile des Stadteintrags je nach Warenforderungs-Modus."""
 
     if mode == "omit":
@@ -112,7 +138,7 @@ def _needs_line(mode: str, rng: random.Random | None = None) -> str:
         if rng is None:
             rng = random.Random()
 
-        return f"    {{ landUse2CargoNeedsCategories = {_random_needs(rng)},"
+        return f"    {{ landUse2CargoNeedsCategories = {_random_needs(rng, include_late)},"
 
     return f"    {{ landUse2CargoNeedsCategories = {DEFAULT_NEEDS},"
 
@@ -266,6 +292,7 @@ def towns_lua(
     min_factor: float = DEFAULT_MIN_FACTOR,
     needs_mode: str = DEFAULT_NEEDS_MODE,
     seed: int | None = None,
+    include_late: bool = False,
 ) -> str:
     """Baut den Inhalt der Lua-Datei (Staedte, keine Industrien)."""
 
@@ -280,7 +307,7 @@ def towns_lua(
     ]
 
     for place in places:
-        lines.append(_needs_line(needs_mode, rng))
+        lines.append(_needs_line(needs_mode, rng, include_late))
         lines.append(
             f"      name = {_lua_string(place.name)}, "
             f"position = {{ x = {place.x:.2f}, y = {place.y:.2f} }},"
@@ -307,6 +334,7 @@ def write_towns_lua(
     min_factor: float = DEFAULT_MIN_FACTOR,
     needs_mode: str = DEFAULT_NEEDS_MODE,
     seed: int | None = None,
+    include_late: bool = False,
 ) -> Path:
 
     path = Path(path)
@@ -315,6 +343,7 @@ def write_towns_lua(
         towns_lua(
             places, max_factor, use_population, scale, min_factor, needs_mode,
             seed,
+            include_late,
         ),
         encoding="utf-8",
     )

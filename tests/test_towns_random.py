@@ -4,7 +4,7 @@ import unittest
 from src.heightmap import towns_export as te
 
 
-def _places(count=20):
+def _places(count=60):
     return [
         te.Place(
             name="Ort%d" % i,
@@ -14,6 +14,13 @@ def _places(count=20):
             population=1000 + i,
         )
         for i in range(count)
+    ]
+
+
+def _need_lines(text):
+    return [
+        line for line in text.splitlines()
+        if "landUse2CargoNeedsCategories" in line
     ]
 
 
@@ -36,14 +43,43 @@ class RandomNeedsTest(unittest.TestCase):
     def test_lua_braces_balanced_and_one_entry_per_town(self):
         text = te.towns_lua(_places(), needs_mode="random", seed=7)
         self.assertEqual(text.count("{"), text.count("}"))
-        self.assertEqual(text.count("landUse2CargoNeedsCategories"), 20)
+        self.assertEqual(len(_need_lines(text)), 60)
 
-    def test_only_known_goods(self):
+    def test_goods_per_row_within_limits(self):
+        text = te.towns_lua(_places(), needs_mode="random", seed=7)
+        for line in _need_lines(text):
+            com, ind = line.split(", ind = ")
+            for part in (com, ind):
+                count = part.count('{ "')
+                self.assertGreaterEqual(count, te.RANDOM_MIN_GOODS)
+                self.assertLessEqual(count, te.RANDOM_MAX_GOODS)
+
+    def test_goods_come_from_pool_without_late(self):
         text = te.towns_lua(_places(), needs_mode="random", seed=7)
         names = set(re.findall(r'\{ "([A-Za-z_]+)", ', text))
-        allowed = {g for goods in te.RANDOM_GOODS.values() for g in goods}
+        early = {g for goods in te.RANDOM_GOODS.values() for g in goods}
+        late = {g for goods in te.RANDOM_LATE_GOODS.values() for g in goods}
         self.assertTrue(names)
-        self.assertTrue(names <= allowed)
+        self.assertTrue(names <= early)
+        self.assertFalse(names & late)
+
+    def test_late_goods_only_with_flag(self):
+        text = te.towns_lua(
+            _places(), needs_mode="random", seed=7, include_late=True
+        )
+        names = set(re.findall(r'\{ "([A-Za-z_]+)", ', text))
+        early = {g for goods in te.RANDOM_GOODS.values() for g in goods}
+        late = {g for goods in te.RANDOM_LATE_GOODS.values() for g in goods}
+        self.assertTrue(names <= early | late)
+        self.assertTrue(names & late)
+
+    def test_no_duplicate_goods_in_one_town(self):
+        text = te.towns_lua(
+            _places(), needs_mode="random", seed=3, include_late=True
+        )
+        for line in _need_lines(text):
+            names = re.findall(r'\{ "([A-Za-z_]+)", ', line)
+            self.assertEqual(len(names), len(set(names)))
 
     def test_amounts_in_range(self):
         text = te.towns_lua(_places(), needs_mode="random", seed=7)

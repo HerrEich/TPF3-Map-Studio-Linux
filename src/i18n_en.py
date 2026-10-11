@@ -1346,7 +1346,9 @@ guide of the heightmap dialog (F1).</p>
     'Seed (0 = zufällig):': 'Seed (0 = random):',
     'Nur für den Modus Zufall: gleicher Seed ergibt bei gleicher Stadtliste dieselben Warenforderungen. 0 = bei jedem Export anders.': 'Random mode only: the same seed gives the same cargo demands for the same town list. 0 = different on every export.',
     'Warenforderung:': 'Cargo demand:',
-    'Welche Waren die Städte nachfragen. Bisher bekam jede Stadt denselben Beispielwert aus dem Umbauplan. Ob das Spiel die Zeile weggelassen oder leer akzeptiert, ist nicht geprüft: ausprobieren und beim Import auf Fehler achten.': 'Which goods the towns demand. So far every town got the same example value from the conversion plan. Whether the game accepts the line omitted or empty is not checked: try it and watch for errors on import.',
+    'Welche Waren die Städte nachfragen. Zufall: je Stadt 1 Ware je Zeile (Gewerbe/Industrie), zusammen 2, aus den Waren, die von Beginn an freigeschaltet sind. Beispiel, Weglassen und Leer sind nicht geprüft: ausprobieren und beim Import auf Fehler achten.': 'Which goods the towns demand. Random: 1 good per row (commercial/industrial), 2 per town, from the goods unlocked from the start. Example, Omit and Empty are not checked: try them and watch for errors on import.',
+    'Auch später freigeschaltete Waren': 'Also goods unlocked later',
+    'Nimmt books, plastic, tires und cement dazu. Im Spiel erst nach der Freischaltung wirksam, vorher nur eine Warnung im Log.': 'Adds books, plastic, tires and cement. Only effective in the game once unlocked, before that only a log warning.',
     '\n\nDer Dateiname wurde ohne Umlaute und Sonderzeichen gespeichert, weil sie im Spiel Probleme machen können.': '\n\nThe file name was saved without umlauts and special characters because they can cause problems in the game.',
     'Gelände glätten und Höhen stauchen':
         'Smooth terrain and compress elevations',

@@ -12,10 +12,14 @@ def _places():
 
 class NeedsModeTest(unittest.TestCase):
 
-    def test_default_is_example(self):
-        text = te.towns_lua(_places())
+    def test_example_mode_writes_example_value(self):
+        text = te.towns_lua(_places(), needs_mode="example")
         self.assertEqual(text.count("landUse2CargoNeedsCategories"), 2)
         self.assertEqual(text.count('"fish"'), 2)
+
+    def test_default_writes_one_needs_line_per_town(self):
+        text = te.towns_lua(_places())
+        self.assertEqual(text.count("landUse2CargoNeedsCategories"), 2)
 
     def test_random_equals_default(self):
         self.assertEqual(

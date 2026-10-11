@@ -175,10 +175,11 @@ class TownsDialog(QDialog):
             [key for key, _label in NEEDS_MODES].index(DEFAULT_NEEDS_MODE)
         )
         self.needs_box.setToolTip(
-            tr("Welche Waren die St\u00e4dte nachfragen. Bisher bekam jede Stadt "
-               "denselben Beispielwert aus dem Umbauplan. Ob das Spiel die "
-               "Zeile weggelassen oder leer akzeptiert, ist nicht gepr\u00fcft: "
-               "ausprobieren und beim Import auf Fehler achten.")
+            tr("Welche Waren die St\u00e4dte nachfragen. Zufall: je Stadt "
+               "1 Ware je Zeile (Gewerbe/Industrie), zusammen 2, aus den Waren, die "
+               "von Beginn an freigeschaltet sind. Beispiel, Weglassen und Leer "
+               "sind nicht gepr\u00fcft: ausprobieren und beim Import auf Fehler "
+               "achten.")
         )
         needs_row.addWidget(self.needs_box)
 
@@ -194,6 +195,14 @@ class TownsDialog(QDialog):
                "jedem Export anders.")
         )
         needs_row.addWidget(self.seed_spin)
+
+        self.late_goods_box = QCheckBox(tr("Auch sp\u00e4ter freigeschaltete Waren"))
+        self.late_goods_box.setChecked(False)
+        self.late_goods_box.setToolTip(
+            tr("Nimmt books, plastic, tires und cement dazu. Im Spiel erst "
+               "nach der Freischaltung wirksam, vorher nur eine Warnung im Log.")
+        )
+        needs_row.addWidget(self.late_goods_box)
 
         needs_row.addStretch(1)
 
@@ -383,6 +392,7 @@ class TownsDialog(QDialog):
                 self.min_factor_spin.value(),
                 self.needs_box.currentData(),
                 self.seed_spin.value() or None,
+                self.late_goods_box.isChecked(),
             )
         except OSError as error:
             QMessageBox.warning(
