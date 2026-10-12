@@ -1776,4 +1776,6 @@ guide of the heightmap dialog (F1).</p>
         '(relative to water level 0)',
     'Sprache des Textes:':
         'Language of the text:',
+    'Datenstand der OSM-Daten':
+        'Date of the OSM data',
 }

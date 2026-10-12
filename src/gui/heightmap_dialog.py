@@ -1057,6 +1057,7 @@ class HeightmapDialog(QDialog):
             relative_values=self.relative_values_checkbox.isChecked(),
             compress_percent=self.compress_input.value(),
             edit_params=edit_params,
+            osm_timestamp=getattr(self.osm, "data_timestamp", "") if self.osm is not None else "",
             biomes=self._biome_summary,
         )
 

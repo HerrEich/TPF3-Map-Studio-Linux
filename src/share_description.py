@@ -116,6 +116,26 @@ COPERNICUS_DISCLAIMER = (
 )
 
 
+def _format_timestamp(value) -> str:
+    # Overpass liefert "2026-10-12T06:21:00Z". Unlesbare Werte bleiben unveraendert.
+    from datetime import datetime
+
+    text = str(value or "").strip()
+
+    if not text:
+        return ""
+
+    try:
+        moment = datetime.strptime(text, "%Y-%m-%dT%H:%M:%SZ")
+    except ValueError:
+        return text
+
+    if _language() == "de":
+        return moment.strftime("%d.%m.%Y %H:%M") + " UTC"
+
+    return moment.strftime("%Y-%m-%d %H:%M") + " UTC"
+
+
 def _link(text: str, url: str | None, fmt: str) -> str:
     if not url:
         return text
@@ -137,6 +157,7 @@ def collect_rows(
     compress_percent: float = 100.0,
     edits=(),
     osm_used: bool = True,
+    osm_timestamp: str | None = None,
     biomes: str | None = None,
 ) -> list[tuple[str, str, str | None]]:
     """Zeilen (Bezeichnung, Wert, Link oder None), unabhaengig vom Format."""
@@ -269,6 +290,11 @@ def collect_rows(
             tr("© OpenStreetMap-Mitwirkende (ODbL)"),
             LICENSE_URLS.get("osm"),
         ))
+
+        stand = _format_timestamp(osm_timestamp)
+
+        if stand:
+            rows.append((tr("Datenstand der OSM-Daten"), stand, None))
 
     base = tr("zugeschnitten und auf 4 m je Pixel neu abgetastet")
     rows.append((

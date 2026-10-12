@@ -180,6 +180,7 @@ class OverpassClient:
                 print("JSON erfolgreich empfangen.")
 
                 osm = self.parser.parse(json_data)
+                osm.data_timestamp = self._timestamp_of(json_data)
 
                 self._preferred_server = server
 
@@ -212,6 +213,15 @@ class OverpassClient:
         raise RuntimeError(
             tr("Keiner der Overpass-Server war erreichbar.")
         ) from last_exception
+
+    @staticmethod
+    def _timestamp_of(data) -> str:
+        """Datenstand der Overpass-Datenbank (osm3s.timestamp_osm_base), sonst leer."""
+
+        try:
+            return str((data.get("osm3s") or {}).get("timestamp_osm_base") or "")
+        except AttributeError:
+            return ""
 
     def _fetch_json(self, query: str) -> dict:
         """Eine Abfrage mit Server-Fallback, liefert das rohe JSON."""
@@ -261,6 +271,7 @@ class OverpassClient:
         print(f"Kachel-Download: {total} Kacheln")
 
         merged = {}
+        stamps = []
 
         for index, tile in enumerate(tiles, start=1):
 
@@ -283,12 +294,22 @@ class OverpassClient:
                         raise
                     print(f"Kachel {index}: neuer Versuch {attempt + 2}")
 
+            stamp = self._timestamp_of(data)
+
+            if stamp:
+                stamps.append(stamp)
+
             for element in data.get("elements", []):
                 merged[(element.get("type"), element.get("id"))] = element
 
         print(f"Zusammengefuehrt: {len(merged)} Elemente")
 
-        return self.parser.parse({"elements": list(merged.values())})
+        osm = self.parser.parse({"elements": list(merged.values())})
+
+        # Aeltester Stand aller Kacheln: die sichere Aussage ("Daten bis hoechstens ...")
+        osm.data_timestamp = min(stamps) if stamps else ""
+
+        return osm
 
     def _post(self, server: str, query: str):
         """

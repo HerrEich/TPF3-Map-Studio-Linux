@@ -27,6 +27,10 @@ class OSMData:
         default_factory=dict
     )
 
+    # Datenstand der Overpass-Datenbank (osm3s.timestamp_osm_base, z. B.
+    # "2026-10-12T06:21:00Z"). Leer, wenn unbekannt.
+    data_timestamp: str = ""
+
     # ---------------------------------------------------------
     # Hinzufügen
     # ---------------------------------------------------------
@@ -70,6 +74,8 @@ class OSMData:
     def to_dict(self):
 
         return {
+
+            "data_timestamp": self.data_timestamp,
 
             "nodes": [
 
@@ -130,6 +136,7 @@ class OSMData:
     ):
 
         osm = cls()
+        osm.data_timestamp = str(data.get("data_timestamp") or "")
 
         # -----------------------------------------------------
         # Nodes
@@ -320,5 +327,6 @@ class OSMData:
         self.ways.clear()
 
         self.relations.clear()
+        self.data_timestamp = ""
 
         self.geometry_cache.clear()

@@ -254,5 +254,28 @@ class LanguageTest(unittest.TestCase):
         self.assertNotIn("bezogen", self._text(language="de"))
 
 
+class OsmTimestampRowTest(unittest.TestCase):
+
+    def _text(self, language="de", **kwargs):
+        return build_share_description(
+            _selection(), HeightmapBuildInfo(), fmt="text", language=language, **kwargs, **COMMON
+        )
+
+    def test_formats_per_language(self):
+        stamp = "2026-10-12T06:21:00Z"
+        self.assertIn("Datenstand der OSM-Daten: 12.10.2026 06:21 UTC", self._text("de", osm_timestamp=stamp))
+        self.assertIn("Date of the OSM data: 2026-10-12 06:21 UTC", self._text("en", osm_timestamp=stamp))
+
+    def test_unreadable_value_is_shown_as_is(self):
+        self.assertIn("Datenstand der OSM-Daten: gestern", self._text(osm_timestamp="gestern"))
+
+    def test_no_row_without_value_or_without_osm(self):
+        self.assertNotIn("Datenstand der OSM", self._text())
+        self.assertNotIn(
+            "Datenstand der OSM",
+            self._text(osm_timestamp="2026-10-12T06:21:00Z", osm_used=False),
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
