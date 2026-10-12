@@ -69,7 +69,7 @@ Das erscheint nur beim ersten Start. Falls dein Virenscanner die Datei zusätzli
 - **Heightmap** aus dem DGM1 (Deutschland, 1 m), aus swissALTI3D (Schweiz und Liechtenstein, 2 m), aus Copernicus (weltweit, 30 m, mit Baumkronen) oder aus eigenen GeoTIFF-Kacheln. Mit Schnellvorschau (immer Copernicus), Wasserhöhen-Vorschlag, Flüssen nach OSM, Gefälle-Ausgleich, Einebnen von Trassen und Siedlungen, Glätten und Stauchen sowie einem Höhenfenster für die Grenzen des Karteneditors (−100 bis 3177 m: Gipfel kappen, Tiefen abschneiden oder stauchen, mit Vorschau). Der Dialog nennt die Werte, die beim Import im Spiel einzutragen sind. Die Heightmap wird als 16-Bit-PNG gespeichert
 - **Beschreibung zum Teilen** für veröffentlichte Karten, wahlweise auf Deutsch oder Englisch: Kartengröße und -format, Höhenbereich, Höhenquelle mit Datenstand, Stand der OSM-Daten, Biome, Quellenangaben mit Lizenz-Links und Änderungen an den Höhendaten, als Markdown, Steam-BBCode oder Klartext
 - **Biome-Maske, Städte und Industrien** aus OSM, als Dateien für den Import im Editor
-- **Bahnhöfe** als Marker mit Namen auf der Karte und als Liste (`bahnhoefe.json` und `bahnhoefe.csv`) mit Bahnsteigen, Haltepositionen und Status (aufgegeben, im Bau). Im Spiel wird dadurch nichts gebaut, die Liste dient als Nachschlagewerk
+- **Bahnhofsplan zum Nachbauen** (Bahnhöfe) als Marker mit Namen auf der Karte und als Liste (`bahnhoefe.json` und `bahnhoefe.csv`) mit Bahnsteigen, Haltepositionen und Status (aufgegeben, im Bau). Im Spiel wird dadurch nichts gebaut, die Liste dient als Nachschlagewerk
 - **Karte:** OpenStreetMap, wahlweise mit Schattenrelief, dazu zuschaltbar die Eisenbahnkarte (OpenRailwayMap) und ein Maß-Gitter. Ebenen lassen sich ein- und ausblenden, sperren, in der Deckkraft und in der Reihenfolge ändern
 - Eigene Straßen, Flüsse und Gebäude zeichnen, JSON-Export und -Import der Objekte
 - Koordinaten-Messwerkzeug, Vorab-Prüfung der geladenen Daten, Projekte speichern und Projekt-Dashboard
@@ -94,7 +94,7 @@ Eine vollständige Beschreibung aller Funktionen steht im Studio unter **Hilfe �
 1. Mit dem Marker-Werkzeug die Kartenmitte setzen, dann **Werkzeuge → Rechteck-Tool**: Kartengröße und Drehwinkel wählen
 2. **Werkzeuge → OSM laden**. Was geladen wird, stellst du unter **Werkzeuge → Overpass-Abfrage** ein
 3. **Werkzeuge → Heightmap herunterladen**: Höhenquelle wählen, Einstellungen prüfen, Höhendaten laden und exportieren. Unten im Dialog stehen Mindesthöhe, Maximalhöhe, Wasserhöhe und Kartenformat für den Import
-4. Im selben Dialog optional **Biome-Maske**, **Städte**, **Industrien** und **Bahnhöfe** aus OSM erzeugen
+4. Im selben Dialog optional **Biome-Maske**, **Städte**, **Industrien** und den **Bahnhofsplan zum Nachbauen** aus OSM erzeugen
 5. Im Editor von Transport Fever 3 die Dateien importieren und die Zahlen aus Schritt 3 eintragen
 
 Die Anleitung im Heightmap-Dialog öffnest du mit F1.

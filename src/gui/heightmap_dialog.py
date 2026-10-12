@@ -868,9 +868,9 @@ class HeightmapDialog(QDialog):
 
         # Bahnhoefe aus OSM (Name, Lage, Bahnsteige, Gebaeude): schreibt eine
         # .json und eine .csv, baut nichts im Spiel.
-        self.stations_button = QPushButton(tr("Bahnhöfe aus OSM..."))
+        self.stations_button = QPushButton(tr("Bahnhofsplan zum Nachbauen..."))
         self.stations_button.setToolTip(
-            tr("Liest Bahnhöfe, Haltepunkte, Bahnsteige, Bahnhofsgebäude und "
+            tr("Bauplan zum Nachbauen echter Bahnhöfe: Das Spiel kann keine Bahnhöfe importieren. Liest Bahnhöfe, Haltepunkte, Bahnsteige, Bahnhofsgebäude und "
             "Haltepositionen aus den geladenen OSM-Daten und speichert sie als "
             ".json (alles) und .csv (eine Zeile je Bahnhof). Braucht geladene "
             "OSM-Daten.")
@@ -1093,7 +1093,7 @@ class HeightmapDialog(QDialog):
         if not has_osm_data:
             QMessageBox.information(
                 self,
-                tr("Bahnhöfe aus OSM"),
+                tr("Bahnhofsplan zum Nachbauen"),
                 tr("Keine OSM-Daten geladen. Zuerst Werkzeuge → OSM laden "
                 "ausführen und die Ebene Eisenbahn laden."),
             )

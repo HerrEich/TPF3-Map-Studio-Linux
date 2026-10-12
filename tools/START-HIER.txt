@@ -20,7 +20,7 @@ Erste Schritte im Studio:
    1. Marker setzen (Kartenmitte), dann Werkzeuge -> Rechteck-Tool
    2. Werkzeuge -> OSM laden
    3. Werkzeuge -> Heightmap herunterladen (Hoehenquelle waehlen)
-   4. Optional Biome, Staedte, Industrien und Bahnhoefe aus OSM erzeugen
+   4. Optional Biome, Staedte, Industrien aus OSM erzeugen und den Bahnhofsplan zum Nachbauen speichern
    Eine Anleitung oeffnet im Heightmap-Dialog mit F1, alle Funktionen stehen
    unter Hilfe -> Funktionsuebersicht.
 

@@ -1,5 +1,5 @@
 """
-Bahnhoefe aus den geladenen OSM-Daten speichern (Knopf "Bahnhoefe aus OSM..." im Heightmap-Dialog).
+Bahnhoefe aus den geladenen OSM-Daten speichern (Knopf "Bahnhofsplan zum Nachbauen..." im Heightmap-Dialog).
 
 Die eigentliche Arbeit macht src/heightmap/station_export.py; hier steht nur die Bedienung
 (Dateiauswahl und Meldungen).
@@ -14,7 +14,7 @@ from PySide6.QtWidgets import QFileDialog, QMessageBox
 from src.heightmap.station_export import collect_stations, summary, write_stations
 from src.i18n import tr
 
-TITLE = tr("Bahnhöfe aus OSM")
+TITLE = tr("Bahnhofsplan zum Nachbauen")
 
 
 def _show_on_map(parent, data) -> None:

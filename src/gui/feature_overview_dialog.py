@@ -154,7 +154,7 @@ FEATURE_GROUPS = (
                 "Öffnet den Heightmap-Dialog (siehe nächste Gruppe): "
                 "Höhendaten laden, Gelände und Wasser einstellen, die "
                 "Heightmap exportieren und Biome, Städte, Industrien und "
-                "Bahnhöfe aus OSM erzeugen.",
+                "den Bahnhofsplan zum Nachbauen erzeugen.",
             ),
         ),
     ),
@@ -315,7 +315,8 @@ FEATURE_GROUPS = (
                 "geprüft.",
             ),
             (
-                "Bahnhöfe aus OSM...",
+                "Bahnhofsplan zum Nachbauen...",
+                "Bauplan zum Nachbauen echter Bahnhöfe: Das Spiel kann keine Bahnhöfe importieren. "
                 "Liest Bahnhöfe, Haltepunkte, Bahnsteige, Bahnhofsgebäude "
                 "und Haltepositionen aus den geladenen OSM-Daten "
                 "(aufgegebene, im Bau befindliche und Betriebsbahnhöfe sind "

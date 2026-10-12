@@ -108,7 +108,7 @@ class HeightmapDialogDocumentedTest(unittest.TestCase):
         "Biome-Maske": "Biome-Maske",
         "Städte aus OSM": "Städte aus OSM",
         "Industrien aus OSM": "Industrien aus OSM",
-        "Bahnhöfe aus OSM": "Bahnhöfe aus OSM",
+        "Bahnhofsplan zum Nachbauen": "Bahnhofsplan zum Nachbauen",
         "Beschreibung zum Teilen": "Beschreibung zum Teilen",
     }
     IGNORED = ("Anleitung (F1)", "Schließen", "Straßen und Gleise")
@@ -143,7 +143,7 @@ class HeightmapGuideTest(unittest.TestCase):
         self.assertIn("Karte + Relief", guide)
         self.assertNotIn("Glättung 1000 m", guide)
         self.assertIn("Glättung 400 m", guide)
-        for button in ("Biome-Maske aus OSM", "Städte aus OSM", "Industrien aus OSM", "Bahnhöfe aus OSM"):
+        for button in ("Biome-Maske aus OSM", "Städte aus OSM", "Industrien aus OSM", "Bahnhofsplan zum Nachbauen"):
             self.assertIn(button, guide, button)
 
     def test_overview_covers_menus_and_rectangle_fields(self):

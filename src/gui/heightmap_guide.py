@@ -178,9 +178,9 @@ TPF3 importieren kann. Bei den Städten stellst du die Größe per Faktor und di
 Bei den Industrien werden Hang, Wasser und Kartenrand geprüft.</li>
 </ol>
 
-<h4>Optional: Bahnhöfe als Nachschlagewerk</h4>
+<h4>Optional: Bahnhofsplan zum Nachbauen</h4>
 <ol start="23">
-<li><b>Bahnhöfe aus OSM…</b> speichert <tt>bahnhoefe.json</tt> (alles) und <tt>bahnhoefe.csv</tt>
+<li><b>Bahnhofsplan zum Nachbauen…</b> ist ein Bauplan zum Nachbauen echter Bahnhöfe, denn das Spiel kann keine Bahnhöfe importieren. Die Funktion speichert <tt>bahnhoefe.json</tt> (alles) und <tt>bahnhoefe.csv</tt>
 (eine Zeile je Bahnhof) mit Bahnsteigen, Haltepositionen und Status. Die Koordinaten sind Meter ab
 Kartenmitte. Im Spiel wird dadurch nichts gebaut und der Editor importiert die Dateien nicht. Sie
 helfen beim eigenen Bauen. Nach <b>OSM laden</b> zeigt die Karte die Bahnhöfe auch als Marker.</li>

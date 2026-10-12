@@ -27,7 +27,7 @@ class FeatureOverviewTest(unittest.TestCase):
         self.assertIn("Converter-Befehl anzeigen...", self.names)
 
     def test_new_entries_present(self):
-        for added in ("Bahnhöfe aus OSM...", "Städte aus OSM...", "Industrien aus OSM...",
+        for added in ("Bahnhofsplan zum Nachbauen...", "Städte aus OSM...", "Industrien aus OSM...",
                       "Biome-Maske aus OSM...", "Ebene Bahnhöfe"):
             self.assertIn(added, self.names)
 
