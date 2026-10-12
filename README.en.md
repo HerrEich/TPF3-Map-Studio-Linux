@@ -63,10 +63,11 @@ This only appears on the first start. If your antivirus also flags the file or m
 
 ## Features
 
-- **Map area**: set it with the rectangle tool (centre, size, rotation) and plan it in the game's format (for example "Größenwahnsinnig 1:5", the game's largest scale)
-- **Load OSM data** with a configurable Overpass query (checkboxes and templates instead of free text)
+- **Map area**: set it with the rectangle tool (centre, size, rotation) and plan it in the game's format (for example "Größenwahnsinnig 1:5", i.e. Megalomaniac)
+- **Compress large areas** (for example 80 × 80 km): with a compression factor and a height factor in the rectangle tool, a very large real-world area is shrunk onto a normal game map. Only Copernicus is available as elevation source then, and a warning prevents accidental use on normal maps
+- **Load OSM data** with a configurable Overpass query (checkboxes and templates instead of free text). Large areas are loaded in tiles, with a progress display and a cancel button
 - **Heightmap** from DGM1 (Germany, 1 m), swissALTI3D (Switzerland and Liechtenstein, 2 m), Copernicus (worldwide, 30 m, includes tree canopy) or your own GeoTIFF tiles. With a quick preview (always Copernicus), water level suggestion, rivers from OSM, slope compensation, levelling of railway routes and settlements, smoothing and squashing, and a height window for the limits of the map editor (−100 to 3177 m: cap peaks, cut off lows or squash, with preview). The dialog lists the values to enter during the import in the game. The heightmap is saved as a 16-bit PNG
-- **Description for sharing** for published maps: map size, elevation range, attributions with licence links and changes to the elevation data, as Markdown, Steam BBCode or plain text
+- **Description for sharing** for published maps, in German or English: map size and format, elevation range, elevation source with data date, date of the OSM data, biomes, attributions with licence links and changes to the elevation data, as Markdown, Steam BBCode or plain text
 - **Biome mask, towns and industries** from OSM, as files for the import in the editor
 - **Stations** as named markers on the map and as a list (`bahnhoefe.json` and `bahnhoefe.csv`) with platforms, stopping positions and status (abandoned, under construction). Nothing is built in the game from this, the list is a reference
 - **Map**: OpenStreetMap, optionally with hillshade, plus switchable railway map (OpenRailwayMap) and a measuring grid. Layers can be shown, hidden, locked, and changed in opacity and order
@@ -173,11 +174,11 @@ To pass it on, pack the **whole folder** `dist\TPF3-Map-Studio` into a ZIP file.
 
 ### 8. Everything in one step (optional)
 
-The script `tools\make_release.ps1` builds the `.exe`, checks that the icons are in the package, puts `START-HIER.txt`, `LICENSE` and `THIRD_PARTY_NOTICES.md` next to the `.exe` and packs the whole folder into a ZIP file together with a checksum. With an existing `.venv` in the project folder:
+The script `tools\make_release.ps1` builds the `.exe`, checks that the icons are in the package, puts `START-HIER.txt`, `LICENSE`, `THIRD_PARTY_NOTICES.md` and `THIRD_PARTY_NOTICES.en.md` next to the `.exe` and packs the whole folder into a ZIP file together with a checksum. With an existing `.venv` in the project folder:
 ```
-powershell -ExecutionPolicy Bypass -File tools\make_release.ps1 -Version 0.3.0
+powershell -ExecutionPolicy Bypass -File tools\make_release.ps1 -Version 0.4.0
 ```
-The ZIP is then called `TPF3-Map-Studio-v0.3.0-win64.zip`. It does not belong in the Git repository but is attached to a release on GitHub (see below).
+The ZIP is then called `TPF3-Map-Studio-v0.4.0-win64.zip`. It does not belong in the Git repository but is attached to a release on GitHub (see below).
 
 ### 9. Check
 
@@ -190,7 +191,7 @@ The ZIP is then called `TPF3-Map-Studio-v0.3.0-win64.zip`. It does not belong in
 ### 10. Publish as a release on GitHub (for maintainers)
 
 1. On GitHub: **Releases → Draft a new release**
-2. Create a new tag, for example `v0.3.0` (on `master`)
+2. Create a new tag, for example `v0.4.0` (on `master`)
 3. Attach the ZIP file under **Assets**, put the checksum from `…sha256.txt` into the description and publish
 
 The "Download for Windows" link above then automatically points to the latest version.

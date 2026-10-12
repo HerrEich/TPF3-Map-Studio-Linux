@@ -64,9 +64,10 @@ Das erscheint nur beim ersten Start. Falls dein Virenscanner die Datei zusätzli
 ## Funktionen
 
 - **Kartenausschnitt** per Rechteck-Tool festlegen (Mittelpunkt, Größe, Drehwinkel) und im Format des Spiels (z. B. Größenwahnsinnig 1:5) planen
-- **OSM-Daten laden** mit konfigurierbarer Overpass-Abfrage (Checkboxen und Vorlagen statt Freitext)
+- **Große Gebiete stauchen** (z. B. 80 × 80 km): Mit Stauchfaktor und Höhenfaktor im Rechteck-Tool wird ein sehr großes echtes Gebiet auf eine normale Spielkarte geschrumpft. Dabei ist nur Copernicus als Höhenquelle möglich, eine Warnung verhindert die versehentliche Nutzung auf normalen Karten
+- **OSM-Daten laden** mit konfigurierbarer Overpass-Abfrage (Checkboxen und Vorlagen statt Freitext). Große Gebiete werden in Kacheln geladen, mit Fortschrittsanzeige und Abbrechen-Knopf
 - **Heightmap** aus dem DGM1 (Deutschland, 1 m), aus swissALTI3D (Schweiz und Liechtenstein, 2 m), aus Copernicus (weltweit, 30 m, mit Baumkronen) oder aus eigenen GeoTIFF-Kacheln. Mit Schnellvorschau (immer Copernicus), Wasserhöhen-Vorschlag, Flüssen nach OSM, Gefälle-Ausgleich, Einebnen von Trassen und Siedlungen, Glätten und Stauchen sowie einem Höhenfenster für die Grenzen des Karteneditors (−100 bis 3177 m: Gipfel kappen, Tiefen abschneiden oder stauchen, mit Vorschau). Der Dialog nennt die Werte, die beim Import im Spiel einzutragen sind. Die Heightmap wird als 16-Bit-PNG gespeichert
-- **Beschreibung zum Teilen** für veröffentlichte Karten: Kartengröße, Höhenbereich, Quellenangaben mit Lizenz-Links und Änderungen an den Höhendaten, als Markdown, Steam-BBCode oder Klartext
+- **Beschreibung zum Teilen** für veröffentlichte Karten, wahlweise auf Deutsch oder Englisch: Kartengröße und -format, Höhenbereich, Höhenquelle mit Datenstand, Stand der OSM-Daten, Biome, Quellenangaben mit Lizenz-Links und Änderungen an den Höhendaten, als Markdown, Steam-BBCode oder Klartext
 - **Biome-Maske, Städte und Industrien** aus OSM, als Dateien für den Import im Editor
 - **Bahnhöfe** als Marker mit Namen auf der Karte und als Liste (`bahnhoefe.json` und `bahnhoefe.csv`) mit Bahnsteigen, Haltepositionen und Status (aufgegeben, im Bau). Im Spiel wird dadurch nichts gebaut, die Liste dient als Nachschlagewerk
 - **Karte:** OpenStreetMap, wahlweise mit Schattenrelief, dazu zuschaltbar die Eisenbahnkarte (OpenRailwayMap) und ein Maß-Gitter. Ebenen lassen sich ein- und ausblenden, sperren, in der Deckkraft und in der Reihenfolge ändern
@@ -173,11 +174,11 @@ Zum Weitergeben packst du den **ganzen Ordner** `dist\TPF3-Map-Studio` in eine Z
 
 ### 8. Alles in einem Schritt (optional)
 
-Das Skript `tools\make_release.ps1` baut die `.exe`, prüft, dass die Symbole im Paket liegen, legt `START-HIER.txt`, `LICENSE` und `THIRD_PARTY_NOTICES.md` neben die `.exe` und packt den ganzen Ordner in eine ZIP-Datei samt Prüfsumme. Mit vorhandener `.venv` im Projektordner:
+Das Skript `tools\make_release.ps1` baut die `.exe`, prüft, dass die Symbole im Paket liegen, legt `START-HIER.txt`, `LICENSE`, `THIRD_PARTY_NOTICES.md` und `THIRD_PARTY_NOTICES.en.md` neben die `.exe` und packt den ganzen Ordner in eine ZIP-Datei samt Prüfsumme. Mit vorhandener `.venv` im Projektordner:
 ```
-powershell -ExecutionPolicy Bypass -File tools\make_release.ps1 -Version 0.3.0
+powershell -ExecutionPolicy Bypass -File tools\make_release.ps1 -Version 0.4.0
 ```
-Die ZIP heißt dann `TPF3-Map-Studio-v0.3.0-win64.zip`. Sie gehört nicht ins Git-Repository, sondern als Datei an ein Release auf GitHub (siehe unten).
+Die ZIP heißt dann `TPF3-Map-Studio-v0.4.0-win64.zip`. Sie gehört nicht ins Git-Repository, sondern als Datei an ein Release auf GitHub (siehe unten).
 
 ### 9. Prüfen
 
@@ -190,7 +191,7 @@ Die ZIP heißt dann `TPF3-Map-Studio-v0.3.0-win64.zip`. Sie gehört nicht ins Gi
 ### 10. Als Release auf GitHub veröffentlichen (für Projektbetreuer)
 
 1. Auf GitHub **Releases → Draft a new release**
-2. Einen neuen Tag anlegen, zum Beispiel `v0.3.0` (auf `master`)
+2. Einen neuen Tag anlegen, zum Beispiel `v0.4.0` (auf `master`)
 3. Die ZIP-Datei bei **Assets** anhängen, die Prüfsumme aus `…sha256.txt` in die Beschreibung schreiben und veröffentlichen
 
 Der Link „Download für Windows" oben im README führt danach automatisch zur neuesten Version.

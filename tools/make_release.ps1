@@ -5,17 +5,17 @@
 .DESCRIPTION
     1. baut mit PyInstaller (build.spec) nach dist\TPF3-Map-Studio
     2. prueft, dass die .exe und die Symbole im Paket liegen
-    3. legt START-HIER.txt, LICENSE und THIRD_PARTY_NOTICES.md (und, falls vorhanden, den Ordner
-       licenses) neben die .exe, damit sie gleich sichtbar sind
+    3. legt START-HIER.txt, LICENSE, THIRD_PARTY_NOTICES.md und THIRD_PARTY_NOTICES.en.md (und,
+       falls vorhanden, den Ordner licenses) neben die .exe, damit sie gleich sichtbar sind
     4. packt den ganzen Ordner als TPF3-Map-Studio-v<Version>-win64.zip
     5. schreibt die SHA-256-Pruefsumme daneben
 
     Aufruf im Projektordner (die virtuelle Umgebung .venv muss existieren):
-    powershell -ExecutionPolicy Bypass -File tools\make_release.ps1 -Version 0.3.0
+    powershell -ExecutionPolicy Bypass -File tools\make_release.ps1 -Version 0.4.0
 #>
 
 param(
-    [string]$Version = "0.3.0"
+    [string]$Version = "0.4.0"
 )
 
 $ErrorActionPreference = "Stop"
@@ -50,7 +50,7 @@ if ($icons.Count -lt 2) {
 }
 
 # Dateien neben die .exe legen (START-HIER.txt, Lizenz, Quellenangaben)
-foreach ($file in @("tools\START-HIER.txt", "LICENSE", "THIRD_PARTY_NOTICES.md")) {
+foreach ($file in @("tools\START-HIER.txt", "LICENSE", "THIRD_PARTY_NOTICES.md", "THIRD_PARTY_NOTICES.en.md")) {
     if (-not (Test-Path $file)) {
         throw "Datei fehlt: $file"
     }
