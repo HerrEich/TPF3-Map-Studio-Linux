@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from src.i18n import tr
+from src.i18n import get_language, tr
 from src.share_description import build_share_description
 
 
@@ -43,6 +43,18 @@ class ShareDescriptionDialog(QDialog):
         self.format_combo.addItem(tr("Klartext"), "text")
         format_row.addWidget(self.format_combo, 1)
         layout.addLayout(format_row)
+
+        language_row = QHBoxLayout()
+        language_row.addWidget(QLabel(tr("Sprache des Textes:")))
+
+        self.language_combo = QComboBox()
+        self.language_combo.addItem("Deutsch", "de")
+        self.language_combo.addItem("English", "en")
+        self.language_combo.setCurrentIndex(
+            max(0, self.language_combo.findData(get_language()))
+        )
+        language_row.addWidget(self.language_combo, 1)
+        layout.addLayout(language_row)
 
         self.osm_checkbox = QCheckBox(tr("OpenStreetMap-Hinweis aufnehmen"))
         self.osm_checkbox.setChecked(bool(osm_available))
@@ -80,6 +92,7 @@ class ShareDescriptionDialog(QDialog):
         self._refresh()
 
         self.format_combo.currentIndexChanged.connect(self._refresh)
+        self.language_combo.currentIndexChanged.connect(self._refresh)
         self.osm_checkbox.toggled.connect(self._refresh)
 
     def _refresh(self, *_):
@@ -88,6 +101,7 @@ class ShareDescriptionDialog(QDialog):
             self._info,
             fmt=self.format_combo.currentData(),
             osm_used=self.osm_checkbox.isChecked(),
+            language=self.language_combo.currentData(),
             **self._params,
         )
 

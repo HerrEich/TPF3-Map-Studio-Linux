@@ -1772,4 +1772,8 @@ guide of the heightmap dialog (F1).</p>
         'Date of the elevation data',
     'Bäume ab {limit:.0f} m über Wasser ausgedünnt':
         'Trees thinned out above {limit:.0f} m above water',
+    '(auf Wasserhöhe 0 bezogen)':
+        '(relative to water level 0)',
+    'Sprache des Textes:':
+        'Language of the text:',
 }

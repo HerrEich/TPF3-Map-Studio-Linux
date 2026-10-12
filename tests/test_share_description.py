@@ -216,5 +216,43 @@ class BiomeRowTest(unittest.TestCase):
         self.assertNotIn("Biome:", without)
 
 
+class LanguageTest(unittest.TestCase):
+
+    def _text(self, **kwargs):
+        return build_share_description(
+            _selection(), HeightmapBuildInfo(), fmt="text", **kwargs, **COMMON
+        )
+
+    def test_english_text_with_decimal_point(self):
+        text = self._text(language="en")
+        self.assertIn("Map size", text)
+        self.assertIn("14.3 x 14.3 km", text)
+
+    def test_german_text_with_decimal_comma(self):
+        text = self._text(language="de")
+        self.assertIn("Kartengröße", text)
+        self.assertIn("14,3 x 14,3 km", text)
+
+    def test_language_is_restored_afterwards(self):
+        self._text(language="en")
+        self.assertIsNone(share_description._lang)
+        with self.assertRaises(ValueError):
+            build_share_description(
+                _selection(), HeightmapBuildInfo(), fmt="html", language="en", **COMMON
+            )
+        self.assertIsNone(share_description._lang)
+
+    def test_edit_params_follow_the_text_language(self):
+        text = self._text(language="en", edit_params=dict(smooth_sigma=15))
+        self.assertIn("Terrain smoothed (15 m)", text)
+        text = self._text(language="de", edit_params=dict(smooth_sigma=15))
+        self.assertIn("Gelände geglättet (15 m)", text)
+
+    def test_relative_values_are_marked(self):
+        text = self._text(language="de", relative_values=True)
+        self.assertIn("(auf Wasserhöhe 0 bezogen)", text)
+        self.assertNotIn("bezogen", self._text(language="de"))
+
+
 if __name__ == "__main__":
     unittest.main()

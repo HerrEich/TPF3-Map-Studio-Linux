@@ -40,7 +40,6 @@ from src.gui.stations_action import save_stations_dialog
 from src.gui.map_size_presets import find_by_pixels
 from src.gui.dgm1_fetch_dialog import Dgm1FetchDialog
 from src.gui.share_description_dialog import ShareDescriptionDialog
-from src.share_description import edit_notes
 from src.heightmap.heightmap_exporter import (
     SOURCE_COPERNICUS,
     SOURCE_DGM1_DE,
@@ -1011,7 +1010,7 @@ class HeightmapDialog(QDialog):
             and (self.osm.node_count > 0 or self.osm.way_count > 0)
         )
 
-        edits = edit_notes(
+        edit_params = dict(
             smooth_sigma=(
                 self.smooth_sigma_input.value()
                 if self.smooth_checkbox.isChecked()
@@ -1057,7 +1056,7 @@ class HeightmapDialog(QDialog):
             water_level_m=self.water_level_input.value(),
             relative_values=self.relative_values_checkbox.isChecked(),
             compress_percent=self.compress_input.value(),
-            edits=edits,
+            edit_params=edit_params,
             biomes=self._biome_summary,
         )
 

@@ -16,7 +16,29 @@ from src.heightmap.heightmap_exporter import (
 )
 from src.heightmap.swissalti3d_dem import ATTRIBUTION as SWISS_ATTRIBUTION
 from src.gui.map_size_presets import find_by_pixels
-from src.i18n import tr
+from src.i18n import get_language, translate_to
+
+# Sprache des Textes ("de" oder "en"). None = Sprache des Programms. Wird nur
+# waehrend build_share_description() gesetzt.
+_lang = None
+
+
+def _language() -> str:
+    return _lang or get_language()
+
+
+def tr(text):
+    return translate_to(text, _language())
+
+
+class _DeNum(float):
+    # Dezimalkomma im deutschen Text, Formatangaben wie {:.1f} oder {:g} bleiben gueltig
+    def __format__(self, spec):
+        return float.__format__(self, spec).replace(".", ",")
+
+
+def _n(value):
+    return _DeNum(value) if _language() == "de" else float(value)
 
 FORMATS = ("text", "markdown", "bbcode")
 
@@ -130,8 +152,8 @@ def collect_rows(
     rows.append((
         tr("Kartengröße"),
         tr("{w:.1f} x {h:.1f} km ({wp} x {hp} Pixel)").format(
-            w=selection.width_m / 1000.0,
-            h=selection.height_m / 1000.0,
+            w=_n(selection.width_m / 1000.0),
+            h=_n(selection.height_m / 1000.0),
             wp=w_px,
             hp=h_px,
         ),
@@ -153,10 +175,10 @@ def collect_rows(
             tr(
                 "{w:.1f} x {h:.1f} km (Stauchfaktor {f:g}, Höhenfaktor {hs:.3f})"
             ).format(
-                w=selection.real_width_m / 1000.0,
-                h=selection.real_height_m / 1000.0,
-                f=selection.scale_factor,
-                hs=selection.height_scale,
+                w=_n(selection.real_width_m / 1000.0),
+                h=_n(selection.real_height_m / 1000.0),
+                f=_n(selection.scale_factor),
+                hs=_n(selection.height_scale),
             ),
             None,
         ))
@@ -169,7 +191,8 @@ def collect_rows(
             low=range_min_m - offset,
             high=range_max_m - offset,
             water=water_level_m - offset,
-        ),
+        )
+        + (" " + tr("(auf Wasserhöhe 0 bezogen)") if relative_values else ""),
         None,
     ))
 
@@ -194,7 +217,7 @@ def collect_rows(
     if source != SOURCE_COPERNICUS and fallback > FALLBACK_MIN_FRACTION:
         source_name += ", " + tr(
             "{percent:.1f} % der Fläche aus Copernicus ergänzt"
-        ).format(percent=fallback * 100.0)
+        ).format(percent=_n(fallback * 100.0))
 
     rows.append((tr("Höhenquelle"), source_name, None))
 
@@ -312,7 +335,7 @@ def edit_notes(
             tr(
                 "Wasser nur dort, wo OpenStreetMap Wasser hat (Flussbett "
                 "{edge:g} bis {depth:g} m tief, Böschung {transition:.0f} m)"
-            ).format(edge=edge, depth=depth, transition=transition)
+            ).format(edge=_n(edge), depth=_n(depth), transition=transition)
         )
 
     if blend_transition is not None:
@@ -360,5 +383,26 @@ def render_rows(rows, fmt: str = "markdown") -> str:
     return "\n".join(lines) + "\n"
 
 
-def build_share_description(selection, info, *, fmt: str = "markdown", **kwargs) -> str:
-    return render_rows(collect_rows(selection, info, **kwargs), fmt)
+def build_share_description(
+    selection, info, *, fmt: str = "markdown", language: str | None = None, **kwargs
+) -> str:
+    # language: "de" oder "en", None = Sprache des Programms.
+    # edit_params: Einstellungen fuer edit_notes(), die erst hier in die
+    # gewaehlte Sprache uebersetzt werden.
+    global _lang
+
+    previous = _lang
+    _lang = language
+
+    try:
+        edit_params = kwargs.pop("edit_params", None)
+
+        if edit_params:
+            kwargs["edits"] = [
+                *(kwargs.get("edits") or ()),
+                *edit_notes(**edit_params),
+            ]
+
+        return render_rows(collect_rows(selection, info, **kwargs), fmt)
+    finally:
+        _lang = previous
