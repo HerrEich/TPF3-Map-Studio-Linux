@@ -92,6 +92,13 @@ class ProjectDashboardDialog(QDialog):
         open_button.clicked.connect(self._open_selected)
         button_row.addWidget(open_button)
 
+        open_file_button = QPushButton(tr("Projekt-Datei öffnen..."))
+        open_file_button.setToolTip(
+            tr("Eine einzelne .tpf2ms-Datei direkt wählen, egal in welchem Ordner.")
+        )
+        open_file_button.clicked.connect(self._open_file)
+        button_row.addWidget(open_file_button)
+
         button_row.addStretch()
 
         buttons = QDialogButtonBox(QDialogButtonBox.Close)
@@ -213,6 +220,22 @@ class ProjectDashboardDialog(QDialog):
     # ---------------------------------------------------------
     # Öffnen
     # ---------------------------------------------------------
+
+    def _open_file(self):
+
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            tr("Projekt-Datei öffnen..."),
+            str(Path.home() / "Desktop"),
+            tr("Projekte (*.tpf2ms)"),
+        )
+
+        if not path:
+            return
+
+        self.window._load_project_file(path)
+
+        self.accept()
 
     def _open_selected(self):
 
