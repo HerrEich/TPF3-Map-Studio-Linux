@@ -1343,6 +1343,7 @@ guide of the heightmap dialog (F1).</p>
     'Weglassen (Spiel entscheidet)': 'Omit (game decides)',
     'Leer (keine festen Forderungen)': 'Empty (no fixed demands)',
     'Zufall (pro Stadt)': 'Random (per town)',
+    'OSM-Daten werden geladen: Kachel {n} von {total}': 'Loading OSM data: tile {n} of {total}',
     'Projekt-Datei öffnen...': 'Open project file...',
     'Eine einzelne .tpf2ms-Datei direkt wählen, egal in welchem Ordner.': 'Pick a single .tpf2ms file directly, in any folder.',
     'Projekte (*.tpf2ms)': 'Projects (*.tpf2ms)',

@@ -107,6 +107,7 @@ class _OsmWorker(QThread):
     loaded = Signal(object)   # OSMData
     failed = Signal(str)
     cancelled = Signal()
+    progress = Signal(int, int)
 
     def __init__(self, controller, selection, config, parent=None):
         super().__init__(parent)
@@ -121,6 +122,9 @@ class _OsmWorker(QThread):
         self._controller = controller
         self._selection = selection
         self._config = config
+
+        if client is not None and hasattr(client, "on_progress"):
+            client.on_progress = lambda n, total: self.progress.emit(n, total)
 
     def cancel(self):
         """Bricht den Download ab (vom GUI-Thread aufgerufen)."""
@@ -1125,6 +1129,10 @@ class MainWindow(QMainWindow):
             self._on_osm_cancelled
         )
 
+        self._osm_worker.progress.connect(
+            self._on_osm_progress
+        )
+
         self._osm_worker.finished.connect(
             self._on_osm_worker_finished
         )
@@ -1197,6 +1205,14 @@ class MainWindow(QMainWindow):
         except Exception as error:  # noqa: BLE001
 
             print(f"Bahnhöfe konnten nicht gesammelt werden: {error}")
+
+    def _on_osm_progress(self, number: int, total: int):
+
+        self.statusBar().showMessage(
+            tr("OSM-Daten werden geladen: Kachel {n} von {total}").format(
+                n=number, total=total
+            )
+        )
 
     def _on_osm_failed(self, message: str):
 

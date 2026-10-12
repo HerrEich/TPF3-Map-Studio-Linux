@@ -1,3 +1,4 @@
+import math
 import threading
 
 import requests
@@ -8,6 +9,69 @@ from src.osm.osm_parser import OSMParser
 from src.osm.objects.osm_data import OSMData
 from src.osm.overpass_query_builder import OverpassQueryConfig, build_query
 from src.i18n import tr
+
+
+# Ab dieser Kantenlaenge (reale Meter) wird in Kacheln geladen.
+TILE_THRESHOLD_M = 25_000.0
+# Zielkante einer Kachel und Ueberlappung (reale Meter).
+TILE_SIZE_M = 20_000.0
+TILE_OVERLAP_M = 200.0
+TILE_RETRIES = 2
+
+_R_EARTH = 6371008.8
+
+
+def plan_tiles(selection):
+    """
+    Zerlegt eine grosse Auswahl in Kachel-Selections im (gedrehten)
+    Raster der Auswahl. Kleine oder nicht vermessene Auswahlen kommen
+    unveraendert als Liste mit einem Eintrag zurueck.
+    """
+
+    width = getattr(selection, "real_width_m", None)
+    height = getattr(selection, "real_height_m", None)
+
+    if not width or not height or max(width, height) <= TILE_THRESHOLD_M:
+        return [selection]
+
+    nx = max(1, math.ceil(width / TILE_SIZE_M))
+    ny = max(1, math.ceil(height / TILE_SIZE_M))
+
+    step_x = width / nx
+    step_y = height / ny
+
+    center_lat, center_lon = selection.center
+    theta = math.radians(selection.rotation_deg)
+    up = (math.sin(theta), math.cos(theta))
+    right = (math.sin(theta + math.pi / 2), math.cos(theta + math.pi / 2))
+    cos0 = math.cos(math.radians(center_lat))
+
+    tiles = []
+
+    for j in range(ny):
+        for i in range(nx):
+
+            x = -width / 2 + (i + 0.5) * step_x
+            y = height / 2 - (j + 0.5) * step_y
+
+            e = right[0] * x + up[0] * y
+            n = right[1] * x + up[1] * y
+
+            lat = center_lat + math.degrees(n / _R_EARTH)
+            lon = center_lon + math.degrees(e / (_R_EARTH * cos0))
+
+            tiles.append(
+                type(selection).from_center(
+                    lat,
+                    lon,
+                    step_x + 2 * TILE_OVERLAP_M,
+                    step_y + 2 * TILE_OVERLAP_M,
+                    rotation_deg=selection.rotation_deg,
+                    scale_factor=1.0,
+                )
+            )
+
+    return tiles
 
 
 class OverpassCancelled(Exception):
@@ -43,6 +107,9 @@ class OverpassClient:
         # prueft ihn zwischen den Schritten.
         self._cancel = threading.Event()
 
+        # Optional: on_progress(kachel, gesamt), aus dem Download-Thread.
+        self.on_progress = None
+
     # ---------------------------------------------------------
 
     def cancel(self):
@@ -63,6 +130,8 @@ class OverpassClient:
     ) -> OSMData:
 
         try:
+            if len(plan_tiles(selection)) > 1:
+                return self._download_tiled(selection, config)
             return self._download(selection, config)
         finally:
             self._cancel.clear()
@@ -143,6 +212,83 @@ class OverpassClient:
         raise RuntimeError(
             tr("Keiner der Overpass-Server war erreichbar.")
         ) from last_exception
+
+    def _fetch_json(self, query: str) -> dict:
+        """Eine Abfrage mit Server-Fallback, liefert das rohe JSON."""
+
+        last_exception = None
+
+        servers = list(self.SERVERS)
+
+        if self._preferred_server in servers:
+            servers.remove(self._preferred_server)
+            servers.insert(0, self._preferred_server)
+
+        for server in servers:
+
+            self._check_cancel()
+
+            try:
+
+                response = self._post(server, query)
+
+                response.raise_for_status()
+
+                data = response.json()
+
+                self._check_cancel()
+
+                self._preferred_server = server
+
+                return data
+
+            except requests.RequestException as exc:
+
+                last_exception = exc
+
+                print("Server", server, "fehlgeschlagen:", type(exc).__name__)
+
+        raise RuntimeError(
+            tr("Keiner der Overpass-Server war erreichbar.")
+        ) from last_exception
+
+    def _download_tiled(self, selection, config=None) -> OSMData:
+        """Laedt eine grosse Auswahl kachelweise und fuehrt die Daten zusammen."""
+
+        tiles = plan_tiles(selection)
+        total = len(tiles)
+
+        print(f"Kachel-Download: {total} Kacheln")
+
+        merged = {}
+
+        for index, tile in enumerate(tiles, start=1):
+
+            self._check_cancel()
+
+            if self.on_progress is not None:
+                self.on_progress(index, total)
+
+            query = build_query(tile, config)
+
+            data = None
+
+            for attempt in range(TILE_RETRIES + 1):
+
+                try:
+                    data = self._fetch_json(query)
+                    break
+                except RuntimeError:
+                    if attempt >= TILE_RETRIES:
+                        raise
+                    print(f"Kachel {index}: neuer Versuch {attempt + 2}")
+
+            for element in data.get("elements", []):
+                merged[(element.get("type"), element.get("id"))] = element
+
+        print(f"Zusammengefuehrt: {len(merged)} Elemente")
+
+        return self.parser.parse({"elements": list(merged.values())})
 
     def _post(self, server: str, query: str):
         """
