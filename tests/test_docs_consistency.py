@@ -109,6 +109,7 @@ class HeightmapDialogDocumentedTest(unittest.TestCase):
         "Städte aus OSM": "Städte aus OSM",
         "Industrien aus OSM": "Industrien aus OSM",
         "Bahnhöfe aus OSM": "Bahnhöfe aus OSM",
+        "Beschreibung zum Teilen": "Beschreibung zum Teilen",
     }
     IGNORED = ("Anleitung (F1)", "Schließen", "Straßen und Gleise")
 

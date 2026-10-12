@@ -233,17 +233,27 @@ Wasserhöhe 0</b> importieren (diese Werte gelten nur für die Testdatei).</li>
 </ol>
 
 <h3>Quellen bei veröffentlichten Karten</h3>
+<p>Der Knopf <b>Beschreibung zum Teilen…</b> im Heightmap-Dialog erzeugt einen fertigen
+Text mit diesen Angaben (Markdown, Steam-BBCode oder Klartext). Er ersetzt nicht die
+Lizenzbedingungen der Quellen, bitte die Bedingungen der jeweiligen Quelle selbst prüfen.</p>
 <ul>
-<li>Höhen: Copernicus DEM GLO-30, © DLR e.V. 2010–2014 und © Airbus Defence and Space
-GmbH 2014–2018, bereitgestellt im Rahmen von COPERNICUS durch die Europäische Union und
-ESA.</li>
+<li>Höhen bei Quelle Copernicus: produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and
+© Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and
+ESA; all rights reserved. Die Lizenz verlangt dazu den Satz „The organisations in charge of the
+Copernicus programme by law or by delegation do not incur any liability for any use of the
+Copernicus WorldDEM-30“ (eine Übersetzung ist erlaubt). Der Vermerk gilt für veränderte Daten,
+und das Studio verändert sie immer (zugeschnitten, neu abgetastet). Er gilt auch, wenn Copernicus
+nur Lücken im DGM1 oder in swissALTI3D ergänzt.</li>
 <li>Höhen bei Quelle DGM1: © GeoBasis-DE / Landesvermessung des jeweiligen Bundeslandes
 (zum Beispiel © GeoBasis-DE / LVermGeoRP), Datenlizenz Deutschland – Namensnennung –
-Version 2.0 beziehungsweise CC BY 4.0, je nach Land. Der genaue Vermerk steht nach dem Laden
-im Heightmap-Dialog unter der Höhenquelle. Bereitgestellt über hoehendaten.de.</li>
+Version 2.0 (dl-de/by-2-0, www.govdata.de/dl-de/by-2-0) beziehungsweise CC BY 4.0, je nach Land.
+Der genaue Vermerk steht nach dem Laden im Heightmap-Dialog unter der Höhenquelle. Die Lizenz
+dl-de/by-2-0 verlangt zusätzlich den Hinweis, dass die Daten geändert wurden. Bereitgestellt über
+hoehendaten.de.</li>
 <li>Höhen bei Quelle swissALTI3D: © swisstopo (Bundesamt für Landestopografie swisstopo),
 swissALTI3D. Die Quellenangabe ist nach den Nutzungsbedingungen von swisstopo Pflicht.</li>
-<li>Karten- und Gewässerdaten: © OpenStreetMap-Mitwirkende.</li>
+<li>Karten- und Gewässerdaten: © OpenStreetMap-Mitwirkende, Lizenz ODbL
+(www.openstreetmap.org/copyright).</li>
 <li>Relief-Hintergrund im Studio: AWS Terrain Tiles (Mapzen/Tilezen).</li>
 </ul>
 """

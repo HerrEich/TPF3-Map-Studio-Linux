@@ -326,6 +326,17 @@ FEATURE_GROUPS = (
                 "Bahnsteig-Wege gelten als ein Bahnsteig, bei "
                 "Bahnsteigflächen zählt die Länge statt des Umfangs.",
             ),
+            (
+                "Beschreibung zum Teilen...",
+                "Erzeugt einen Text zum Veröffentlichen der Karte (Markdown, "
+                "Steam-BBCode oder Klartext) mit Kartengröße und -format, "
+                "Höhenbereich, Höhenquelle samt Quellenangabe und Lizenz, den "
+                "Änderungen an den Höhendaten und bei den experimentellen "
+                "Größenstufen einem Hinweis auf experimentalMapFeatures. Der "
+                "Text lässt sich vor dem Kopieren bearbeiten. Er ersetzt nicht "
+                "die Lizenzbedingungen der Quellen. Braucht geladene "
+                "Höhendaten.",
+            ),
         ),
     ),
     (

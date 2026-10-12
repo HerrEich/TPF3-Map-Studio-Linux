@@ -18,7 +18,7 @@ Das Studio selbst steht unter der MIT-Lizenz (siehe [LICENSE](LICENSE)). Es nutz
 - Lizenz: Datenlizenz Deutschland, Namensnennung, Version 2.0 (dl-de/by-2-0), <https://www.govdata.de/dl-de/by-2-0>
 - Datengeber sind die Vermessungsverwaltungen der Bundesländer. Welche Quellenangabe gilt, hängt vom Gebiet der verwendeten Kacheln ab. Das Studio zeigt sie im Heightmap-Dialog an, zum Beispiel „© GeoBasis-DE / LVermGeoRP (2025), dl-de/by-2-0“ für Rheinland-Pfalz.
 - Der Zugang erfolgt über <https://hoehendaten.de>. Die Höhendaten werden nicht mit dem Studio ausgeliefert, sondern beim Download bezogen.
-- Wer eine daraus erzeugte Karte veröffentlicht, nennt die angezeigte Quelle.
+- Wer eine daraus erzeugte Karte veröffentlicht, nennt die angezeigte Quelle samt dem Vermerk „dl-de/by-2-0“ mit Verweis auf den Lizenztext und weist darauf hin, dass die Daten geändert wurden. Das Studio schneidet die Daten zu und tastet sie neu ab.
 
 ### swissALTI3D (Schweiz und Liechtenstein)
 
@@ -30,8 +30,10 @@ Das Studio selbst steht unter der MIT-Lizenz (siehe [LICENSE](LICENSE)). Es nutz
 ### Copernicus DEM (GLO-30)
 
 - Weltweites Höhenmodell mit etwa 30 m Auflösung, bezogen über <https://copernicus-dem-30m.s3.amazonaws.com/>
-- Hinweis des Datengebers: „Produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved.“
-- Es gelten die Lizenzbedingungen von Copernicus, bitte vor der Weitergabe abgeleiteter Daten prüfen.
+- Lizenz: „Licence for Copernicus DEM instance COP-DEM-GLO-30-F Global 30m Full, Free & Open“, <https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Data/DEM/resources/license/License-COPDEM-30.pdf>. Sie erlaubt Vervielfältigung, Weitergabe sowie Anpassung und Kombination mit anderen Daten.
+- Vermerk für veränderte Daten (Art. 6 b), im Wortlaut der Lizenz: „produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved“. Das Studio verändert die Daten immer (zugeschnitten, neu abgetastet), der Vermerk gilt also auch, wenn Copernicus nur Lücken im DGM1 oder in swissALTI3D ergänzt.
+- Haftungssatz (Art. 6 c), in einer Lizenz oder einem rechtlichen Hinweis zur Weitergabe aufzunehmen, eine Übersetzung ist erlaubt: „The organisations in charge of the Copernicus programme by law or by delegation do not incur any liability for any use of the Copernicus WorldDEM-30“.
+- Es darf nicht der Eindruck entstehen, die Karte sei von Copernicus oder den Datengebern offiziell unterstützt (Art. 6 d).
 
 ## Kartendienste in der Oberfläche
 

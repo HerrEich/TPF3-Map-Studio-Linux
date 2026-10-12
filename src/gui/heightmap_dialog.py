@@ -39,6 +39,8 @@ from src.gui.network_dialog import NetworkDialog
 from src.gui.stations_action import save_stations_dialog
 from src.gui.map_size_presets import find_by_pixels
 from src.gui.dgm1_fetch_dialog import Dgm1FetchDialog
+from src.gui.share_description_dialog import ShareDescriptionDialog
+from src.share_description import edit_notes
 from src.heightmap.heightmap_exporter import (
     SOURCE_COPERNICUS,
     SOURCE_DGM1_DE,
@@ -887,6 +889,17 @@ class HeightmapDialog(QDialog):
         button_row.addWidget(self.network_button)
         self.network_button.setVisible(SHOW_ROADS_AND_TRACKS_BUTTON)
 
+        # Text zum Veroeffentlichen der Karte (Quellen, Lizenzen, Werte).
+        self.share_button = QPushButton(tr("Beschreibung zum Teilen..."))
+        self.share_button.setToolTip(
+            tr("Erzeugt einen Text zum Veröffentlichen der Karte: Kartengröße, "
+            "Höhenbereich, Höhenquelle mit Quellenangabe und Lizenz, "
+            "Änderungen an den Höhendaten. Braucht geladene Höhendaten.")
+        )
+        self.share_button.setEnabled(False)
+        self.share_button.clicked.connect(self._open_share_dialog)
+        button_row.addWidget(self.share_button)
+
         close_button = QPushButton(tr("Schließen"))
         close_button.clicked.connect(self.reject)
         button_row.addWidget(close_button)
@@ -978,6 +991,71 @@ class HeightmapDialog(QDialog):
             heights=heights,
             water_level_m=self.water_level_input.value(),
             default_limit_m=self.rock_input.value(),
+        ).exec()
+
+    def _open_share_dialog(self):
+
+        if self.heightmap_array is None:
+            return
+
+        range_min, range_max = self._effective_range()
+
+        has_osm_data = (
+            self.osm is not None
+            and (self.osm.node_count > 0 or self.osm.way_count > 0)
+        )
+
+        edits = edit_notes(
+            smooth_sigma=(
+                self.smooth_sigma_input.value()
+                if self.smooth_checkbox.isChecked()
+                else None
+            ),
+            flatten_sigma=(
+                self.flatten_sigma_input.value()
+                if self.flatten_checkbox.isChecked()
+                else None
+            ),
+            slope=(
+                (
+                    self.slope_strength_input.value(),
+                    self.slope_smoothing_input.value(),
+                )
+                if self.slope_checkbox.isChecked()
+                else None
+            ),
+            enforce=(
+                (
+                    self.enforce_edge_input.value(),
+                    self.enforce_depth_input.value(),
+                    self.enforce_transition_input.value(),
+                )
+                if self.enforce_checkbox.isChecked()
+                else None
+            ),
+            blend_transition=(
+                self.transition_input.value()
+                if self.water_blend_checkbox.isChecked()
+                else None
+            ),
+            clip_mode=(
+                self.clip_mode_combo.currentText()
+                if self.clip_checkbox.isChecked()
+                else None
+            ),
+        )
+
+        params = dict(
+            range_min_m=range_min,
+            range_max_m=range_max,
+            water_level_m=self.water_level_input.value(),
+            relative_values=self.relative_values_checkbox.isChecked(),
+            compress_percent=self.compress_input.value(),
+            edits=edits,
+        )
+
+        ShareDescriptionDialog(
+            self, self.selection, self._build_info, params, has_osm_data
         ).exec()
 
     def _open_towns_dialog(self):
@@ -1435,6 +1513,7 @@ class HeightmapDialog(QDialog):
         self._show_source_info()
 
         self.export_button.setEnabled(True)
+        self.share_button.setEnabled(True)
         self.download_button.setEnabled(True)
 
         # Neues Raster: das Hoehenfenster beginnt wieder bei der Voreinstellung

@@ -65,7 +65,8 @@ This only appears on the first start. If your antivirus also flags the file or m
 
 - **Map area**: set it with the rectangle tool (centre, size, rotation) and plan it in the game's format (for example "Größenwahnsinnig 1:5", the game's largest scale)
 - **Load OSM data** with a configurable Overpass query (checkboxes and templates instead of free text)
-- **Heightmap** from DGM1 (Germany, 1 m), swissALTI3D (Switzerland and Liechtenstein, 2 m), Copernicus (worldwide, 30 m, includes tree canopy) or your own GeoTIFF tiles. With a quick preview (always Copernicus), water level suggestion, rivers from OSM, slope compensation, levelling of railway routes and settlements, smoothing and squashing, and a height window for the limits of the map editor (−20 to 3177 m: cap peaks, cut off lows or squash, with preview). The dialog lists the values to enter during the import in the game. The heightmap is saved as a 16-bit PNG
+- **Heightmap** from DGM1 (Germany, 1 m), swissALTI3D (Switzerland and Liechtenstein, 2 m), Copernicus (worldwide, 30 m, includes tree canopy) or your own GeoTIFF tiles. With a quick preview (always Copernicus), water level suggestion, rivers from OSM, slope compensation, levelling of railway routes and settlements, smoothing and squashing, and a height window for the limits of the map editor (−100 to 3177 m: cap peaks, cut off lows or squash, with preview). The dialog lists the values to enter during the import in the game. The heightmap is saved as a 16-bit PNG
+- **Description for sharing** for published maps: map size, elevation range, attributions with licence links and changes to the elevation data, as Markdown, Steam BBCode or plain text
 - **Biome mask, towns and industries** from OSM, as files for the import in the editor
 - **Stations** as named markers on the map and as a list (`bahnhoefe.json` and `bahnhoefe.csv`) with platforms, stopping positions and status (abandoned, under construction). Nothing is built in the game from this, the list is a reference
 - **Map**: OpenStreetMap, optionally with hillshade, plus switchable railway map (OpenRailwayMap) and a measuring grid. Layers can be shown, hidden, locked, and changed in opacity and order
@@ -212,9 +213,11 @@ The tests are in the `tests` folder, for example `python -m unittest tests.test_
 The Studio uses public data sources. If you publish a map made with it, please credit the sources:
 
 - **Map data:** © OpenStreetMap contributors, Open Database License (ODbL)
-- **Elevation data Germany (DGM1):** depending on the federal state, Data licence Germany, attribution, version 2.0 (dl-de/by-2-0). The heightmap dialog shows the exact attribution
+- **Elevation data Germany (DGM1):** depending on the federal state, Data licence Germany, attribution, version 2.0 (dl-de/by-2-0). The heightmap dialog shows the exact attribution. The licence additionally requires a note that the data has been changed
 - **Elevation data Switzerland and Liechtenstein (swissALTI3D):** © swisstopo (Bundesamt für Landestopografie swisstopo), Open Government Data, attribution is mandatory
-- **Elevation data worldwide:** Copernicus DEM (GLO-30)
+- **Elevation data worldwide:** Copernicus DEM (GLO-30). The notice for modified data and the disclaimer are in [THIRD_PARTY_NOTICES.en.md](THIRD_PARTY_NOTICES.en.md)
+
+The **Description for sharing…** button in the heightmap dialog creates a ready-made text with this information (Markdown, Steam BBCode or plain text). It does not replace the licence terms of the sources.
 
 All sources, licences and notices are in [THIRD_PARTY_NOTICES.en.md](THIRD_PARTY_NOTICES.en.md).
 
