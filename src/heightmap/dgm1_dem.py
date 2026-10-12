@@ -619,6 +619,7 @@ class Slot:
     cell_m: float
     cells: np.ndarray
     sources: list[str] = field(default_factory=list)
+    actualities: list[str] = field(default_factory=list)
 
 
 def slots_from_raster(
@@ -626,6 +627,7 @@ def slots_from_raster(
     cell_m: float,
     wanted: set[tuple[int, int, int]] | None = None,
     attribution: str | None = None,
+    actuality: str | None = None,
 ) -> list[Slot]:
     """
     Zerlegt ein Raster in 1-km-Kacheln auf dem Landesraster und mittelt jede auf
@@ -692,6 +694,7 @@ def slots_from_raster(
                 cell_m=block * px,
                 cells=_block_mean(block_px, block),
                 sources=[attribution] if attribution else [],
+                actualities=[actuality] if actuality else [],
             )
         )
 
@@ -701,19 +704,24 @@ def slots_from_raster(
 def _slots_from_cache_file(path: Path, cell_m: float, wanted) -> list[Slot]:
 
     attribution = None
+    actuality = None
     meta_path = path.with_suffix(".json")
     if meta_path.exists():
         try:
             meta = json.loads(meta_path.read_text(encoding="utf-8"))
             attribution = meta.get("Attribution")
+            raw_actuality = meta.get("Actuality")
+            if raw_actuality not in (None, ""):
+                actuality = str(raw_actuality).strip() or None
         except (OSError, ValueError):
             attribution = None
+            actuality = None
 
     info = read_raster_info(path)
 
     # Der Zwischenspeicher-Name nennt die Zone, in der angefragt wurde; die Kachel
     # selbst liegt in der Zone ihres Landes (TileIndex "32_497_5670").
-    return slots_from_raster(info, cell_m, wanted, attribution)
+    return slots_from_raster(info, cell_m, wanted, attribution, actuality)
 
 
 # ---------------------------------------------------------------------------
@@ -741,6 +749,7 @@ class Dgm1Mosaic:
                 if hole.any() and base.cells.shape == slot.cells.shape:
                     base.cells = np.where(hole, slot.cells, base.cells)
                 base.sources.extend(slot.sources)
+                base.actualities.extend(slot.actualities)
             else:
                 merged[key] = slot
 
@@ -753,6 +762,11 @@ class Dgm1Mosaic:
                 if text and text not in seen:
                     seen.append(text)
         self.attributions = seen
+
+        # Datenstand der Kacheln (als Text, ohne Doppelte, sortiert)
+        self.actualities = sorted(
+            {a for slot in merged.values() for a in slot.actualities if a}
+        )
 
         for (zone, ie, inn), slot in merged.items():
             self._tiles.setdefault(zone, {})[ie * 100000 + inn] = (

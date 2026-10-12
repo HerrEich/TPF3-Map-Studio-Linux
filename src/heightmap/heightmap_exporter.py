@@ -42,6 +42,8 @@ class HeightmapBuildInfo:
     # Zahl der 1-km-Kacheln ohne DGM1-Daten im Ausschnitt
     missing_tiles: int = 0
     attributions: list[str] = field(default_factory=list)
+    # Datenstand der Kacheln (Ausgabe-/Befliegungsdatum laut Anbieter, als Text)
+    actualities: list[str] = field(default_factory=list)
 
 
 class _FallbackMosaic:
@@ -267,6 +269,7 @@ def build_heightmap_array_ex(
             ),
             missing_tiles=dgm1.missing_slots,
             attributions=list(dgm1.attributions),
+            actualities=list(dgm1.actualities),
         )
 
     else:

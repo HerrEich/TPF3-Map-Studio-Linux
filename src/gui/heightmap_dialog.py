@@ -190,6 +190,8 @@ class HeightmapDialog(QDialog):
         self._processed_array = None
         self._processed_suggestion = None
         self._downloaded_once = False
+        # Zuordnung der zuletzt exportierten Biome-Maske (Beschreibung zum Teilen)
+        self._biome_summary = None
         self._applying_preset = False
         # Hoehenfenster: Bericht der letzten Rechnung und Zwischenspeicher
         self._clip_report = None
@@ -984,14 +986,18 @@ class HeightmapDialog(QDialog):
             else None
         )
 
-        BiomeMaskDialog(
+        dialog = BiomeMaskDialog(
             self,
             self.selection,
             self.osm,
             heights=heights,
             water_level_m=self.water_level_input.value(),
             default_limit_m=self.rock_input.value(),
-        ).exec()
+        )
+        dialog.exec()
+
+        if dialog.exported_summary:
+            self._biome_summary = dialog.exported_summary
 
     def _open_share_dialog(self):
 
@@ -1052,6 +1058,7 @@ class HeightmapDialog(QDialog):
             relative_values=self.relative_values_checkbox.isChecked(),
             compress_percent=self.compress_input.value(),
             edits=edits,
+            biomes=self._biome_summary,
         )
 
         ShareDescriptionDialog(

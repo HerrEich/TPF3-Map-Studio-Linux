@@ -1768,4 +1768,8 @@ guide of the heightmap dialog (F1).</p>
         'Data licence Germany – Attribution – Version 2.0 (dl-de/by-2-0)',
     'Creative Commons Namensnennung 4.0 International (CC BY 4.0)':
         'Creative Commons Attribution 4.0 International (CC BY 4.0)',
+    'Datenstand der Höhendaten':
+        'Date of the elevation data',
+    'Bäume ab {limit:.0f} m über Wasser ausgedünnt':
+        'Trees thinned out above {limit:.0f} m above water',
 }

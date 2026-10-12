@@ -72,6 +72,11 @@ class BiomeMaskDialog(QDialog):
         self._heights = heights
         self._water_level_m = float(water_level_m)
         self._index: np.ndarray | None = None
+        # Kurzbeschreibung der Maske der letzten Vorschau und, nach einem
+        # erfolgreichen Export, der exportierten Maske (fuer die Beschreibung
+        # zum Teilen im Heightmap-Dialog)
+        self._index_summary = ""
+        self.exported_summary = None
 
         self.setWindowTitle(tr("Biome-Maske aus OSM"))
 
@@ -247,6 +252,7 @@ class BiomeMaskDialog(QDialog):
             )
 
         self._index = index
+        self._index_summary = self._summary()
 
         rgb = np.ascontiguousarray(index_to_preview_rgb(index))
 
@@ -278,6 +284,26 @@ class BiomeMaskDialog(QDialog):
         )
 
         self.export_button.setEnabled(True)
+
+    def _summary(self) -> str:
+        """Zuordnung und Baumgrenze, wie sie gerade eingestellt sind."""
+
+        assignment = self._assignment()
+        parts = []
+
+        for key, label, _rules in CATEGORIES:
+            value = assignment.get(key)
+            if value is not None:
+                parts.append(f"{label} → {BIOME_NAMES[value]}")
+
+        text = "; ".join(parts)
+
+        if self.thin_checkbox.isChecked() and self._heights is not None:
+            text += "; " + tr(
+                "Bäume ab {limit:.0f} m über Wasser ausgedünnt"
+            ).format(limit=self.thin_limit_input.value())
+
+        return text
 
     def _default_folder(self) -> Path:
 
@@ -315,6 +341,8 @@ class BiomeMaskDialog(QDialog):
                 tr("Die Datei konnte nicht gespeichert werden:\n{error}").format(error=error),
             )
             return
+
+        self.exported_summary = self._index_summary
 
         QMessageBox.information(
             self,

@@ -198,6 +198,16 @@ def collect_rows(
 
     rows.append((tr("Höhenquelle"), source_name, None))
 
+    actualities = list(getattr(info, "actualities", None) or [])
+
+    if actualities and source != SOURCE_COPERNICUS:
+        stand = (
+            actualities[0]
+            if len(actualities) == 1
+            else f"{actualities[0]} – {actualities[-1]}"
+        )
+        rows.append((tr("Datenstand der Höhendaten"), stand, None))
+
     # Quellenangaben und Lizenzen
     uses_copernicus = source == SOURCE_COPERNICUS or fallback > FALLBACK_MIN_FRACTION
 

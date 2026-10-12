@@ -153,5 +153,68 @@ class LicenseTextTest(unittest.TestCase):
         self.assertIn("terms-of-use-free-geodata-and-geoservices", swiss)
 
 
+class ActualityTest(unittest.TestCase):
+
+    def _text(self, info):
+        return build_share_description(_selection(), info, fmt="text", **COMMON)
+
+    def test_single_value_and_range(self):
+        one = HeightmapBuildInfo(source=SOURCE_SWISSALTI3D, actualities=["2021"])
+        self.assertIn("Datenstand der Höhendaten: 2021", self._text(one))
+        many = HeightmapBuildInfo(source=SOURCE_DGM1_DE, actualities=["2019", "2023"])
+        self.assertIn("Datenstand der Höhendaten: 2019 – 2023", self._text(many))
+
+    def test_no_row_without_data(self):
+        self.assertNotIn("Datenstand", self._text(HeightmapBuildInfo(source=SOURCE_DGM1_DE)))
+        self.assertNotIn("Datenstand", self._text(HeightmapBuildInfo()))
+
+
+class MosaicActualityTest(unittest.TestCase):
+
+    def test_mosaic_collects_distinct_sorted_dates(self):
+        import numpy as np
+        from src.heightmap.dgm1_dem import Dgm1Mosaic, Slot
+
+        cells = np.zeros((2, 2), dtype=np.float32)
+        slots = [
+            Slot(zone=32, ie=1, inn=1, cell_m=4.0, cells=cells, actualities=["2023"]),
+            Slot(zone=32, ie=2, inn=1, cell_m=4.0, cells=cells, actualities=["2021"]),
+            Slot(zone=32, ie=3, inn=1, cell_m=4.0, cells=cells, actualities=["2021"]),
+        ]
+        self.assertEqual(Dgm1Mosaic(slots).actualities, ["2021", "2023"])
+
+    def test_cache_file_passes_actuality_on(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from src.heightmap import dgm1_dem
+
+        with tempfile.TemporaryDirectory() as folder:
+            tif = Path(folder) / "32_1_1__XX.tif"
+            tif.write_bytes(b"x")
+            tif.with_suffix(".json").write_text(
+                json.dumps({"Attribution": "© A", "Actuality": 2022}), encoding="utf-8"
+            )
+            with mock.patch.object(dgm1_dem, "read_raster_info", return_value=object()), \
+                 mock.patch.object(dgm1_dem, "slots_from_raster", return_value=[]) as called:
+                dgm1_dem._slots_from_cache_file(tif, 4.0, None)
+
+        self.assertEqual(called.call_args.args[3:], ("© A", "2022"))
+
+
+class BiomeRowTest(unittest.TestCase):
+
+    def test_biome_row_only_with_summary(self):
+        with_biomes = build_share_description(
+            _selection(), HeightmapBuildInfo(), fmt="text",
+            biomes="Wald → Biom 1", **COMMON
+        )
+        self.assertIn("Biome: Wald → Biom 1", with_biomes)
+        without = build_share_description(
+            _selection(), HeightmapBuildInfo(), fmt="text", **COMMON
+        )
+        self.assertNotIn("Biome:", without)
+
+
 if __name__ == "__main__":
     unittest.main()
