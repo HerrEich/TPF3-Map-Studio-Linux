@@ -34,6 +34,15 @@ from src.gui.theme import apply_theme
 from src.gui.toolbar import MainToolbar
 from src.gui.rectangle_dialog import RectangleToolDialog
 from src.gui.heightmap_dialog import HeightmapDialog
+from src.core.recipe import (
+    RECIPE_SUFFIX,
+    RecipeError,
+    build_recipe,
+    project_file_from_recipe,
+    read_recipe,
+    safe_file_stem,
+    write_recipe,
+)
 from src.gui.mod_checker_dialog import ModCheckerDialog
 from src.gui.overpass_dialog import OverpassQueryDialog
 from src.osm.overpass_client import OverpassCancelled  # noqa: F401
@@ -582,6 +591,129 @@ class MainWindow(QMainWindow):
 
         return True
 
+    # ---------------------------------------------------------
+    # Kartenrezept (Gebiet + Export-Einstellungen als kleine Datei)
+    # ---------------------------------------------------------
+
+    def _export_recipe(self):
+
+        project = self.map_widget.controller.project
+
+        if project.selection is None:
+            QMessageBox.warning(
+                self,
+                tr("Keine Auswahl"),
+                tr("Bitte zuerst mit dem Rechteck-Tool einen "
+                "Kartenausschnitt festlegen.")
+            )
+            return
+
+        if not project.export_settings:
+            answer = QMessageBox.question(
+                self,
+                tr("Kartenrezept exportieren"),
+                tr("Es sind noch keine Export-Einstellungen gespeichert "
+                "(Heightmap-Dialog \u00f6ffnen, H\u00f6hendaten laden und den "
+                "Dialog schlie\u00dfen).\n\nTrotzdem nur das Gebiet exportieren?"),
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+
+            if answer != QMessageBox.Yes:
+                return
+
+        default_name = safe_file_stem(project.name) + RECIPE_SUFFIX
+
+        filename, _ = QFileDialog.getSaveFileName(
+            self,
+            tr("Kartenrezept exportieren"),
+            default_name,
+            tr("Kartenrezept (*.tpf3recipe)")
+        )
+
+        if not filename:
+            return
+
+        if not filename.lower().endswith(RECIPE_SUFFIX):
+            filename += RECIPE_SUFFIX
+
+        try:
+            data = build_recipe(
+                project.name,
+                project.description,
+                project.selection,
+                project.export_settings,
+            )
+            write_recipe(filename, data)
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                tr("Fehler"),
+                tr("Kartenrezept konnte nicht gespeichert werden.\n\n{error}").format(error=exc)
+            )
+            return
+
+        self.statusBar().showMessage(
+            tr("Kartenrezept gespeichert.")
+        )
+
+    def _import_recipe(self):
+
+        if self._osm_worker is not None and self._osm_worker.isRunning():
+            QMessageBox.information(
+                self,
+                tr("OSM-Download l\u00e4uft"),
+                tr("Bitte warten, bis der OSM-Download fertig ist.")
+            )
+            return
+
+        filename, _ = QFileDialog.getOpenFileName(
+            self,
+            tr("Kartenrezept importieren"),
+            "",
+            tr("Kartenrezept (*.tpf3recipe)")
+        )
+
+        if not filename:
+            return
+
+        try:
+            recipe = read_recipe(filename)
+        except RecipeError as exc:
+            QMessageBox.critical(self, tr("Fehler"), str(exc))
+            return
+
+        # Das Rezept ersetzt das aktuelle Projekt (auch OSM-Daten und Marker).
+        if not self._confirm_discard_changes():
+            return
+
+        import os
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as folder:
+
+            path = os.path.join(folder, "kartenrezept.tpf2ms")
+
+            try:
+                project_file_from_recipe(recipe, path)
+            except RecipeError as exc:
+                QMessageBox.critical(self, tr("Fehler"), str(exc))
+                return
+
+            self._load_project_file(path)
+
+        # Kein Dateibezug: "Speichern" fragt nach einem Namen und
+        # ueberschreibt kein altes Projekt.
+        self._project_file = None
+
+        self.map_widget.controller.project.mark_dirty()
+
+        self._update_window_title()
+
+        self.statusBar().showMessage(
+            tr("Kartenrezept importiert.")
+        )
+
     def _new_project(self):
         """
         Beginnt ein neues, leeres Projekt (fragt vorher nach dem Speichern).
@@ -765,6 +897,43 @@ class MainWindow(QMainWindow):
 
         file_menu.addAction(
             self.actions.close_project
+        )
+
+        file_menu.addSeparator()
+
+        self.recipe_export_action = QAction(
+            tr("Kartenrezept exportieren..."),
+            self
+        )
+
+        self.recipe_export_action.setToolTip(
+            tr("Gebiet und Export-Einstellungen als kleine Datei zum Teilen speichern")
+        )
+
+        self.recipe_export_action.triggered.connect(
+            self._export_recipe
+        )
+
+        file_menu.addAction(
+            self.recipe_export_action
+        )
+
+        self.recipe_import_action = QAction(
+            tr("Kartenrezept importieren..."),
+            self
+        )
+
+        self.recipe_import_action.setToolTip(
+            tr("Gebiet und Export-Einstellungen aus einer Rezeptdatei laden "
+            "(ersetzt das aktuelle Projekt)")
+        )
+
+        self.recipe_import_action.triggered.connect(
+            self._import_recipe
+        )
+
+        file_menu.addAction(
+            self.recipe_import_action
         )
 
         file_menu.addSeparator()

@@ -1778,4 +1778,48 @@ guide of the heightmap dialog (F1).</p>
         'Language of the text:',
     'Datenstand der OSM-Daten':
         'Date of the OSM data',
+    'Das Gebiet im Kartenrezept fehlt (selection).':
+        'The area is missing from the map recipe (selection).',
+    'Das Gebiet im Kartenrezept ist ungültig (Minimum nicht kleiner als Maximum).':
+        'The area in the map recipe is invalid (minimum is not smaller than maximum).',
+    'Das Gebiet im Kartenrezept ist unvollständig (Breite, Höhe und Mittelpunkt gehören zusammen).':
+        'The area in the map recipe is incomplete (width, height and center belong together).',
+    'Das Kartenrezept konnte nicht angewendet werden: {error}':
+        'The map recipe could not be applied: {error}',
+    'Das ist kein Kartenrezept des TPF3-Map-Studios.':
+        'This is not a TPF3 Map Studio map recipe.',
+    'Die Datei ist kein lesbares Kartenrezept (kein gültiges JSON).':
+        'The file is not a readable map recipe (not valid JSON).',
+    'Die Datei ist zu groß für ein Kartenrezept.':
+        'The file is too large for a map recipe.',
+    'Die Datei konnte nicht gelesen werden: {error}':
+        'The file could not be read: {error}',
+    'Es sind noch keine Export-Einstellungen gespeichert (Heightmap-Dialog öffnen, Höhendaten laden und den Dialog schließen).\n\nTrotzdem nur das Gebiet exportieren?':
+        'No export settings have been saved yet (open the heightmap dialog, load the elevation data and close the dialog).\n\nExport only the area anyway?',
+    'Gebiet und Export-Einstellungen als kleine Datei zum Teilen speichern':
+        'Save the area and export settings as a small file for sharing',
+    'Gebiet und Export-Einstellungen aus einer Rezeptdatei laden (ersetzt das aktuelle Projekt)':
+        'Load the area and export settings from a recipe file (replaces the current project)',
+    "Im Kartenrezept fehlt der Wert '{key}'.":
+        "The map recipe is missing the value '{key}'.",
+    "Im Kartenrezept ist der Wert '{key}' ungültig.":
+        "The value '{key}' in the map recipe is invalid.",
+    'Kartenrezept (*.tpf3recipe)':
+        'Map recipe (*.tpf3recipe)',
+    'Kartenrezept exportieren':
+        'Export map recipe',
+    'Kartenrezept exportieren...':
+        'Export map recipe...',
+    'Kartenrezept gespeichert.':
+        'Map recipe saved.',
+    'Kartenrezept importieren':
+        'Import map recipe',
+    'Kartenrezept importieren...':
+        'Import map recipe...',
+    'Kartenrezept importiert.':
+        'Map recipe imported.',
+    'Kartenrezept konnte nicht gespeichert werden.\n\n{error}':
+        'The map recipe could not be saved.\n\n{error}',
+    'Nicht unterstützte Rezeptversion: {version}':
+        'Unsupported recipe version: {version}',
 }
