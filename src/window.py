@@ -1714,7 +1714,10 @@ class MainWindow(QMainWindow):
             osm=self.map_widget.controller.project.osm,
             base_url=self.server.url,
         )
+        project = self.map_widget.controller.project
+        dialog.apply_settings(project.export_settings)
         dialog.exec()
+        project.set_export_settings(dialog.collect_settings())
 
     # ---------------------------------------------------------
     # Mod-Checker

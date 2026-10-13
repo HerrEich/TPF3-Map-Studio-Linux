@@ -52,6 +52,7 @@ from src.heightmap.heightmap_exporter import (
     pixel_size_for_selection,
 )
 from src.heightmap.height_hints import height_hint
+from src.core.export_settings import sanitize_export_settings
 from src.heightmap.height_clipping import (
     GAME_MAX_M,
     GAME_MIN_M,
@@ -1529,6 +1530,8 @@ class HeightmapDialog(QDialog):
         if self.clip_checkbox.isChecked():
             self._reset_clip_window()
 
+        self._apply_pending_settings()
+
         self._update_preview()
 
     # ---------------------------------------------------------
@@ -2771,6 +2774,120 @@ class HeightmapDialog(QDialog):
             area.x() + (area.width() - self.width()) // 2,
             area.y() + (area.height() - self.height()) // 2,
         )
+
+    # ---------------------------------------------------------
+    # Export-Einstellungen (Projektdatei)
+    # ---------------------------------------------------------
+
+    _SOURCE_ORDER = (
+        SOURCE_COPERNICUS,
+        SOURCE_DGM1_DE,
+        SOURCE_DGM1_FOLDER,
+        SOURCE_SWISSALTI3D,
+    )
+    _CLIP_MODE_KEYS = ("top", "bottom", "compress")
+
+    def _settings_checks(self):
+        # Reihenfolge wichtig: "enforce" vor "water_blend"
+        return (
+            ("smooth", self.smooth_checkbox),
+            ("flatten", self.flatten_checkbox),
+            ("slope", self.slope_checkbox),
+            ("enforce", self.enforce_checkbox),
+            ("water_blend", self.water_blend_checkbox),
+            ("clip", self.clip_checkbox),
+            ("relative_values", self.relative_values_checkbox),
+            ("zones", self.zones_checkbox),
+        )
+
+    def _settings_spins(self):
+        return (
+            ("water_level", self.water_level_input),
+            ("compress", self.compress_input),
+            ("smooth_sigma", self.smooth_sigma_input),
+            ("flatten_sigma", self.flatten_sigma_input),
+            ("slope_strength", self.slope_strength_input),
+            ("slope_smoothing", self.slope_smoothing_input),
+            ("slope_max_ref", self.slope_max_ref_input),
+            ("enforce_transition", self.enforce_transition_input),
+            ("enforce_edge", self.enforce_edge_input),
+            ("enforce_depth", self.enforce_depth_input),
+            ("enforce_bank", self.enforce_bank_input),
+            ("enforce_max_rise", self.enforce_max_rise_input),
+            ("blend_transition", self.transition_input),
+            ("blend_max_rise", self.blend_max_rise_input),
+            ("clip_min", self.clip_min_input),
+            ("clip_max", self.clip_max_input),
+            ("rock", self.rock_input),
+            ("snow", self.snow_input),
+        )
+
+    def collect_settings(self) -> dict:
+        # Noch keine Hoehendaten geladen: gespeicherte Werte unveraendert
+        # zurueckgeben, damit ein kurzes Oeffnen nichts ueberschreibt.
+        if not getattr(self, "_downloaded_once", False):
+            return dict(getattr(self, "_pending_settings", {}) or {})
+
+        result = {"source": self._current_source()}
+
+        for key, box in self._settings_checks():
+            result[key] = bool(box.isChecked())
+
+        for key, spin in self._settings_spins():
+            result[key] = float(spin.value())
+
+        index = self.clip_mode_combo.currentIndex()
+        if 0 <= index < len(self._CLIP_MODE_KEYS):
+            result["clip_mode"] = self._CLIP_MODE_KEYS[index]
+
+        return result
+
+    def apply_settings(self, settings):
+        # Nur die Quelle sofort; alles andere erst nach dem Laden der
+        # Hoehendaten (siehe _apply_pending_settings am Ende von _download).
+        cleaned = sanitize_export_settings(settings)
+        self._pending_settings = cleaned
+
+        source = cleaned.get("source")
+
+        if source in self._SOURCE_ORDER:
+            index = self._SOURCE_ORDER.index(source)
+            item = self.source_combo.model().item(index)
+
+            if item is None or item.isEnabled():
+                self.source_combo.setCurrentIndex(index)
+
+    def _apply_pending_settings(self):
+        settings = getattr(self, "_pending_settings", None)
+        self._pending_settings = {}
+
+        if not settings:
+            return
+
+        self._applying_preset = True
+
+        try:
+
+            for key, box in self._settings_checks():
+                if key in settings and box.isEnabled():
+                    box.setChecked(settings[key])
+
+            mode = settings.get("clip_mode")
+            if mode in self._CLIP_MODE_KEYS:
+                self.clip_mode_combo.setCurrentIndex(
+                    self._CLIP_MODE_KEYS.index(mode)
+                )
+
+            for key, spin in self._settings_spins():
+                if key in settings:
+                    spin.setValue(settings[key])
+
+            if "clip_min" in settings and "clip_max" in settings:
+                self._clip_window_set = True
+
+        finally:
+
+            self._applying_preset = False
 
     def _update_preview(self):
 

@@ -100,6 +100,19 @@ class Project:
 
     selection: Selection | None = None
 
+    # Export-Einstellungen (Heightmap-Dialog u. a.), siehe src/core/export_settings.py
+    export_settings: dict = field(default_factory=dict)
+
+    def set_export_settings(self, settings: dict):
+        # Nur echte Aenderungen machen das Projekt "geaendert".
+        from src.core.export_settings import sanitize_export_settings
+
+        cleaned = sanitize_export_settings(settings)
+
+        if cleaned != self.export_settings:
+            self.export_settings = cleaned
+            self.mark_dirty()
+
     # ---------------------------------------------------------
     # OpenStreetMap
     # ---------------------------------------------------------

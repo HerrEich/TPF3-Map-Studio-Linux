@@ -5,6 +5,7 @@ from src.map.objects.selection import Selection
 from src.geometry.polyline import Polyline
 from src.osm.objects.osm_data import OSMData
 from src.i18n import tr
+from src.core.export_settings import sanitize_export_settings
 
 if TYPE_CHECKING:
     from src.core.project.project import Project
@@ -17,7 +18,8 @@ class ProjectSerializer:
     Speichert und lädt Projekte im JSON-Format.
     """
 
-    VERSION = 2
+    VERSION = 3
+    SUPPORTED_VERSIONS = (2, 3)
 
     # ---------------------------------------------------------
     # Speichern
@@ -56,6 +58,8 @@ class ProjectSerializer:
             ),
 
             "osm": project.osm.to_dict(),
+
+            "export_settings": project.export_settings,
 
             "markers": [
                 {
@@ -149,7 +153,7 @@ class ProjectSerializer:
 
         version = data.get("version")
 
-        if version != ProjectSerializer.VERSION:
+        if version not in ProjectSerializer.SUPPORTED_VERSIONS:
 
             raise ValueError(
                 tr("Nicht unterstützte Projektversion: {version}").format(version=version)
@@ -235,6 +239,11 @@ class ProjectSerializer:
         # -----------------------------------------------------
         # Marker
         # -----------------------------------------------------
+
+        # Export-Einstellungen (ab Version 3; alte Projekte: leer)
+        project.export_settings = sanitize_export_settings(
+            data.get("export_settings")
+        )
 
         project.clear_markers()
 
