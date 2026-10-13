@@ -33,7 +33,7 @@ PLACE_VALUES = "city|town|village|hamlet|suburb|quarter|neighbourhood"
 BIOME_LANDUSE_VALUES = (
     "residential|industrial|commercial|retail|quarry|brownfield|"
     "construction|village_green|recreation_ground|greenfield|allotments|"
-    "marsh"
+    "marsh|vineyard|orchard"
 )
 BIOME_NATURAL_VALUES = (
     "heath|scrub|wetland|grassland|fell|bare_rock|scree|sand|shingle|beach"

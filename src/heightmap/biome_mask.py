@@ -65,12 +65,19 @@ CATEGORIES: tuple[tuple[str, str, dict[str, frozenset[str]]], ...] = (
     ),
     (
         "farmland",
-        "Acker, Weinberg, Obstbau",
+        "Acker, Obstbau",
         {
             "landuse": frozenset(
-                {"farmland", "farmyard", "vineyard", "orchard", "allotments",
+                {"farmland", "farmyard", "orchard", "allotments",
                  "plant_nursery"}
             ),
+        },
+    ),
+    (
+        "vineyard",
+        "Weinberg",
+        {
+            "landuse": frozenset({"vineyard"}),
         },
     ),
     (
@@ -118,6 +125,7 @@ CATEGORIES: tuple[tuple[str, str, dict[str, frozenset[str]]], ...] = (
 DEFAULT_ASSIGNMENT: dict[str, int | None] = {
     "grass": 0,
     "farmland": 3,
+    "vineyard": 2,
     "wet_heath": 2,
     "forest": 1,
     "bare": 3,
