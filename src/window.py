@@ -714,6 +714,114 @@ class MainWindow(QMainWindow):
             tr("Kartenrezept importiert.")
         )
 
+    # ---------------------------------------------------------
+    # Fehlerbericht und Log-Ordner (Hilfe-Menue)
+    # ---------------------------------------------------------
+
+    def _create_bug_report(self):
+
+        import logging
+        from pathlib import Path
+
+        from PySide6.QtCore import QStandardPaths
+
+        from src.core.bug_report import create_report, default_report_name
+        from src.http_identity import APP_VERSION
+        from src.i18n import get_language
+        from src.logging_config import LOG_FILE
+
+        # Erst alles in die Logdatei schreiben lassen, dann einpacken.
+        for handler in logging.getLogger().handlers:
+            try:
+                handler.flush()
+            except Exception:
+                pass
+
+        try:
+            import PySide6
+            pyside_version = PySide6.__version__
+        except Exception:
+            pyside_version = "?"
+
+        documents = QStandardPaths.writableLocation(
+            QStandardPaths.DocumentsLocation
+        )
+
+        name = default_report_name()
+
+        default_path = str(Path(documents) / name) if documents else name
+
+        filename, _ = QFileDialog.getSaveFileName(
+            self,
+            tr("Fehlerbericht speichern"),
+            default_path,
+            tr("ZIP-Datei (*.zip)")
+        )
+
+        if not filename:
+            return
+
+        if not filename.lower().endswith(".zip"):
+            filename += ".zip"
+
+        project = self.map_widget.controller.project
+
+        extras = {
+            "has_selection": project.has_selection,
+            "osm_nodes": project.node_count,
+            "osm_ways": project.way_count,
+        }
+
+        try:
+            create_report(
+                filename,
+                LOG_FILE,
+                APP_VERSION,
+                get_language(),
+                pyside_version=pyside_version,
+                extras=extras,
+            )
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                tr("Fehler"),
+                tr("Fehlerbericht konnte nicht erstellt werden.\n\n{error}").format(error=exc)
+            )
+            return
+
+        QMessageBox.information(
+            self,
+            tr("Fehlerbericht gespeichert"),
+            tr("Der Fehlerbericht wurde gespeichert:\n\n{path}\n\n"
+            "Benutzername, Windows-Pfade, Steam-ID und E-Mail-Adressen "
+            "wurden entfernt. Das Log kann Koordinaten des bearbeiteten "
+            "Gebiets enthalten. Bitte die Datei an die Fehlermeldung "
+            "(GitHub-Issue oder Forenbeitrag) anh\u00e4ngen.").format(path=filename)
+        )
+
+        self.statusBar().showMessage(
+            tr("Fehlerbericht gespeichert.")
+        )
+
+    def _open_log_folder(self):
+
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+
+        from src.logging_config import LOG_DIR
+
+        try:
+            LOG_DIR.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            pass
+
+        if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(LOG_DIR))):
+            QMessageBox.warning(
+                self,
+                tr("Fehler"),
+                tr("Log-Ordner konnte nicht ge\u00f6ffnet werden:\n{path}").format(path=LOG_DIR)
+            )
+
     def _new_project(self):
         """
         Beginnt ein neues, leeres Projekt (fragt vorher nach dem Speichern).
@@ -1152,6 +1260,29 @@ class MainWindow(QMainWindow):
 
         feature_overview_action.triggered.connect(
             self._open_feature_overview
+        )
+
+        help_menu.addSeparator()
+
+        bug_report_action = help_menu.addAction(
+            tr("Fehlerbericht erstellen...")
+        )
+
+        bug_report_action.setToolTip(
+            tr("Log sowie Versions- und Systemangaben als ZIP f\u00fcr eine "
+            "Fehlermeldung speichern (Namen und Pfade werden entfernt)")
+        )
+
+        bug_report_action.triggered.connect(
+            self._create_bug_report
+        )
+
+        log_folder_action = help_menu.addAction(
+            tr("Log-Ordner \u00f6ffnen")
+        )
+
+        log_folder_action.triggered.connect(
+            self._open_log_folder
         )
 
         # ---------------------------------------------------------

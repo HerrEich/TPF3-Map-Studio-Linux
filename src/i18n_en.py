@@ -1822,4 +1822,24 @@ guide of the heightmap dialog (F1).</p>
         'The map recipe could not be saved.\n\n{error}',
     'Nicht unterstützte Rezeptversion: {version}':
         'Unsupported recipe version: {version}',
+    'Fehlerbericht erstellen...':
+        'Create bug report...',
+    'Log sowie Versions- und Systemangaben als ZIP für eine Fehlermeldung speichern (Namen und Pfade werden entfernt)':
+        'Save the log plus version and system information as a ZIP for a bug report (names and paths are removed)',
+    'Log-Ordner öffnen':
+        'Open log folder',
+    'Fehlerbericht speichern':
+        'Save bug report',
+    'ZIP-Datei (*.zip)':
+        'ZIP file (*.zip)',
+    'Fehlerbericht konnte nicht erstellt werden.\n\n{error}':
+        'The bug report could not be created.\n\n{error}',
+    'Fehlerbericht gespeichert':
+        'Bug report saved',
+    'Der Fehlerbericht wurde gespeichert:\n\n{path}\n\nBenutzername, Windows-Pfade, Steam-ID und E-Mail-Adressen wurden entfernt. Das Log kann Koordinaten des bearbeiteten Gebiets enthalten. Bitte die Datei an die Fehlermeldung (GitHub-Issue oder Forenbeitrag) anhängen.':
+        'The bug report was saved:\n\n{path}\n\nUser name, Windows paths, Steam ID and e-mail addresses have been removed. The log may contain coordinates of the area you worked on. Please attach the file to your bug report (GitHub issue or forum post).',
+    'Fehlerbericht gespeichert.':
+        'Bug report saved.',
+    'Log-Ordner konnte nicht geöffnet werden:\n{path}':
+        'The log folder could not be opened:\n{path}',
 }
