@@ -3,6 +3,18 @@ import json
 from src.map.layer import Layer
 
 
+MAX_LOG_SCRIPT_CHARS = 200
+
+
+def _short_script(script: str) -> str:
+    """Kuerzt lange JS-Aufrufe (z. B. Listen mit tausenden OSM-IDs) fuers Log."""
+
+    if len(script) <= MAX_LOG_SCRIPT_CHARS:
+        return script
+
+    return "%s ... (%d Zeichen)" % (script[:MAX_LOG_SCRIPT_CHARS], len(script))
+
+
 class LeafletAPI:
 
     def __init__(self, web_view):
@@ -41,7 +53,7 @@ class LeafletAPI:
         if function == "addBatch":
             print("JS >", function, "- Batch gesendet")
         else:
-            print("JS >", script)
+            print("JS >", _short_script(script))
 
         self.web_view.page().runJavaScript(script)
 
