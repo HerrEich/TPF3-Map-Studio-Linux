@@ -27,11 +27,17 @@ The Studio itself is licensed under the MIT licence (see [LICENSE](LICENSE)). It
 - If you publish a map made from it, credit the source. The Studio shows it in the heightmap dialog: "© swisstopo (Bundesamt für Landestopografie swisstopo), swissALTI3D".
 - In case of excessive use swisstopo may restrict access. The Studio loads only the tiles it needs, with a short pause in between, and keeps them in a cache.
 
+### AHN (Netherlands)
+
+- Elevation model of the Netherlands (Actueel Hoogtebestand Nederland), used in the Studio as terrain model (without buildings and vegetation) at 2 m resolution. The tiles are obtained from the PDOK web service when loading (<https://service.pdok.nl/rws/ahn/wcs/v1_0>) and are not shipped with the Studio.
+- Licence: CC0 1.0 (Public Domain Dedication), <https://creativecommons.org/publicdomain/zero/1.0/>. The data may be used freely. Attribution is not required, but the Studio includes it anyway: "© Rijkswaterstaat / AHN (Actueel Hoogtebestand Nederland), CC0 1.0".
+- The Studio loads only the tiles it needs, with a short pause in between, and keeps them in a cache.
+
 ### Copernicus DEM (GLO-30)
 
 - Worldwide elevation model with about 30 m resolution, obtained through <https://copernicus-dem-30m.s3.amazonaws.com/>
 - Licence: "Licence for Copernicus DEM instance COP-DEM-GLO-30-F Global 30m Full, Free & Open", <https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Data/DEM/resources/license/License-COPDEM-30.pdf>. It allows reproduction, distribution, and adaptation and combination with other data.
-- Notice for modified data (Art. 6 b), in the wording of the licence: "produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved". The Studio always modifies the data (cropped, resampled), so the notice also applies if Copernicus only fills gaps in DGM1 or swissALTI3D.
+- Notice for modified data (Art. 6 b), in the wording of the licence: "produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved". The Studio always modifies the data (cropped, resampled), so the notice also applies if Copernicus only fills gaps in DGM1, swissALTI3D or AHN.
 - Disclaimer (Art. 6 c), to be added in a licence or legal notice covering the distribution, a translation is allowed: "The organisations in charge of the Copernicus programme by law or by delegation do not incur any liability for any use of the Copernicus WorldDEM-30".
 - The impression must not arise that the map is officially endorsed by Copernicus or the data providers (Art. 6 d).
 

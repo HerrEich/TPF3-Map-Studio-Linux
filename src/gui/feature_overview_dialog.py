@@ -173,7 +173,9 @@ FEATURE_GROUPS = (
                 "swissALTI3D Schweiz: Geländemodell von swisstopo für die "
                 "Schweiz und Liechtenstein (2 m), die Kacheln kommen von "
                 "data.geo.admin.ch. Die Auswahl erscheint nur bei Karten "
-                "dort. Wo DGM1- oder swissALTI3D-Daten fehlen, ergänzt das "
+                "dort. AHN Niederlande: Geländemodell der Niederlande (2 m), die Kacheln kommen von "
+                "PDOK. Auch hier erscheint die Auswahl nur bei Karten dort. "
+                "Wo DGM1-, swissALTI3D- oder AHN-Daten fehlen, ergänzt das "
                 "Studio aus Copernicus.",
             ),
             (

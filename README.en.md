@@ -66,7 +66,7 @@ This only appears on the first start. If your antivirus also flags the file or m
 - **Map area**: set it with the rectangle tool (centre, size, rotation) and plan it in the game's format (for example "Größenwahnsinnig 1:5", i.e. Megalomaniac)
 - **Compress large areas** (for example 80 × 80 km): with a compression factor and a height factor in the rectangle tool, a very large real-world area is shrunk onto a normal game map. Only Copernicus is available as elevation source then, and a warning prevents accidental use on normal maps
 - **Load OSM data** with a configurable Overpass query (checkboxes and templates instead of free text). Large areas are loaded in tiles, with a progress display and a cancel button
-- **Heightmap** from DGM1 (Germany, 1 m), swissALTI3D (Switzerland and Liechtenstein, 2 m), Copernicus (worldwide, 30 m, includes tree canopy) or your own GeoTIFF tiles. With a quick preview (always Copernicus), water level suggestion, rivers from OSM, slope compensation, levelling of railway routes and settlements, smoothing and squashing, and a height window for the limits of the map editor (−100 to 3177 m: cap peaks, cut off lows or squash, with preview). The dialog lists the values to enter during the import in the game. The heightmap is saved as a 16-bit PNG
+- **Heightmap** from DGM1 (Germany, 1 m), swissALTI3D (Switzerland and Liechtenstein, 2 m), AHN (Netherlands, 2 m), Copernicus (worldwide, 30 m, includes tree canopy) or your own GeoTIFF tiles. With a quick preview (always Copernicus), water level suggestion, rivers from OSM, slope compensation, levelling of railway routes and settlements, smoothing and squashing, and a height window for the limits of the map editor (−100 to 3177 m: cap peaks, cut off lows or squash, with preview). The dialog lists the values to enter during the import in the game. The heightmap is saved as a 16-bit PNG
 - **Description for sharing** for published maps, in German or English: map size and format, elevation range, elevation source with data date, date of the OSM data, biomes, attributions with licence links and changes to the elevation data, as Markdown, Steam BBCode or plain text
 - **Biome mask, towns and industries** from OSM, as files for the import in the editor
 - **Station plan for rebuilding** (stations) as named markers on the map and as a list (`bahnhoefe.json` and `bahnhoefe.csv`) with platforms, stopping positions and status (abandoned, under construction). Nothing is built in the game from this, the list is a reference
@@ -81,6 +81,7 @@ This only appears on the first start. If your antivirus also flags the file or m
 | Copernicus DEM (GLO-30) | worldwide | 30 m | Copernicus (AWS Open Data) | includes tree canopy, default of the quick preview |
 | DGM1 Germany | Germany | 1 m | hoehendaten.de (state surveys) | about 20 tiles per minute, large maps take half an hour |
 | swissALTI3D | Switzerland and Liechtenstein | 2 m | data.geo.admin.ch (swisstopo) | only selectable for maps there, attribution is mandatory |
+| AHN | Netherlands | 2 m | PDOK (Rijkswaterstaat) | only selectable for maps there, about 0.8 MB per kilometre tile |
 | Own tiles | Germany | depends on file | downloaded yourself from a state portal | GeoTIFF on the 1 km grid (UTM) |
 
 Where data from one source is missing, the Studio fills the gaps from Copernicus. You choose the elevation source in the heightmap dialog.
@@ -216,6 +217,7 @@ The Studio uses public data sources. If you publish a map made with it, please c
 - **Map data:** © OpenStreetMap contributors, Open Database License (ODbL)
 - **Elevation data Germany (DGM1):** depending on the federal state, Data licence Germany, attribution, version 2.0 (dl-de/by-2-0). The heightmap dialog shows the exact attribution. The licence additionally requires a note that the data has been changed
 - **Elevation data Switzerland and Liechtenstein (swissALTI3D):** © swisstopo (Bundesamt für Landestopografie swisstopo), Open Government Data, attribution is mandatory
+- **Elevation data Netherlands (AHN):** © Rijkswaterstaat / AHN (Actueel Hoogtebestand Nederland), CC0 1.0. Attribution is not required, but the Studio includes it anyway
 - **Elevation data worldwide:** Copernicus DEM (GLO-30). The notice for modified data and the disclaimer are in [THIRD_PARTY_NOTICES.en.md](THIRD_PARTY_NOTICES.en.md)
 
 The **Description for sharing…** button in the heightmap dialog creates a ready-made text with this information (Markdown, Steam BBCode or plain text). It does not replace the licence terms of the sources.
@@ -229,6 +231,7 @@ All sources, licences and notices are in [THIRD_PARTY_NOTICES.en.md](THIRD_PARTY
 - [Copernicus](https://copernicus-dem-30m.s3.amazonaws.com/) for the worldwide elevation data
 - The state survey offices for DGM1 and [hoehendaten.de](https://hoehendaten.de/) for access to it
 - [swisstopo](https://www.swisstopo.admin.ch/) for swissALTI3D
+- [PDOK](https://www.pdok.nl/) and Rijkswaterstaat for the AHN
 - [Vacuum-Tube](https://github.com/Vacuum-Tube/OSM-TPF2-Importer) for the OSM-TPF2-Importer. The Studio grew out of the wish to prepare data for it. The importer is an independent project under its own licence
 
 ## Questions, problems and contact

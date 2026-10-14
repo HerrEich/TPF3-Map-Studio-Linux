@@ -44,6 +44,7 @@ from src.heightmap.heightmap_exporter import (
     SOURCE_COPERNICUS,
     SOURCE_DGM1_DE,
     SOURCE_DGM1_FOLDER,
+    SOURCE_AHN_NL,
     SOURCE_SWISSALTI3D,
     build_heightmap_array,
     build_heightmap_array_ex,
@@ -67,6 +68,7 @@ from src.heightmap.height_clipping import (
 )
 from src.heightmap.lv95 import SWISS_BOUNDS
 from src.heightmap.swissalti3d_dem import SwissFetchJob
+from src.heightmap.ahn_nl_dem import NL_BOUNDS, AhnFetchJob
 from src.heightmap.tpf3_paths import find_tpf3_heightmaps_folder
 from src.heightmap.infrastructure_flatten import (
     build_infrastructure_mask,
@@ -95,6 +97,7 @@ from src.app_paths import APP_DIR  # noqa: E402
 DEFAULT_CACHE_DIR = APP_DIR / "dem_cache"
 DEFAULT_DGM1_CACHE_DIR = APP_DIR / "dgm1_cache"
 DEFAULT_SWISS_CACHE_DIR = APP_DIR / "swissalti3d_cache"
+DEFAULT_AHN_CACHE_DIR = APP_DIR / "ahn_nl_cache"
 # OSM-Kacheln: der Ordner wird von src/osm/tile_cache.py benutzt (gleicher Name,
 # damit die Cache-Verwaltung ihn findet).
 DEFAULT_OSM_CACHE_DIR = APP_DIR / "osm_cache"
@@ -239,6 +242,7 @@ class HeightmapDialog(QDialog):
             tr("DGM1 Deutschland (1 m, über hoehendaten.de)"),
             tr("DGM1 aus eigenen GeoTIFF-Kacheln (Ordner)"),
             tr("swissALTI3D Schweiz (2 m, über data.geo.admin.ch)"),
+            tr("AHN Niederlande (2 m, über PDOK)"),
         ])
         self.source_combo.setToolTip(
             tr("Copernicus: weltweit, aber nur 30 m fein und mit Baumkronen. "
@@ -251,6 +255,7 @@ class HeightmapDialog(QDialog):
             "data.geo.admin.ch geladen und liegen danach im Zwischenspeicher. "
             "Nur bei Karten in der Schweiz wählbar.")
         )
+        self.source_combo.setItemData(4, tr("AHN Niederlande: Höhenmodell der Niederlande (2 m Auflösung, ohne Gebäude und Bewuchs). Die Kacheln werden von PDOK geladen und liegen danach im Zwischenspeicher. Nur bei Karten in den Niederlanden wählbar."), 3)  # 3 = Qt.ToolTipRole
         self.source_combo.currentIndexChanged.connect(
             self._on_source_changed
         )
@@ -1169,6 +1174,7 @@ class HeightmapDialog(QDialog):
             SOURCE_DGM1_DE,
             SOURCE_DGM1_FOLDER,
             SOURCE_SWISSALTI3D,
+            SOURCE_AHN_NL,
         )[self.source_combo.currentIndex()]
 
     def _update_source_availability(self):
@@ -1203,6 +1209,20 @@ class HeightmapDialog(QDialog):
             swiss_item.setEnabled(in_switzerland)
 
         if not in_switzerland and self.source_combo.currentIndex() == 3:
+            self.source_combo.setCurrentIndex(0)
+
+        # AHN nur bei Karten in den Niederlanden
+        n_lat_min, n_lat_max, n_lon_min, n_lon_max = NL_BOUNDS
+
+        in_netherlands = n_lat_min <= lat <= n_lat_max and n_lon_min <= lon <= n_lon_max
+        in_netherlands = in_netherlands and not scaled
+
+        ahn_item = self.source_combo.model().item(4)
+
+        if ahn_item is not None:
+            ahn_item.setEnabled(in_netherlands)
+
+        if not in_netherlands and self.source_combo.currentIndex() == 4:
             self.source_combo.setCurrentIndex(0)
 
         folder_item = self.source_combo.model().item(2)
@@ -1247,6 +1267,26 @@ class HeightmapDialog(QDialog):
                 self,
                 self.selection,
                 DEFAULT_DGM1_CACHE_DIR,
+            )
+
+            if not fetch_dialog.run():
+                raise RuntimeError(
+                    fetch_dialog.error or tr("Abgebrochen.")
+                )
+
+            self.status_label.setText(tr("Berechne Höhenraster..."))
+            self.repaint()
+
+        elif source == SOURCE_AHN_NL:
+
+            fetch_dialog = Dgm1FetchDialog(
+                self,
+                self.selection,
+                DEFAULT_AHN_CACHE_DIR,
+                job=AhnFetchJob(self.selection, DEFAULT_AHN_CACHE_DIR),
+                title=tr("AHN-Kacheln laden"),
+                note=tr("Die Kacheln kommen von PDOK (Rijkswaterstaat, AHN). Bereits geladene Kacheln werden übersprungen. Du kannst jederzeit abbrechen und später weitermachen."),
+                seconds_per_tile=1.5,
             )
 
             if not fetch_dialog.run():
@@ -1315,6 +1355,7 @@ class HeightmapDialog(QDialog):
             dgm1_cache_dir=DEFAULT_DGM1_CACHE_DIR,
             dgm1_folder=self._dgm1_folder,
             swiss_cache_dir=DEFAULT_SWISS_CACHE_DIR,
+            ahn_cache_dir=DEFAULT_AHN_CACHE_DIR,
         )
 
         self._build_info = info
@@ -1328,7 +1369,12 @@ class HeightmapDialog(QDialog):
         if info is None or info.source == SOURCE_COPERNICUS:
             return ""
 
-        name = "swissALTI3D" if info.source == SOURCE_SWISSALTI3D else "DGM1"
+        if info.source == SOURCE_SWISSALTI3D:
+            name = "swissALTI3D"
+        elif info.source == SOURCE_AHN_NL:
+            name = "AHN"
+        else:
+            name = "DGM1"
 
         if info.fallback_fraction > 0.0005:
             return tr(
@@ -1372,7 +1418,7 @@ class HeightmapDialog(QDialog):
                     "(dort Copernicus)."
                 ).format(
                     count=info.missing_tiles,
-                    source="swissALTI3D" if swiss else "DGM1",
+                    source="swissALTI3D" if swiss else ("AHN" if info.source == SOURCE_AHN_NL else "DGM1"),
                 )
             )
 
@@ -1864,7 +1910,7 @@ class HeightmapDialog(QDialog):
         # geaendert worden sein kann)
         info = getattr(self, "_build_info", None)
         source = info.source if info is not None else self._current_source()
-        dgm1 = source in (SOURCE_DGM1_DE, SOURCE_DGM1_FOLDER, SOURCE_SWISSALTI3D)
+        dgm1 = source in (SOURCE_DGM1_DE, SOURCE_DGM1_FOLDER, SOURCE_SWISSALTI3D, SOURCE_AHN_NL)
 
         wanted_on = {
             1: (),
@@ -2815,6 +2861,7 @@ class HeightmapDialog(QDialog):
         SOURCE_DGM1_DE,
         SOURCE_DGM1_FOLDER,
         SOURCE_SWISSALTI3D,
+        SOURCE_AHN_NL,
     )
     _CLIP_MODE_KEYS = ("top", "bottom", "compress")
 

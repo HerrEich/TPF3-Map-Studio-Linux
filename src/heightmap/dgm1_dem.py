@@ -534,7 +534,7 @@ def read_raster_info(path: Path) -> RasterInfo:
         n0 += px / 2.0
 
     epsg = keys.get(GEOKEY_PROJECTED_CS)
-    zone = {25832: 32, 25833: 33, LV95_ZONE: LV95_ZONE}.get(epsg)
+    zone = {25831: 31, 25832: 32, 25833: 33, LV95_ZONE: LV95_ZONE}.get(epsg)
 
     if zone is None:
         # Kein EPSG-Code im Kopf: Zone aus dem Dateinamen ("32_497_5670..." oder
@@ -542,7 +542,7 @@ def read_raster_info(path: Path) -> RasterInfo:
         name = Path(path).name
         head = name.split("_")[0]
 
-        if head in ("32", "33"):
+        if head in ("31", "32", "33"):
             zone = int(head)
         elif head == str(LV95_ZONE) or f"_{LV95_ZONE}_" in name:
             zone = LV95_ZONE

@@ -11,10 +11,12 @@ from src.heightmap.heightmap_exporter import (
     SOURCE_COPERNICUS,
     SOURCE_DGM1_DE,
     SOURCE_DGM1_FOLDER,
+    SOURCE_AHN_NL,
     SOURCE_SWISSALTI3D,
     pixel_size_for_selection,
 )
 from src.heightmap.swissalti3d_dem import ATTRIBUTION as SWISS_ATTRIBUTION
+from src.heightmap.ahn_nl_dem import ATTRIBUTION as AHN_ATTRIBUTION
 from src.gui.map_size_presets import find_by_pixels
 from src.i18n import get_language, translate_to
 
@@ -53,6 +55,7 @@ LICENSE_URLS: dict[str, str] = {
         "Data/DEM/resources/license/License-COPDEM-30.pdf"
     ),
     "dgm1": "http://www.govdata.de/dl-de/by-2-0",
+    "ahn": "https://creativecommons.org/publicdomain/zero/1.0/",
     "cc_by_4": "https://creativecommons.org/licenses/by/4.0/",
     "swissalti3d": (
         "https://www.swisstopo.admin.ch/en/"
@@ -228,7 +231,9 @@ def collect_rows(
         rows.append((tr("Biome"), biomes, None))
 
     # Hoehenquelle
-    if source == SOURCE_SWISSALTI3D:
+    if source == SOURCE_AHN_NL:
+        source_name = tr("AHN Niederlande (2 m)")
+    elif source == SOURCE_SWISSALTI3D:
         source_name = tr("swissALTI3D Schweiz (2 m)")
     elif source in (SOURCE_DGM1_DE, SOURCE_DGM1_FOLDER):
         source_name = tr("DGM1 Deutschland (1 m)")
@@ -255,7 +260,14 @@ def collect_rows(
     # Quellenangaben und Lizenzen
     uses_copernicus = source == SOURCE_COPERNICUS or fallback > FALLBACK_MIN_FRACTION
 
-    if source == SOURCE_SWISSALTI3D:
+    if source == SOURCE_AHN_NL:
+        rows.append((tr("Quellenangabe"), AHN_ATTRIBUTION, None))
+        rows.append((
+            tr("Lizenz"),
+            tr("CC0 1.0 (frei nutzbar)"),
+            LICENSE_URLS.get("ahn"),
+        ))
+    elif source == SOURCE_SWISSALTI3D:
         rows.append((tr("Quellenangabe"), SWISS_ATTRIBUTION, None))
         rows.append((
             tr("Lizenz"),

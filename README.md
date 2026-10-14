@@ -66,7 +66,7 @@ Das erscheint nur beim ersten Start. Falls dein Virenscanner die Datei zusätzli
 - **Kartenausschnitt** per Rechteck-Tool festlegen (Mittelpunkt, Größe, Drehwinkel) und im Format des Spiels (z. B. Größenwahnsinnig 1:5) planen
 - **Große Gebiete stauchen** (z. B. 80 × 80 km): Mit Stauchfaktor und Höhenfaktor im Rechteck-Tool wird ein sehr großes echtes Gebiet auf eine normale Spielkarte geschrumpft. Dabei ist nur Copernicus als Höhenquelle möglich, eine Warnung verhindert die versehentliche Nutzung auf normalen Karten
 - **OSM-Daten laden** mit konfigurierbarer Overpass-Abfrage (Checkboxen und Vorlagen statt Freitext). Große Gebiete werden in Kacheln geladen, mit Fortschrittsanzeige und Abbrechen-Knopf
-- **Heightmap** aus dem DGM1 (Deutschland, 1 m), aus swissALTI3D (Schweiz und Liechtenstein, 2 m), aus Copernicus (weltweit, 30 m, mit Baumkronen) oder aus eigenen GeoTIFF-Kacheln. Mit Schnellvorschau (immer Copernicus), Wasserhöhen-Vorschlag, Flüssen nach OSM, Gefälle-Ausgleich, Einebnen von Trassen und Siedlungen, Glätten und Stauchen sowie einem Höhenfenster für die Grenzen des Karteneditors (−100 bis 3177 m: Gipfel kappen, Tiefen abschneiden oder stauchen, mit Vorschau). Der Dialog nennt die Werte, die beim Import im Spiel einzutragen sind. Die Heightmap wird als 16-Bit-PNG gespeichert
+- **Heightmap** aus dem DGM1 (Deutschland, 1 m), aus swissALTI3D (Schweiz und Liechtenstein, 2 m), aus dem AHN (Niederlande, 2 m), aus Copernicus (weltweit, 30 m, mit Baumkronen) oder aus eigenen GeoTIFF-Kacheln. Mit Schnellvorschau (immer Copernicus), Wasserhöhen-Vorschlag, Flüssen nach OSM, Gefälle-Ausgleich, Einebnen von Trassen und Siedlungen, Glätten und Stauchen sowie einem Höhenfenster für die Grenzen des Karteneditors (−100 bis 3177 m: Gipfel kappen, Tiefen abschneiden oder stauchen, mit Vorschau). Der Dialog nennt die Werte, die beim Import im Spiel einzutragen sind. Die Heightmap wird als 16-Bit-PNG gespeichert
 - **Beschreibung zum Teilen** für veröffentlichte Karten, wahlweise auf Deutsch oder Englisch: Kartengröße und -format, Höhenbereich, Höhenquelle mit Datenstand, Stand der OSM-Daten, Biome, Quellenangaben mit Lizenz-Links und Änderungen an den Höhendaten, als Markdown, Steam-BBCode oder Klartext
 - **Biome-Maske, Städte und Industrien** aus OSM, als Dateien für den Import im Editor
 - **Bahnhofsplan zum Nachbauen** (Bahnhöfe) als Marker mit Namen auf der Karte und als Liste (`bahnhoefe.json` und `bahnhoefe.csv`) mit Bahnsteigen, Haltepositionen und Status (aufgegeben, im Bau). Im Spiel wird dadurch nichts gebaut, die Liste dient als Nachschlagewerk
@@ -81,6 +81,7 @@ Das erscheint nur beim ersten Start. Falls dein Virenscanner die Datei zusätzli
 | Copernicus DEM (GLO-30) | weltweit | 30 m | Copernicus (AWS Open Data) | enthält Baumkronen, Standard der Schnellvorschau |
 | DGM1 Deutschland | Deutschland | 1 m | hoehendaten.de (Landesvermessung) | etwa 20 Kacheln pro Minute, große Karten brauchen eine halbe Stunde |
 | swissALTI3D | Schweiz und Liechtenstein | 2 m | data.geo.admin.ch (swisstopo) | nur bei Karten dort wählbar, Quellenangabe ist Pflicht |
+| AHN | Niederlande | 2 m | PDOK (Rijkswaterstaat) | nur bei Karten dort wählbar, rund 0,8 MB je Kilometer-Kachel |
 | Eigene Kacheln | Deutschland | je nach Datei | selbst bei einem Landesportal geladen | GeoTIFF auf dem 1-km-Raster (UTM) |
 
 Wo Daten einer Quelle fehlen, ergänzt das Studio aus Copernicus. Die Höhenquelle wählst du im Heightmap-Dialog.
@@ -216,6 +217,7 @@ Das Studio nutzt öffentliche Datenquellen. Wer eine damit erzeugte Karte veröf
 - **Kartendaten:** © OpenStreetMap-Mitwirkende, Open Database License (ODbL)
 - **Höhendaten Deutschland (DGM1):** je nach Bundesland Datenlizenz Deutschland, Namensnennung, Version 2.0 (dl-de/by-2-0). Die genaue Quellenangabe zeigt der Heightmap-Dialog an. Die Lizenz verlangt außerdem den Hinweis, dass die Daten geändert wurden
 - **Höhendaten Schweiz und Liechtenstein (swissALTI3D):** © swisstopo (Bundesamt für Landestopografie swisstopo), Open Government Data, Quellenangabe ist Pflicht
+- **Höhendaten Niederlande (AHN):** © Rijkswaterstaat / AHN (Actueel Hoogtebestand Nederland), CC0 1.0. Eine Quellenangabe ist nicht verlangt, das Studio führt sie trotzdem mit
 - **Höhendaten weltweit:** Copernicus DEM (GLO-30). Der Vermerk für veränderte Daten und der Haftungssatz stehen in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
 
 Der Knopf **Beschreibung zum Teilen…** im Heightmap-Dialog erzeugt einen fertigen Text mit diesen Angaben (Markdown, Steam-BBCode oder Klartext). Er ersetzt nicht die Lizenzbedingungen der Quellen.
@@ -229,6 +231,7 @@ Alle Quellen, Lizenzen und Hinweise stehen in [THIRD_PARTY_NOTICES.md](THIRD_PAR
 - [Copernicus](https://copernicus-dem-30m.s3.amazonaws.com/) für die weltweiten Höhendaten
 - Die Landesvermessungsämter für das DGM1 und [hoehendaten.de](https://hoehendaten.de/) für den Zugang dazu
 - [swisstopo](https://www.swisstopo.admin.ch/) für swissALTI3D
+- [PDOK](https://www.pdok.nl/) und Rijkswaterstaat für das AHN
 - [Vacuum-Tube](https://github.com/Vacuum-Tube/OSM-TPF2-Importer) für den OSM-TPF2-Importer. Das Studio ging aus dem Wunsch hervor, Daten für ihn aufzubereiten. Der Importer ist ein eigenständiges Projekt unter eigener Lizenz
 
 ## Fragen, Probleme und Kontakt

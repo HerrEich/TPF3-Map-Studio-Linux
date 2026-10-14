@@ -21,6 +21,7 @@ from src.heightmap.height_clipping import normalize_heights
 from src.heightmap.copernicus_dem import DemMosaic, download_tiles_for_selection
 from src.heightmap.dgm1_dem import Dgm1Error, Dgm1Mosaic
 from src.heightmap.swissalti3d_dem import required_swiss_tiles
+from src.heightmap.ahn_nl_dem import required_ahn_tiles
 from src.i18n import tr
 
 METERS_PER_PIXEL = 4.0
@@ -30,6 +31,7 @@ SOURCE_COPERNICUS = "copernicus"
 SOURCE_DGM1_DE = "dgm1_de"          # Kacheln ueber hoehendaten.de (Zwischenspeicher)
 SOURCE_DGM1_FOLDER = "dgm1_folder"  # selbst heruntergeladene GeoTIFF-Kacheln
 SOURCE_SWISSALTI3D = "swissalti3d"  # swissALTI3D (Schweiz), Kacheln von data.geo.admin.ch
+SOURCE_AHN_NL = "ahn_nl"            # AHN (Niederlande), Kacheln von PDOK
 
 
 @dataclass
@@ -185,6 +187,7 @@ def build_heightmap_array_ex(
     dgm1_cache_dir: Path | None = None,
     dgm1_folder: Path | None = None,
     swiss_cache_dir: Path | None = None,
+    ahn_cache_dir: Path | None = None,
 ) -> tuple[np.ndarray, HeightmapBuildInfo]:
     """
     Wie build_heightmap_array(), waehlt aber die Hoehenquelle und liefert
@@ -220,7 +223,7 @@ def build_heightmap_array_ex(
 
         info = HeightmapBuildInfo(source=source)
 
-    elif source in (SOURCE_DGM1_DE, SOURCE_DGM1_FOLDER, SOURCE_SWISSALTI3D):
+    elif source in (SOURCE_DGM1_DE, SOURCE_DGM1_FOLDER, SOURCE_SWISSALTI3D, SOURCE_AHN_NL):
 
         if source == SOURCE_DGM1_DE:
             if dgm1_cache_dir is None:
@@ -235,12 +238,23 @@ def build_heightmap_array_ex(
                 METERS_PER_PIXEL,
                 tiles=required_swiss_tiles(selection),
             )
+        elif source == SOURCE_AHN_NL:
+            if ahn_cache_dir is None:
+                raise Dgm1Error("Kein Zwischenspeicher fuer AHN-Kacheln angegeben.")
+            dgm1 = Dgm1Mosaic.from_cache(
+                selection,
+                ahn_cache_dir,
+                METERS_PER_PIXEL,
+                tiles=required_ahn_tiles(selection),
+            )
         else:
             if dgm1_folder is None:
                 raise Dgm1Error(tr("Kein Ordner mit DGM1-Kacheln angegeben."))
             dgm1 = Dgm1Mosaic.from_folder(selection, dgm1_folder, METERS_PER_PIXEL)
 
         if dgm1.slot_count == 0:
+            if source == SOURCE_AHN_NL:
+                raise Dgm1Error(tr("Keine AHN-Kacheln fuer diesen Ausschnitt gefunden. Liegt der Ausschnitt ausserhalb der Niederlande, bitte Copernicus waehlen."))
             if source == SOURCE_SWISSALTI3D:
                 raise Dgm1Error(
                     tr("Keine swissALTI3D-Kacheln fuer diesen Ausschnitt gefunden. Liegt der "

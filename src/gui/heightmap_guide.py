@@ -58,7 +58,13 @@ fehlen, ergänzt das Studio aus Copernicus. Die Schnellvorschau nutzt immer Cope
 dort liegt. Die Kacheln kommen von data.geo.admin.ch, ein Fenster zeigt den Fortschritt und lässt
 sich abbrechen, geladene Kacheln liegen im Zwischenspeicher. Wo Daten fehlen, ergänzt das Studio aus
 Copernicus. Die Voreinstellung „Empfohlen“ behandelt swissALTI3D wie DGM1.
-<i>swissALTI3D ist bei Bern im Spiel getestet.</i></li>
+<i>swissALTI3D ist bei Bern im Spiel getestet.</i>
+<br>Für Karten in den <b>Niederlanden</b> gibt es <b>AHN Niederlande</b>
+(Geländemodell mit 2 m Auflösung). Die Auswahl erscheint nur, wenn der Kartenmittelpunkt dort liegt.
+Die Kacheln kommen von PDOK, ein Fenster zeigt den Fortschritt und lässt sich abbrechen, geladene
+Kacheln liegen im Zwischenspeicher. Auf Wasserflächen hat das AHN keine Werte, dort ergänzt das
+Studio aus Copernicus. Die Voreinstellung „Empfohlen“ behandelt AHN wie DGM1.
+<i>AHN ist bei Amsterdam im Studio geprüft, im Spiel noch nicht getestet.</i></li>
 </ol>
 
 <h4>Einstellungen</h4>
@@ -243,7 +249,7 @@ ESA; all rights reserved. Die Lizenz verlangt dazu den Satz „The organisations
 Copernicus programme by law or by delegation do not incur any liability for any use of the
 Copernicus WorldDEM-30“ (eine Übersetzung ist erlaubt). Der Vermerk gilt für veränderte Daten,
 und das Studio verändert sie immer (zugeschnitten, neu abgetastet). Er gilt auch, wenn Copernicus
-nur Lücken im DGM1 oder in swissALTI3D ergänzt.</li>
+nur Lücken im DGM1, in swissALTI3D oder im AHN ergänzt.</li>
 <li>Höhen bei Quelle DGM1: © GeoBasis-DE / Landesvermessung des jeweiligen Bundeslandes
 (zum Beispiel © GeoBasis-DE / LVermGeoRP), Datenlizenz Deutschland – Namensnennung –
 Version 2.0 (dl-de/by-2-0, www.govdata.de/dl-de/by-2-0) beziehungsweise CC BY 4.0, je nach Land.
@@ -252,6 +258,8 @@ dl-de/by-2-0 verlangt zusätzlich den Hinweis, dass die Daten geändert wurden. 
 hoehendaten.de.</li>
 <li>Höhen bei Quelle swissALTI3D: © swisstopo (Bundesamt für Landestopografie swisstopo),
 swissALTI3D. Die Quellenangabe ist nach den Nutzungsbedingungen von swisstopo Pflicht.</li>
+<li>Höhen bei Quelle AHN: © Rijkswaterstaat / AHN (Actueel Hoogtebestand Nederland), Lizenz CC0 1.0.
+Eine Quellenangabe ist nicht verlangt, das Studio führt sie trotzdem mit.</li>
 <li>Karten- und Gewässerdaten: © OpenStreetMap-Mitwirkende, Lizenz ODbL
 (www.openstreetmap.org/copyright).</li>
 <li>Relief-Hintergrund im Studio: AWS Terrain Tiles (Mapzen/Tilezen).</li>
