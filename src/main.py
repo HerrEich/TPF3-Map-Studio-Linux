@@ -39,6 +39,10 @@ def main():
     window = MainWindow()
     window.show()
 
+    # Update-Pruefung beim Start (nur wenn im Hilfe-Menue eingeschaltet)
+    from PySide6.QtCore import QTimer
+    QTimer.singleShot(3000, window._startup_update_check)
+
     sys.exit(app.exec())
 
 

@@ -1842,4 +1842,44 @@ guide of the heightmap dialog (F1).</p>
         'Bug report saved.',
     'Log-Ordner konnte nicht geöffnet werden:\n{path}':
         'The log folder could not be opened:\n{path}',
+    'Nach Updates suchen...':
+        'Check for updates...',
+    'Beim Start automatisch nach Updates suchen':
+        'Check for updates automatically at startup',
+    'Fragt beim Start einmal bei GitHub nach der neuesten Version (dabei sieht GitHub die IP-Adresse und die Versionsnummer des Studios). Standardmäßig aus.':
+        'Asks GitHub once at startup for the latest version (GitHub sees the IP address and the version number of the Studio). Off by default.',
+    'Suche nach Updates...':
+        'Checking for updates...',
+    'Keine neuere Version':
+        'No newer version',
+    'Es ist die neueste Version installiert ({version}).':
+        'You have the latest version installed ({version}).',
+    'Update-Prüfung fehlgeschlagen':
+        'Update check failed',
+    'Die Update-Prüfung ist fehlgeschlagen.\n\n{error}':
+        'The update check failed.\n\n{error}',
+    'Update verfügbar':
+        'Update available',
+    'Es gibt eine neuere Version des TPF3-Map-Studios.\n\nInstalliert: {current}\nNeueste: {latest}':
+        'A newer version of TPF3 Map Studio is available.\n\nInstalled: {current}\nLatest: {latest}',
+    'Download-Seite öffnen':
+        'Open download page',
+    'Diese Version überspringen':
+        'Skip this version',
+    'Später':
+        'Later',
+    'Download-Seite konnte nicht geöffnet werden:\n{url}':
+        'The download page could not be opened:\n{url}',
+    'Es wurde noch keine Version veröffentlicht.':
+        'No version has been published yet.',
+    'GitHub hat die Anfrage abgelehnt (Rate-Limit). Bitte später erneut versuchen.':
+        'GitHub rejected the request (rate limit). Please try again later.',
+    'GitHub hat mit Fehler {code} geantwortet.':
+        'GitHub answered with error {code}.',
+    'Unerwartete Antwort von GitHub.':
+        'Unexpected response from GitHub.',
+    'GitHub ist nicht erreichbar ({error}).':
+        'GitHub could not be reached ({error}).',
+    'Die Versionsnummer der neuesten Version ist nicht lesbar: {tag}':
+        'The version number of the latest release is not readable: {tag}',
 }

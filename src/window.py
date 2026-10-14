@@ -34,6 +34,14 @@ from src.gui.theme import apply_theme
 from src.gui.toolbar import MainToolbar
 from src.gui.rectangle_dialog import RectangleToolDialog
 from src.gui.heightmap_dialog import HeightmapDialog
+from src.core.update_check import (
+    decide_action,
+    default_settings_path,
+    load_settings,
+    save_settings,
+)
+from src.gui.update_worker import UpdateBridge, start_update_check
+from src.http_identity import APP_VERSION, USER_AGENT
 from src.core.recipe import (
     RECIPE_SUFFIX,
     RecipeError,
@@ -822,6 +830,151 @@ class MainWindow(QMainWindow):
                 tr("Log-Ordner konnte nicht ge\u00f6ffnet werden:\n{path}").format(path=LOG_DIR)
             )
 
+    # ---------------------------------------------------------
+    # Update-Hinweis (Hilfe-Menue)
+    # ---------------------------------------------------------
+
+    def _check_for_updates_manual(self, *_):
+
+        self._check_for_updates(manual=True)
+
+    def _startup_update_check(self):
+
+        settings = getattr(self, "_update_settings", None) or {}
+
+        if settings.get("auto_check"):
+            self._check_for_updates(manual=False)
+
+    def _check_for_updates(self, manual: bool):
+
+        if getattr(self, "_update_running", False):
+            return
+
+        self._update_running = True
+        self._update_manual = manual
+
+        # Die Signale kommen aus einem Hintergrund-Thread. Verbunden wird
+        # mit Methoden dieses Fensters (nicht mit Lambdas), damit Qt sie
+        # sicher im GUI-Thread ausfuehrt.
+        bridge = UpdateBridge(self)
+        bridge.result.connect(self._on_update_result)
+        bridge.failed.connect(self._on_update_failed)
+        self._update_bridge = bridge
+
+        if manual:
+            self.statusBar().showMessage(
+                tr("Suche nach Updates...")
+            )
+
+        start_update_check(bridge, USER_AGENT)
+
+    def _on_update_result(self, info):
+
+        manual = getattr(self, "_update_manual", False)
+
+        self._update_running = False
+
+        self.statusBar().clearMessage()
+
+        settings = getattr(self, "_update_settings", None) or {}
+
+        action = decide_action(
+            APP_VERSION,
+            info.version,
+            settings.get("skipped_version", ""),
+            manual,
+        )
+
+        if action == "update":
+            self._show_update_dialog(info)
+
+        elif manual:
+            QMessageBox.information(
+                self,
+                tr("Keine neuere Version"),
+                tr("Es ist die neueste Version installiert ({version}).").format(version=APP_VERSION)
+            )
+
+    def _on_update_failed(self, message):
+
+        manual = getattr(self, "_update_manual", False)
+
+        self._update_running = False
+
+        self.statusBar().clearMessage()
+
+        if manual:
+            QMessageBox.warning(
+                self,
+                tr("Update-Pr\u00fcfung fehlgeschlagen"),
+                tr("Die Update-Pr\u00fcfung ist fehlgeschlagen.\n\n{error}").format(error=message)
+            )
+        else:
+            print("Update-Pruefung fehlgeschlagen:", message)
+
+    def _show_update_dialog(self, info):
+
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+
+        box = QMessageBox(self)
+
+        box.setIcon(QMessageBox.Information)
+
+        box.setWindowTitle(tr("Update verf\u00fcgbar"))
+
+        box.setText(
+            tr("Es gibt eine neuere Version des TPF3-Map-Studios.\n\n"
+            "Installiert: {current}\nNeueste: {latest}").format(
+                current=APP_VERSION,
+                latest=info.version,
+            )
+        )
+
+        open_button = box.addButton(
+            tr("Download-Seite \u00f6ffnen"), QMessageBox.AcceptRole
+        )
+
+        skip_button = box.addButton(
+            tr("Diese Version \u00fcberspringen"), QMessageBox.DestructiveRole
+        )
+
+        box.addButton(tr("Sp\u00e4ter"), QMessageBox.RejectRole)
+
+        box.setDefaultButton(open_button)
+
+        box.exec()
+
+        clicked = box.clickedButton()
+
+        if clicked is open_button:
+
+            if not QDesktopServices.openUrl(QUrl(info.url)):
+                QMessageBox.warning(
+                    self,
+                    tr("Fehler"),
+                    tr("Download-Seite konnte nicht ge\u00f6ffnet werden:\n{url}").format(url=info.url)
+                )
+
+        elif clicked is skip_button:
+
+            self._update_settings["skipped_version"] = info.version
+
+            self._save_update_settings()
+
+    def _auto_update_toggled(self, checked):
+
+        self._update_settings["auto_check"] = bool(checked)
+
+        self._save_update_settings()
+
+    def _save_update_settings(self):
+
+        try:
+            save_settings(default_settings_path(), self._update_settings)
+        except OSError as exc:
+            print("Update-Einstellungen nicht gespeichert:", exc)
+
     def _new_project(self):
         """
         Beginnt ein neues, leeres Projekt (fragt vorher nach dem Speichern).
@@ -1283,6 +1436,38 @@ class MainWindow(QMainWindow):
 
         log_folder_action.triggered.connect(
             self._open_log_folder
+        )
+
+        help_menu.addSeparator()
+
+        update_check_action = help_menu.addAction(
+            tr("Nach Updates suchen...")
+        )
+
+        update_check_action.triggered.connect(
+            self._check_for_updates_manual
+        )
+
+        self._update_settings = load_settings(default_settings_path())
+
+        auto_update_action = help_menu.addAction(
+            tr("Beim Start automatisch nach Updates suchen")
+        )
+
+        auto_update_action.setCheckable(True)
+
+        auto_update_action.setChecked(
+            self._update_settings["auto_check"]
+        )
+
+        auto_update_action.setToolTip(
+            tr("Fragt beim Start einmal bei GitHub nach der neuesten Version "
+            "(dabei sieht GitHub die IP-Adresse und die Versionsnummer des "
+            "Studios). Standardm\u00e4\u00dfig aus.")
+        )
+
+        auto_update_action.toggled.connect(
+            self._auto_update_toggled
         )
 
         # ---------------------------------------------------------
