@@ -40,9 +40,10 @@ class CacheDialog(QDialog):
         layout = QVBoxLayout(self)
 
         intro = QLabel(
-            tr("Heruntergeladene H\u00f6hendaten werden zwischengespeichert, damit sie "
-            "nicht erneut geladen werden m\u00fcssen. Leeren schafft Platz; die Daten "
-            "werden bei Bedarf neu heruntergeladen (bei DGM1 kann das dauern). "
+            tr("Heruntergeladene Daten (H\u00f6henmodelle und OpenStreetMap-Kacheln) "
+            "werden zwischengespeichert, damit sie nicht erneut geladen werden m\u00fcssen. "
+            "Leeren schafft Platz; die Daten werden bei Bedarf neu heruntergeladen "
+            "(bei DGM1 und gro\u00dfen OSM-Gebieten kann das dauern). "
             "Projekte, Einstellungen und Logs bleiben unber\u00fchrt.")
         )
         intro.setWordWrap(True)

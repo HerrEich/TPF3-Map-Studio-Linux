@@ -277,7 +277,9 @@ class OverpassClient:
 
                 last_exception = exc
 
-                print("Server", server, "fehlgeschlagen:", type(exc).__name__)
+                status = getattr(getattr(exc, "response", None), "status_code", None)
+                label = type(exc).__name__ + (f" (HTTP {status})" if status else "")
+                print("Server", server, "fehlgeschlagen:", label)
 
                 self._note_overload(getattr(exc, "response", None))
 

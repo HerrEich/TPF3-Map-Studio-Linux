@@ -1890,8 +1890,8 @@ guide of the heightmap dialog (F1).</p>
         'View downloaded elevation data and free up disk space',
     'Cache verwalten':
         'Manage cache',
-    'Heruntergeladene Höhendaten werden zwischengespeichert, damit sie nicht erneut geladen werden müssen. Leeren schafft Platz; die Daten werden bei Bedarf neu heruntergeladen (bei DGM1 kann das dauern). Projekte, Einstellungen und Logs bleiben unberührt.':
-        'Downloaded elevation data is cached so that it does not have to be downloaded again. Clearing frees disk space; the data is downloaded again when needed (this can take a while for DGM1). Projects, settings and logs are not affected.',
+    'Heruntergeladene Daten (Höhenmodelle und OpenStreetMap-Kacheln) werden zwischengespeichert, damit sie nicht erneut geladen werden müssen. Leeren schafft Platz; die Daten werden bei Bedarf neu heruntergeladen (bei DGM1 und großen OSM-Gebieten kann das dauern). Projekte, Einstellungen und Logs bleiben unberührt.':
+        'Downloaded data (elevation models and OpenStreetMap tiles) is cached so that it does not have to be downloaded again. Clearing frees disk space; the data is downloaded again when needed (this can take a while for DGM1 and large OSM areas). Projects, settings and logs are not affected.',
     '{files} Dateien, {size}':
         '{files} files, {size}',
     'leer':

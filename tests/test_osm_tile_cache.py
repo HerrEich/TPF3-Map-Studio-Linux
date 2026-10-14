@@ -186,5 +186,34 @@ class ClientTileTests(unittest.TestCase):
         self.assertEqual(self.client._allowed, 2)
 
 
+class ClientLogTests(unittest.TestCase):
+
+    def test_status_code_is_logged(self):
+        import io
+        from contextlib import redirect_stdout
+
+        import requests
+
+        client = oc.OverpassClient()
+        client.SERVERS = ["https://example.invalid/api"]
+
+        class _Failing:
+            status_code = 504
+            headers = {}
+
+            def raise_for_status(self):
+                raise requests.HTTPError("504", response=self)
+
+        buffer = io.StringIO()
+
+        with mock.patch.object(client, "_post", return_value=_Failing()):
+            with redirect_stdout(buffer):
+                with self.assertRaises(RuntimeError):
+                    client._fetch_json("q")
+
+        self.assertIn("HTTP 504", buffer.getvalue())
+
+
+
 if __name__ == "__main__":
     unittest.main()
