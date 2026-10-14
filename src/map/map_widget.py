@@ -9,6 +9,7 @@ from src.i18n import tr
 from src.map.leaflet_api import LeafletAPI
 from src.map.map_controller import MapController
 from src.map.bridge import Bridge
+from src.map.map_page import MapPage
 
 
 class MapWidget(QWebEngineView):
@@ -57,6 +58,10 @@ class MapWidget(QWebEngineView):
         # ---------------------------------------------------------
         # WebEngine Entwicklerkonsole
         # ---------------------------------------------------------
+
+        # Nur lokale Seiten im Kartenfenster: Links der Karte (Leaflet, OSM-Copyright)
+        # oeffnen im Standardbrowser, statt die Karte dauerhaft zu ersetzen.
+        self.setPage(MapPage(self))
 
         self.devtools = QWebEngineView()
 
