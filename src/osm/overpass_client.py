@@ -1,5 +1,7 @@
 import math
 import threading
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 
@@ -8,6 +10,7 @@ from src.map.objects.selection import Selection
 from src.osm.osm_parser import OSMParser
 from src.osm.objects.osm_data import OSMData
 from src.osm.overpass_query_builder import OverpassQueryConfig, build_query
+from src.osm.tile_cache import TileCache
 from src.i18n import tr
 
 
@@ -17,6 +20,10 @@ TILE_THRESHOLD_M = 25_000.0
 TILE_SIZE_M = 20_000.0
 TILE_OVERLAP_M = 200.0
 TILE_RETRIES = 2
+# Gleichzeitige Kachel-Anfragen (bei 429/504 faellt es auf 1 zurueck) und
+# Obergrenze fuer die Wartezeit nach einem Retry-After-Hinweis.
+TILE_WORKERS = 2
+MAX_RETRY_AFTER_S = 60.0
 
 _R_EARTH = 6371008.8
 
@@ -109,6 +116,20 @@ class OverpassClient:
 
         # Optional: on_progress(kachel, gesamt), aus dem Download-Thread.
         self.on_progress = None
+
+        # Festplatten-Cache je Kachelabfrage (projektuebergreifend).
+        # use_cache=False laedt alles neu und aktualisiert den Cache.
+        self.tile_cache = TileCache()
+        self.use_cache = True
+        self.last_cache_hits = 0
+
+        # Parallele Kachel-Anfragen: workers ist die Obergrenze, _allowed der
+        # aktuell erlaubte Wert (faellt bei 429/504 auf 1).
+        self.workers = TILE_WORKERS
+        self._gate = threading.Condition()
+        self._allowed = 1
+        self._active = 0
+        self._tls = threading.local()
 
     # ---------------------------------------------------------
 
@@ -258,6 +279,8 @@ class OverpassClient:
 
                 print("Server", server, "fehlgeschlagen:", type(exc).__name__)
 
+                self._note_overload(getattr(exc, "response", None))
+
         raise RuntimeError(
             tr("Keiner der Overpass-Server war erreichbar.")
         ) from last_exception
@@ -273,26 +296,63 @@ class OverpassClient:
         merged = {}
         stamps = []
 
-        for index, tile in enumerate(tiles, start=1):
+        queries = [build_query(tile, config) for tile in tiles]
+        results = [None] * total
+        pending = []
+        done = 0
 
-            self._check_cancel()
+        self.last_cache_hits = 0
 
-            if self.on_progress is not None:
-                self.on_progress(index, total)
+        for index, query in enumerate(queries):
 
-            query = build_query(tile, config)
+            cached = self.tile_cache.get(query) if self.use_cache else None
 
-            data = None
+            if cached is not None:
+                results[index] = cached
+                self.last_cache_hits += 1
+                done += 1
+            else:
+                pending.append(index)
 
-            for attempt in range(TILE_RETRIES + 1):
+        print(f"Kachel-Cache: {self.last_cache_hits} von {total} Kacheln aus dem Cache")
 
-                try:
-                    data = self._fetch_json(query)
-                    break
-                except RuntimeError:
-                    if attempt >= TILE_RETRIES:
-                        raise
-                    print(f"Kachel {index}: neuer Versuch {attempt + 2}")
+        if self.on_progress is not None and done:
+            self.on_progress(done, total)
+
+        if pending:
+
+            self._allowed = max(1, min(int(self.workers), len(pending)))
+            self._active = 0
+
+            executor = ThreadPoolExecutor(
+                max_workers=self._allowed, thread_name_prefix="overpass-tile"
+            )
+
+            futures = {
+                executor.submit(self._load_tile, index, queries[index]): index
+                for index in pending
+            }
+
+            try:
+
+                for future in as_completed(futures):
+
+                    results[futures[future]] = future.result()
+                    done += 1
+
+                    if self.on_progress is not None:
+                        self.on_progress(done, total)
+
+            except BaseException:
+                # Fehler oder Abbruch: laufende Anfragen beenden. Fertige
+                # Kacheln liegen schon im Cache, der naechste Lauf macht dort weiter.
+                self._cancel.set()
+                raise
+
+            finally:
+                executor.shutdown(wait=False, cancel_futures=True)
+
+        for data in results:
 
             stamp = self._timestamp_of(data)
 
@@ -310,6 +370,102 @@ class OverpassClient:
         osm.data_timestamp = min(stamps) if stamps else ""
 
         return osm
+
+    # ---------------------------------------------------------
+    # Parallele Kachel-Anfragen
+
+    def _enter(self):
+        """Wartet, bis eine Anfrage gleichzeitig laufen darf."""
+
+        with self._gate:
+
+            while self._active >= self._allowed:
+                self._gate.wait(0.2)
+                self._check_cancel()
+
+            self._active += 1
+
+    def _leave(self):
+
+        with self._gate:
+            self._active -= 1
+            self._gate.notify_all()
+
+    def _sleep(self, seconds):
+        """Wartet, bricht bei Abbruch sofort ab."""
+
+        end = time.monotonic() + seconds
+
+        while True:
+
+            self._check_cancel()
+
+            left = end - time.monotonic()
+
+            if left <= 0:
+                return
+
+            time.sleep(min(0.2, left))
+
+    def _note_overload(self, response):
+        """
+        Bei HTTP 429/504: ab sofort nur noch eine Anfrage gleichzeitig und
+        vor dem naechsten Versuch warten (Retry-After, sonst 10 s bzw. 5 s).
+        """
+
+        status = getattr(response, "status_code", None)
+
+        if status not in (429, 504):
+            return
+
+        with self._gate:
+            self._allowed = 1
+            self._gate.notify_all()
+
+        wait = 10.0 if status == 429 else 5.0
+
+        try:
+            header = response.headers.get("Retry-After")
+            if header:
+                wait = float(header)
+        except (AttributeError, TypeError, ValueError):
+            pass
+
+        wait = min(max(wait, 0.0), MAX_RETRY_AFTER_S)
+
+        self._tls.wait = max(getattr(self._tls, "wait", 0.0), wait)
+
+    def _load_tile(self, index, query):
+        """Eine Kachel laden (mit Wiederholungen) und im Cache ablegen."""
+
+        self._enter()
+
+        try:
+
+            data = None
+
+            for attempt in range(TILE_RETRIES + 1):
+
+                self._tls.wait = 0.0
+
+                try:
+                    data = self._fetch_json(query)
+                    break
+                except RuntimeError:
+
+                    if attempt >= TILE_RETRIES:
+                        raise
+
+                    print(f"Kachel {index + 1}: neuer Versuch {attempt + 2}")
+
+                    self._sleep(getattr(self._tls, "wait", 0.0))
+
+        finally:
+            self._leave()
+
+        self.tile_cache.put(query, data)
+
+        return data
 
     def _post(self, server: str, query: str):
         """

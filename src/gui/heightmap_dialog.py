@@ -95,6 +95,9 @@ from src.app_paths import APP_DIR  # noqa: E402
 DEFAULT_CACHE_DIR = APP_DIR / "dem_cache"
 DEFAULT_DGM1_CACHE_DIR = APP_DIR / "dgm1_cache"
 DEFAULT_SWISS_CACHE_DIR = APP_DIR / "swissalti3d_cache"
+# OSM-Kacheln: der Ordner wird von src/osm/tile_cache.py benutzt (gleicher Name,
+# damit die Cache-Verwaltung ihn findet).
+DEFAULT_OSM_CACHE_DIR = APP_DIR / "osm_cache"
 # Grober Umriss Deutschlands (Breite von/bis, Laenge von/bis): nur dafuer, die
 # DGM1-Auswahl nur bei Karten in Deutschland anzubieten.
 GERMANY_BOUNDS = (47.2, 55.1, 5.8, 15.1)

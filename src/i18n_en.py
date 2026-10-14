@@ -1882,6 +1882,8 @@ guide of the heightmap dialog (F1).</p>
         'GitHub could not be reached ({error}).',
     'Die Versionsnummer der neuesten Version ist nicht lesbar: {tag}':
         'The version number of the latest release is not readable: {tag}',
+    'OpenStreetMap-Kacheln (Overpass)':
+    'OpenStreetMap tiles (Overpass)',
     'Cache verwalten...':
         'Manage cache...',
     'Heruntergeladene Höhendaten ansehen und Speicherplatz freigeben':

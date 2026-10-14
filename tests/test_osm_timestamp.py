@@ -1,9 +1,13 @@
+import atexit
+import shutil
+import tempfile
 import unittest
 from unittest import mock
 
 from src.osm import overpass_client
 from src.osm.objects.osm_data import OSMData
 from src.osm.overpass_client import OverpassClient
+from src.osm.tile_cache import TileCache
 
 STAMP_NEW = "2026-10-12T06:21:00Z"
 STAMP_OLD = "2026-10-12T05:59:00Z"
@@ -24,6 +28,10 @@ class _Response:
 
 def _client():
     client = OverpassClient()
+    # Eigener Cache-Ordner: Tests duerfen nie in den echten osm_cache schreiben.
+    cache_dir = tempfile.mkdtemp(prefix="osm_tile_test_")
+    atexit.register(shutil.rmtree, cache_dir, ignore_errors=True)
+    client.tile_cache = TileCache(cache_dir)
     client.parser = mock.Mock()
     client.parser.parse.return_value = OSMData()
     return client
