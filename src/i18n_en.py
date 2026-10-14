@@ -899,6 +899,8 @@ guide of the heightmap dialog (F1).</p>
         'No stations or halts were found in the loaded OSM data.\n\nFirst run Tools → Load OSM and load the Railways layer. If it stays empty, the OSM query may not load station data (railway=station/halt/platform, building=train_station).',
     'Industrie-Objekte (Sägewerk, Ziegelei, ...)':
         'Industry objects (sawmill, brickworks, ...)',
+    'Natur-Details (Hecken, Mauern)':
+        'Nature details (hedges, walls)',
     'Industrien speichern':
         'Save industries',
     'JSON (*.json)':

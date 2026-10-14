@@ -72,6 +72,9 @@ STATION_LIFECYCLE_LINES = (
 )
 
 
+NATURE_BARRIER_VALUES = "hedge|wall|retaining_wall"
+
+
 @dataclass
 class OverpassQueryConfig:
     """
@@ -102,6 +105,7 @@ class OverpassQueryConfig:
     # "Bahnhoefe aus OSM" (wenige zusaetzliche Objekte, auch wenn
     # railways/buildings ausgeschaltet sind).
     stations: bool = True
+    nature_details: bool = False
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -257,6 +261,11 @@ def build_query(
                 f'  way["public_transport"~"^(station|platform)$"]'
                 f'["{mode}"="yes"]({bbox});'
             )
+
+    if config.nature_details:
+        lines.append(
+            f'  way["barrier"~"^({NATURE_BARRIER_VALUES})$"]({bbox});'
+        )
 
     if config.places:
         lines.append(f'  node["place"~"^({PLACE_VALUES})$"]({bbox});')

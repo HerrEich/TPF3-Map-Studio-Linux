@@ -35,6 +35,7 @@ CATEGORY_LABELS = (
     ("places", tr("Orte (Städte, Dörfer)")),
     ("biome_areas", tr("Siedlung, Heide, Moor, Fels (für Biome)")),
     ("industry", tr("Industrie-Objekte (Sägewerk, Ziegelei, ...)")),
+    ("nature_details", tr("Natur-Details (Hecken, Mauern)")),
 )
 
 
