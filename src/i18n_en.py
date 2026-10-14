@@ -1882,4 +1882,38 @@ guide of the heightmap dialog (F1).</p>
         'GitHub could not be reached ({error}).',
     'Die Versionsnummer der neuesten Version ist nicht lesbar: {tag}':
         'The version number of the latest release is not readable: {tag}',
+    'Cache verwalten...':
+        'Manage cache...',
+    'Heruntergeladene Höhendaten ansehen und Speicherplatz freigeben':
+        'View downloaded elevation data and free up disk space',
+    'Cache verwalten':
+        'Manage cache',
+    'Heruntergeladene Höhendaten werden zwischengespeichert, damit sie nicht erneut geladen werden müssen. Leeren schafft Platz; die Daten werden bei Bedarf neu heruntergeladen (bei DGM1 kann das dauern). Projekte, Einstellungen und Logs bleiben unberührt.':
+        'Downloaded elevation data is cached so that it does not have to be downloaded again. Clearing frees disk space; the data is downloaded again when needed (this can take a while for DGM1). Projects, settings and logs are not affected.',
+    '{files} Dateien, {size}':
+        '{files} files, {size}',
+    'leer':
+        'empty',
+    'Gesamt: {size}':
+        'Total: {size}',
+    'Leeren...':
+        'Clear...',
+    'Ordner öffnen':
+        'Open folder',
+    'Cache leeren':
+        'Clear cache',
+    'Den Cache "{name}" leeren?\n\n{size} ({files} Dateien) werden gelöscht. Die Daten werden bei Bedarf erneut heruntergeladen.':
+        'Clear the cache "{name}"?\n\n{size} ({files} files) will be deleted. The data is downloaded again when needed.',
+    'Cache geleert':
+        'Cache cleared',
+    '{count} Dateien gelöscht, {size} freigegeben.':
+        '{count} files deleted, {size} freed.',
+    '{count} Dateien konnten nicht gelöscht werden (vermutlich in Benutzung). Bitte das Studio neu starten und es erneut versuchen.':
+        '{count} files could not be deleted (probably in use). Please restart the Studio and try again.',
+    'Der Ordner konnte nicht geöffnet werden:\n{path}':
+        'The folder could not be opened:\n{path}',
+    'Unbekannter Cache: {name}':
+        'Unknown cache: {name}',
+    'Der Cache-Ordner ist eine Verknüpfung oder liegt außerhalb des Studio-Verzeichnisses und wird nicht geändert: {path}':
+        'The cache folder is a link or lies outside the Studio folder and is left unchanged: {path}',
 }

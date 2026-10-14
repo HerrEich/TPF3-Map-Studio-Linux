@@ -34,6 +34,7 @@ from src.gui.theme import apply_theme
 from src.gui.toolbar import MainToolbar
 from src.gui.rectangle_dialog import RectangleToolDialog
 from src.gui.heightmap_dialog import HeightmapDialog
+from src.gui.cache_dialog import CacheDialog
 from src.core.update_check import (
     decide_action,
     default_settings_path,
@@ -975,6 +976,16 @@ class MainWindow(QMainWindow):
         except OSError as exc:
             print("Update-Einstellungen nicht gespeichert:", exc)
 
+    # ---------------------------------------------------------
+    # Cache verwalten (Hilfe-Menue)
+    # ---------------------------------------------------------
+
+    def _open_cache_dialog(self, *_):
+
+        dialog = CacheDialog(self)
+
+        dialog.exec()
+
     def _new_project(self):
         """
         Beginnt ein neues, leeres Projekt (fragt vorher nach dem Speichern).
@@ -1436,6 +1447,18 @@ class MainWindow(QMainWindow):
 
         log_folder_action.triggered.connect(
             self._open_log_folder
+        )
+
+        cache_action = help_menu.addAction(
+            tr("Cache verwalten...")
+        )
+
+        cache_action.setToolTip(
+            tr("Heruntergeladene H\u00f6hendaten ansehen und Speicherplatz freigeben")
+        )
+
+        cache_action.triggered.connect(
+            self._open_cache_dialog
         )
 
         help_menu.addSeparator()
