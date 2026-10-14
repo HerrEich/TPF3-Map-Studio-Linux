@@ -1916,4 +1916,18 @@ guide of the heightmap dialog (F1).</p>
         'Unknown cache: {name}',
     'Der Cache-Ordner ist eine Verknüpfung oder liegt außerhalb des Studio-Verzeichnisses und wird nicht geändert: {path}':
         'The cache folder is a link or lies outside the Studio folder and is left unchanged: {path}',
+    'Copernicus-Kacheln laden':
+        'Loading Copernicus tiles',
+    'Die Kacheln (im Schnitt etwa 35 MB) kommen vom öffentlichen Copernicus-DEM-Bucket bei AWS. Bereits geladene Kacheln werden übersprungen. Du kannst jederzeit abbrechen und später weitermachen.':
+        'The tiles (about 35 MB on average) come from the public Copernicus DEM bucket on AWS. Tiles that are already downloaded are skipped. You can cancel at any time and continue later.',
+    'Kachel {index} von {count}: {tile}':
+        'Tile {index} of {count}: {tile}',
+    'Kachel {index} von {count}: {tile} ({done_mb:.0f} von {total_mb:.0f} MB)':
+        'Tile {index} of {count}: {tile} ({done_mb:.0f} of {total_mb:.0f} MB)',
+    'Kachel {index} von {count}: {tile} ({done_mb:.0f} MB)':
+        'Tile {index} of {count}: {tile} ({done_mb:.0f} MB)',
+    '{count} Kacheln geladen.':
+        '{count} tiles downloaded.',
+    'Download fehlgeschlagen: {error}':
+        'Download failed: {error}',
 }

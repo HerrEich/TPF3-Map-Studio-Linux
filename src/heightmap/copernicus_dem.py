@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import math
 import os
+import re
 import threading
 from dataclasses import dataclass
 from pathlib import Path
@@ -52,7 +53,7 @@ def required_tiles(selection: Selection) -> list[str]:
     return tiles
 
 
-def download_tile(tile_id: str, cache_dir: Path) -> Path:
+def download_tile(tile_id: str, cache_dir: Path, on_progress=None, should_cancel=None) -> Path:
     """Laedt eine Kachel herunter (falls noch nicht im Cache) und gibt den Pfad zurueck."""
     cache_dir.mkdir(parents=True, exist_ok=True)
     dest = cache_dir / f"{tile_id}.tif"
@@ -72,8 +73,17 @@ def download_tile(tile_id: str, cache_dir: Path) -> Path:
                 )
             resp.raise_for_status()
             with open(tmp, "wb") as f:
+                headers = getattr(resp, "headers", None) or {}
+                size_text = headers.get("Content-Length")
+                total = int(size_text) if isinstance(size_text, str) and size_text.isdigit() else None
+                downloaded = 0
                 for chunk in resp.iter_content(chunk_size=1024 * 1024):
+                    if should_cancel is not None and should_cancel():
+                        raise DownloadCancelled()
                     f.write(chunk)
+                    downloaded += len(chunk)
+                    if on_progress is not None:
+                        on_progress(downloaded, total)
         os.replace(tmp, dest)
     finally:
         tmp.unlink(missing_ok=True)
@@ -93,6 +103,150 @@ def download_tiles_for_selection(selection: Selection, cache_dir: Path) -> list[
             "Keine Copernicus-DEM-Kacheln fuer diesen Kartenausschnitt gefunden."
         )
     return paths
+
+
+class DownloadCancelled(Exception):
+    """Der Nutzer hat den Download abgebrochen."""
+
+
+_TILE_LABEL = re.compile(r"_([NS]\d+)_00_([EW]\d+)_00_DEM$")
+
+
+def tile_label(tile_id: str) -> str:
+    """Kurzname einer Kachel fuer die Anzeige, z. B. N50 E007."""
+
+    match = _TILE_LABEL.search(tile_id)
+
+    return "%s %s" % match.groups() if match else tile_id
+
+
+def missing_tiles(selection: Selection, cache_dir: Path) -> list[str]:
+    """Kacheln, die fuer die Selection noch nicht im Cache liegen."""
+
+    cache_dir = Path(cache_dir)
+
+    return [
+        tile_id
+        for tile_id in required_tiles(selection)
+        if not (cache_dir / f"{tile_id}.tif").exists()
+    ]
+
+
+class CopernicusFetchJob:
+    """Laedt fehlende Copernicus-Kacheln in einem Hintergrund-Thread.
+
+    Gleiche Schnittstelle wie Dgm1FetchJob und SwissFetchJob (done, total,
+    text, finished, error, summary, start, cancel), damit Dgm1FetchDialog
+    Fortschritt und Abbrechen anzeigen kann. Nach einem Abbruch steht in
+    error "Abgebrochen.", dann liefert der Dialog False.
+    """
+
+    def __init__(self, selection, cache_dir, downloader=None):
+        self.selection = selection
+        self.cache_dir = Path(cache_dir)
+        self._download = downloader or download_tile
+
+        self.done = 0.0
+        self.total = 0
+        self.text = tr("Starte...")
+        self.finished = False
+        self.error = None
+        self.summary = None
+
+        self._cancel = threading.Event()
+        self._thread = None
+
+    def start(self):
+        self._thread = threading.Thread(
+            target=self._run, name="copernicus-fetch", daemon=True
+        )
+        self._thread.start()
+
+    def cancel(self):
+        self._cancel.set()
+
+    def _progress_callback(self, index, count, tile_id):
+
+        label = tile_label(tile_id)
+
+        def callback(downloaded, total_bytes):
+
+            done_mb = downloaded / 1048576.0
+
+            if total_bytes:
+                self.done = (index - 1) + min(1.0, downloaded / total_bytes)
+                self.text = tr(
+                    "Kachel {index} von {count}: {tile} "
+                    "({done_mb:.0f} von {total_mb:.0f} MB)"
+                ).format(
+                    index=index,
+                    count=count,
+                    tile=label,
+                    done_mb=done_mb,
+                    total_mb=total_bytes / 1048576.0,
+                )
+            else:
+                self.text = tr(
+                    "Kachel {index} von {count}: {tile} ({done_mb:.0f} MB)"
+                ).format(
+                    index=index,
+                    count=count,
+                    tile=label,
+                    done_mb=done_mb,
+                )
+
+        return callback
+
+    def _run(self):
+
+        loaded = 0
+
+        try:
+
+            todo = missing_tiles(self.selection, self.cache_dir)
+
+            self.total = len(todo)
+
+            for index, tile_id in enumerate(todo, start=1):
+
+                if self._cancel.is_set():
+                    raise DownloadCancelled()
+
+                self.done = float(index - 1)
+
+                self.text = tr("Kachel {index} von {count}: {tile}").format(
+                    index=index,
+                    count=len(todo),
+                    tile=tile_label(tile_id),
+                )
+
+                try:
+                    self._download(
+                        tile_id,
+                        self.cache_dir,
+                        on_progress=self._progress_callback(
+                            index, len(todo), tile_id
+                        ),
+                        should_cancel=self._cancel.is_set,
+                    )
+                    loaded += 1
+
+                except FileNotFoundError:
+                    # reine Wasserkachel ohne Landdaten - kein Fehler
+                    pass
+
+                self.done = float(index)
+
+            self.summary = tr("{count} Kacheln geladen.").format(count=loaded)
+
+        except DownloadCancelled:
+            self.error = tr("Abgebrochen.")
+
+        except Exception as exc:
+            self.error = tr("Download fehlgeschlagen: {error}").format(error=exc)
+
+        finally:
+            self.finished = True
 
 
 @dataclass

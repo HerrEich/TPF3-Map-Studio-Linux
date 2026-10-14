@@ -52,6 +52,7 @@ from src.heightmap.heightmap_exporter import (
     pixel_size_for_selection,
 )
 from src.heightmap.height_hints import height_hint
+from src.heightmap.copernicus_dem import CopernicusFetchJob, missing_tiles
 from src.core.export_settings import sanitize_export_settings
 from src.heightmap.height_clipping import (
     GAME_MAX_M,
@@ -1276,6 +1277,33 @@ class HeightmapDialog(QDialog):
 
             self.status_label.setText(tr("Berechne Höhenraster..."))
             self.repaint()
+
+        elif source == SOURCE_COPERNICUS:
+
+            if missing_tiles(self.selection, DEFAULT_CACHE_DIR):
+
+                fetch_dialog = Dgm1FetchDialog(
+                    self,
+                    self.selection,
+                    DEFAULT_CACHE_DIR,
+                    job=CopernicusFetchJob(self.selection, DEFAULT_CACHE_DIR),
+                    title=tr("Copernicus-Kacheln laden"),
+                    note=(
+                        tr("Die Kacheln (im Schnitt etwa 35 MB) kommen vom \u00f6ffentlichen "
+                        "Copernicus-DEM-Bucket bei AWS. Bereits geladene Kacheln werden "
+                        "\u00fcbersprungen. Du kannst jederzeit abbrechen und sp\u00e4ter "
+                        "weitermachen.")
+                    ),
+                    seconds_per_tile=5.0,
+                )
+
+                if not fetch_dialog.run():
+                    raise RuntimeError(
+                        fetch_dialog.error or tr("Abgebrochen.")
+                    )
+
+                self.status_label.setText(tr("Berechne H\u00f6henraster..."))
+                self.repaint()
 
         array, info = build_heightmap_array_ex(
             self.selection,
