@@ -19,7 +19,7 @@ Zuverlässigere OSM-Downloads für große Gebiete, Höhendaten aus den Niederlan
 
 **Installation:** `TPF3-Map-Studio-v0.5.0-win64.zip` herunterladen, die **ganze** ZIP entpacken, `TPF3-Map-Studio.exe` starten. Windows warnt beim ersten Start eventuell („Weitere Informationen“ -> „Trotzdem ausführen“), bei PyInstaller-Programmen sind Virenscanner-Fehlalarme bekannt.
 
-**SHA-256:** `SHA256_FOLGT`
+**SHA-256:** `3b6fa3fd7138ca6ce492c8c73e2960ad62a54d2b3b38be3eacdeb295912c8b7b`
 
 **Hinweis:** inoffizielles Werkzeug, keine Verbindung zu Urban Games.
 
@@ -40,6 +40,6 @@ Zuverlässigere OSM-Downloads für große Gebiete, Höhendaten aus den Niederlan
 
 **Install:** download `TPF3-Map-Studio-v0.5.0-win64.zip`, extract the **whole** ZIP, run `TPF3-Map-Studio.exe`. Windows may warn on first start ("More info" -> "Run anyway"); antivirus false positives are known for PyInstaller programs.
 
-**SHA-256:** `SHA256_FOLGT`
+**SHA-256:** `3b6fa3fd7138ca6ce492c8c73e2960ad62a54d2b3b38be3eacdeb295912c8b7b`
 
 **Note:** unofficial tool, not affiliated with Urban Games.
