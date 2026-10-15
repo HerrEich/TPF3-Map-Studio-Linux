@@ -17,7 +17,7 @@ from src.i18n import tr
 # Ab dieser Kantenlaenge (reale Meter) wird in Kacheln geladen.
 TILE_THRESHOLD_M = 25_000.0
 # Zielkante einer Kachel und Ueberlappung (reale Meter).
-TILE_SIZE_M = 20_000.0
+TILE_SIZE_M = 11_000.0
 TILE_OVERLAP_M = 200.0
 TILE_RETRIES = 4
 # Wartezeit (s) vor dem 2., 3., ... Versuch einer Kachel, falls der Server
