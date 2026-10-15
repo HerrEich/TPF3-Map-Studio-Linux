@@ -11,11 +11,11 @@
     5. schreibt die SHA-256-Pruefsumme daneben
 
     Aufruf im Projektordner (die virtuelle Umgebung .venv muss existieren):
-    powershell -ExecutionPolicy Bypass -File tools\make_release.ps1 -Version 0.4.0
+    powershell -ExecutionPolicy Bypass -File tools\make_release.ps1 -Version 0.5.0
 #>
 
 param(
-    [string]$Version = "0.4.0"
+    [string]$Version = "0.5.0"
 )
 
 $ErrorActionPreference = "Stop"
