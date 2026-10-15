@@ -104,6 +104,8 @@ class ClientTileTests(unittest.TestCase):
         self.client.parser = _Parser()
         self.client.tile_cache = TileCache(self._tmp.name)
         self.client.workers = 1
+        # Keine echten Wartezeiten zwischen Wiederholungen.
+        self.client._sleep = lambda seconds: None
         self.calls = []
 
         def fake_fetch(query):
@@ -181,9 +183,24 @@ class ClientTileTests(unittest.TestCase):
 
     def test_other_status_changes_nothing(self):
         self.client._allowed = 2
-        self.client._note_overload(_Resp(500))
-        self.client._note_overload(None)
+        self.client._note_overload(_Resp(404))
+        self.client._note_overload(_Resp(400))
         self.assertEqual(self.client._allowed, 2)
+
+    def test_server_errors_and_timeouts_reduce_parallelism(self):
+        for response in (_Resp(500), _Resp(502), _Resp(503), _Resp(504), None):
+            self.client._allowed = 2
+            self.client._note_overload(response)
+            self.assertEqual(self.client._allowed, 1)
+
+    def test_failing_tile_retries_with_backoff(self):
+        waits = []
+        self.client._sleep = waits.append
+        self.failing = {"Qc"}
+        with self.assertRaises(RuntimeError):
+            self.client.download(None)
+        self.assertEqual(waits, list(oc.BACKOFF_S[: oc.TILE_RETRIES]))
+        self.assertEqual(self.calls.count("Qc"), oc.TILE_RETRIES + 1)
 
 
 class ClientLogTests(unittest.TestCase):
@@ -212,6 +229,27 @@ class ClientLogTests(unittest.TestCase):
                     client._fetch_json("q")
 
         self.assertIn("HTTP 504", buffer.getvalue())
+
+    def test_remark_timeout_counts_as_failure_and_is_named(self):
+        client = oc.OverpassClient()
+        client.SERVERS = ["https://example.invalid/api"]
+
+        class _Remark:
+            status_code = 200
+            headers = {}
+
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"elements": [], "remark": "runtime error: Query timed out"}
+
+        with mock.patch.object(client, "_post", return_value=_Remark()):
+            with self.assertRaises(RuntimeError) as ctx:
+                client._fetch_json("q")
+
+        self.assertIn("example.invalid", str(ctx.exception))
+        self.assertIn("timed out", str(ctx.exception))
 
 
 

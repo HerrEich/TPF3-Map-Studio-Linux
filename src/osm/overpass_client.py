@@ -19,7 +19,12 @@ TILE_THRESHOLD_M = 25_000.0
 # Zielkante einer Kachel und Ueberlappung (reale Meter).
 TILE_SIZE_M = 20_000.0
 TILE_OVERLAP_M = 200.0
-TILE_RETRIES = 2
+TILE_RETRIES = 4
+# Wartezeit (s) vor dem 2., 3., ... Versuch einer Kachel, falls der Server
+# keinen Retry-After nennt. Overpass ist oft minutenlang ueberlastet.
+BACKOFF_S = (10.0, 30.0, 60.0, 90.0)
+# Vorruebergehende Fehler: warten und erneut versuchen.
+TRANSIENT_STATUS = (429, 500, 502, 503, 504)
 # Gleichzeitige Kachel-Anfragen (bei 429/504 faellt es auf 1 zurueck) und
 # Obergrenze fuer die Wartezeit nach einem Retry-After-Hinweis.
 TILE_WORKERS = 2
@@ -79,6 +84,24 @@ def plan_tiles(selection):
             )
 
     return tiles
+
+
+class OverpassRemarkError(requests.RequestException):
+    """Overpass antwortet mit HTTP 200, meldet aber im Feld 'remark' einen Abbruch."""
+
+
+def _check_remark(data):
+    """Wirft OverpassRemarkError, wenn die Antwort unvollstaendig ist (Timeout/Speicher)."""
+
+    try:
+        remark = str(data.get("remark") or "")
+    except AttributeError:
+        return
+
+    low = remark.lower()
+
+    if remark and ("runtime error" in low or "timed out" in low or "out of memory" in low):
+        raise OverpassRemarkError(remark)
 
 
 class OverpassCancelled(Exception):
@@ -248,6 +271,7 @@ class OverpassClient:
         """Eine Abfrage mit Server-Fallback, liefert das rohe JSON."""
 
         last_exception = None
+        failures = []
 
         servers = list(self.SERVERS)
 
@@ -267,6 +291,8 @@ class OverpassClient:
 
                 data = response.json()
 
+                _check_remark(data)
+
                 self._check_cancel()
 
                 self._preferred_server = server
@@ -279,12 +305,16 @@ class OverpassClient:
 
                 status = getattr(getattr(exc, "response", None), "status_code", None)
                 label = type(exc).__name__ + (f" (HTTP {status})" if status else "")
+                if isinstance(exc, OverpassRemarkError):
+                    label += ": " + str(exc)[:80]
                 print("Server", server, "fehlgeschlagen:", label)
+                failures.append(server.split("/")[2] + ": " + label)
 
                 self._note_overload(getattr(exc, "response", None))
 
         raise RuntimeError(
             tr("Keiner der Overpass-Server war erreichbar.")
+            + " (" + "; ".join(failures) + ")"
         ) from last_exception
 
     def _download_tiled(self, selection, config=None) -> OSMData:
@@ -417,7 +447,8 @@ class OverpassClient:
 
         status = getattr(response, "status_code", None)
 
-        if status not in (429, 504):
+        # status None = Timeout/Verbindungsfehler: ebenfalls vorruebergehend.
+        if status is not None and status not in TRANSIENT_STATUS:
             return
 
         with self._gate:
@@ -458,9 +489,14 @@ class OverpassClient:
                     if attempt >= TILE_RETRIES:
                         raise
 
-                    print(f"Kachel {index + 1}: neuer Versuch {attempt + 2}")
+                    wait = max(
+                        getattr(self._tls, "wait", 0.0),
+                        BACKOFF_S[min(attempt, len(BACKOFF_S) - 1)],
+                    )
 
-                    self._sleep(getattr(self._tls, "wait", 0.0))
+                    print(f"Kachel {index + 1}: neuer Versuch {attempt + 2} in {wait:.0f} s")
+
+                    self._sleep(wait)
 
         finally:
             self._leave()
