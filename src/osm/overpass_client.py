@@ -9,16 +9,24 @@ from src.http_identity import USER_AGENT
 from src.map.objects.selection import Selection
 from src.osm.osm_parser import OSMParser
 from src.osm.objects.osm_data import OSMData
-from src.osm.overpass_query_builder import OverpassQueryConfig, build_query
+from src.osm.overpass_query_builder import (
+    OverpassQueryConfig,
+    area_filter,
+    build_query,
+    config_from_categories,
+    query_categories,
+)
 from src.osm.tile_cache import TileCache
 from src.i18n import tr
 
 
 # Ab dieser Kantenlaenge (reale Meter) wird in Kacheln geladen.
 TILE_THRESHOLD_M = 25_000.0
-# Zielkante einer Kachel und Ueberlappung (reale Meter).
-TILE_SIZE_M = 11_000.0
-TILE_OVERLAP_M = 200.0
+# Festes, an der Weltkarte verankertes Kachelraster: Kantenlaenge in Grad
+# Breite (ca. 11 km). Die Laengengrad-Schrittweite je Breitenband wird
+# daraus abgeleitet. Weil das Raster nicht von Auswahl, Drehung oder
+# Stauchfaktor abhaengt, bleiben gleiche Kacheln im Cache wiederverwendbar.
+TILE_GRID_DEG = 0.1
 TILE_RETRIES = 4
 # Wartezeit (s) vor dem 2., 3., ... Versuch einer Kachel, falls der Server
 # keinen Retry-After nennt. Overpass ist oft minutenlang ueberlastet.
@@ -33,11 +41,50 @@ MAX_RETRY_AFTER_S = 60.0
 _R_EARTH = 6371008.8
 
 
+def _lon_step(band):
+    """Laengengrad-Schrittweite des Breitenbands `band` (feste, gerundete Zahl)."""
+
+    mid = math.radians((band + 0.5) * TILE_GRID_DEG)
+
+    return round(TILE_GRID_DEG / max(math.cos(mid), 0.05), 3)
+
+
+def _overlaps(poly, box):
+    """Schneidet das konvexe Polygon (lon, lat)-Punkte das Rechteck box? (SAT)"""
+
+    x0, y0, x1, y1 = box
+    rect = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+
+    axes = [(1.0, 0.0), (0.0, 1.0)]
+
+    for i in range(len(poly)):
+        ax, ay = poly[i]
+        bx, by = poly[(i + 1) % len(poly)]
+        axes.append((-(by - ay), bx - ax))
+
+    for nx, ny in axes:
+
+        if nx == 0 and ny == 0:
+            continue
+
+        p = [nx * x + ny * y for x, y in poly]
+        r = [nx * x + ny * y for x, y in rect]
+
+        if max(p) < min(r) or max(r) < min(p):
+            return False
+
+    return True
+
+
 def plan_tiles(selection):
     """
-    Zerlegt eine grosse Auswahl in Kachel-Selections im (gedrehten)
-    Raster der Auswahl. Kleine oder nicht vermessene Auswahlen kommen
-    unveraendert als Liste mit einem Eintrag zurueck.
+    Zerlegt eine grosse Auswahl in Kacheln eines festen Weltrasters
+    (TILE_GRID_DEG Grad Breite, Laengenschritt je Breitenband). Nur Kacheln,
+    die das (ggf. gedrehte) Auswahlband beruehren, werden geladen. Da das
+    Raster nicht von Mittelpunkt, Drehung oder Stauchfaktor abhaengt, treffen
+    geaenderte Einstellungen dieselben Kacheln wieder im Cache.
+    Kleine oder nicht vermessene Auswahlen kommen unveraendert als Liste mit
+    einem Eintrag zurueck.
     """
 
     width = getattr(selection, "real_width_m", None)
@@ -46,42 +93,32 @@ def plan_tiles(selection):
     if not width or not height or max(width, height) <= TILE_THRESHOLD_M:
         return [selection]
 
-    nx = max(1, math.ceil(width / TILE_SIZE_M))
-    ny = max(1, math.ceil(height / TILE_SIZE_M))
+    corners = selection.corners_latlon()
+    lats = [c[0] for c in corners]
+    lons = [c[1] for c in corners]
+    poly = [(lon, lat) for lat, lon in corners]
 
-    step_x = width / nx
-    step_y = height / ny
-
-    center_lat, center_lon = selection.center
-    theta = math.radians(selection.rotation_deg)
-    up = (math.sin(theta), math.cos(theta))
-    right = (math.sin(theta + math.pi / 2), math.cos(theta + math.pi / 2))
-    cos0 = math.cos(math.radians(center_lat))
-
+    d = TILE_GRID_DEG
     tiles = []
 
-    for j in range(ny):
-        for i in range(nx):
+    for band in range(math.floor(min(lats) / d), math.floor(max(lats) / d) + 1):
 
-            x = -width / 2 + (i + 0.5) * step_x
-            y = height / 2 - (j + 0.5) * step_y
+        lat0 = round(band * d, 6)
+        lat1 = round((band + 1) * d, 6)
+        step = _lon_step(band)
 
-            e = right[0] * x + up[0] * y
-            n = right[1] * x + up[1] * y
+        for k in range(math.floor(min(lons) / step), math.floor(max(lons) / step) + 1):
 
-            lat = center_lat + math.degrees(n / _R_EARTH)
-            lon = center_lon + math.degrees(e / (_R_EARTH * cos0))
+            lon0 = round(k * step, 6)
+            lon1 = round((k + 1) * step, 6)
 
-            tiles.append(
-                type(selection).from_center(
-                    lat,
-                    lon,
-                    step_x + 2 * TILE_OVERLAP_M,
-                    step_y + 2 * TILE_OVERLAP_M,
-                    rotation_deg=selection.rotation_deg,
-                    scale_factor=1.0,
+            if _overlaps(poly, (lon0, lat0, lon1, lat1)):
+                tiles.append(
+                    type(selection)(
+                        min_lat=lat0, min_lon=lon0,
+                        max_lat=lat1, max_lon=lon1,
+                    )
                 )
-            )
 
     return tiles
 
@@ -180,6 +217,116 @@ class OverpassClient:
         finally:
             self._cancel.clear()
 
+    # ---------------------------------------------------------
+    # Cache je Kachel und Merkmalsgruppe (nur Fehlendes nachladen)
+
+    @staticmethod
+    def _signature(tile):
+        """Kennung der Kachel im Cache (ihr Gebietsfilter) oder None."""
+
+        try:
+            return area_filter(tile)
+        except Exception:  # noqa: BLE001
+            return None
+
+    @staticmethod
+    def _merge_results(datas):
+        """Fuehrt mehrere Overpass-Antworten zusammen (aeltester Datenstand)."""
+
+        merged = {}
+        stamps = []
+
+        for data in datas:
+
+            stamp = OverpassClient._timestamp_of(data)
+
+            if stamp:
+                stamps.append(stamp)
+
+            for element in data.get("elements", []):
+                merged[(element.get("type"), element.get("id"))] = element
+
+        result = {"elements": list(merged.values())}
+
+        if stamps:
+            result["osm3s"] = {"timestamp_osm_base": min(stamps)}
+
+        return result
+
+    def _cached_tile(self, tile, config, query):
+        """
+        Schaut im Cache nach: (Antwort, None) wenn alles da ist, sonst
+        (None, Plan) mit der Abfrage nur der fehlenden Merkmale, sonst
+        (None, None) wenn die Kachel komplett geladen werden muss.
+        """
+
+        if not self.use_cache:
+            return None, None
+
+        cached = self.tile_cache.get(query)
+
+        if cached is not None:
+            return cached, None
+
+        signature = self._signature(tile)
+
+        if signature is None:
+            return None, None
+
+        wanted = query_categories(config)
+        entries = self.tile_cache.find_cover(signature, wanted)
+
+        if not entries:
+            return None, None
+
+        covered = set()
+
+        for cats, _data in entries:
+            covered |= cats
+
+        missing = set(wanted) - covered
+        datas = [data for _cats, data in entries]
+
+        if not missing:
+            merged = self._merge_results(datas)
+            self.tile_cache.put(query, merged)
+            self.tile_cache.register(signature, wanted, query)
+            return merged, None
+
+        return None, {
+            "signature": signature,
+            "wanted": wanted,
+            "missing": missing,
+            "query": build_query(tile, config_from_categories(missing)),
+            "datas": datas,
+        }
+
+    def _complete_tile(self, tile, config, query, plan, fresh):
+        """
+        Nach dem Laden: Teilantwort mit den Cache-Teilen zusammenfuehren und
+        im Index vermerken. `fresh` liegt schon unter der geladenen Abfrage
+        im Cache. Ergebnis: die vollstaendige Antwort fuer diese Kachel.
+        """
+
+        if plan is not None:
+
+            self.tile_cache.register(
+                plan["signature"], plan["missing"], plan["query"]
+            )
+
+            merged = self._merge_results(plan["datas"] + [fresh])
+            self.tile_cache.put(query, merged)
+            self.tile_cache.register(plan["signature"], plan["wanted"], query)
+
+            return merged
+
+        signature = self._signature(tile)
+
+        if signature is not None:
+            self.tile_cache.register(signature, query_categories(config), query)
+
+        return fresh
+
     def _download(
         self,
         selection: Selection,
@@ -190,8 +337,20 @@ class OverpassClient:
 
         query = build_query(selection, config)
 
+        cached, plan = self._cached_tile(selection, config, query)
+
+        if cached is not None:
+            print("Overpass-Cache: Daten aus dem Cache")
+            self.last_cache_hits = 1
+            osm = self.parser.parse(cached)
+            osm.data_timestamp = self._timestamp_of(cached)
+            return osm
+
+        self.last_cache_hits = 0
+        fetch_query = plan["query"] if plan else query
+
         print("Overpass-Abfrage:")
-        print(query)
+        print(fetch_query)
 
         last_exception = None
 
@@ -211,7 +370,7 @@ class OverpassClient:
 
             try:
 
-                response = self._post(server, query)
+                response = self._post(server, fetch_query)
 
                 print("HTTP:", response.status_code)
 
@@ -222,6 +381,13 @@ class OverpassClient:
                 self._check_cancel()
 
                 print("JSON erfolgreich empfangen.")
+
+                _check_remark(json_data)
+
+                self.tile_cache.put(fetch_query, json_data)
+                json_data = self._complete_tile(
+                    selection, config, query, plan, json_data
+                )
 
                 osm = self.parser.parse(json_data)
                 osm.data_timestamp = self._timestamp_of(json_data)
@@ -329,24 +495,37 @@ class OverpassClient:
         stamps = []
 
         queries = [build_query(tile, config) for tile in tiles]
+        fetch_queries = list(queries)
+        plans = [None] * total
         results = [None] * total
         pending = []
         done = 0
+        partial = 0
 
         self.last_cache_hits = 0
 
         for index, query in enumerate(queries):
 
-            cached = self.tile_cache.get(query) if self.use_cache else None
+            cached, plan = self._cached_tile(tiles[index], config, query)
 
             if cached is not None:
                 results[index] = cached
                 self.last_cache_hits += 1
                 done += 1
             else:
+                if plan is not None:
+                    plans[index] = plan
+                    fetch_queries[index] = plan["query"]
+                    partial += 1
                 pending.append(index)
 
         print(f"Kachel-Cache: {self.last_cache_hits} von {total} Kacheln aus dem Cache")
+
+        if partial:
+            print(
+                f"Kachel-Cache: {partial} Kacheln nur teilweise im Cache, "
+                "es werden nur die fehlenden Merkmale nachgeladen"
+            )
 
         if self.on_progress is not None and done:
             self.on_progress(done, total)
@@ -361,7 +540,7 @@ class OverpassClient:
             )
 
             futures = {
-                executor.submit(self._load_tile, index, queries[index]): index
+                executor.submit(self._load_tile, index, fetch_queries[index]): index
                 for index in pending
             }
 
@@ -369,7 +548,11 @@ class OverpassClient:
 
                 for future in as_completed(futures):
 
-                    results[futures[future]] = future.result()
+                    index = futures[future]
+                    results[index] = self._complete_tile(
+                        tiles[index], config, queries[index],
+                        plans[index], future.result(),
+                    )
                     done += 1
 
                     if self.on_progress is not None:

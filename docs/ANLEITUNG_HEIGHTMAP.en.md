@@ -37,6 +37,12 @@ Without OSM data, the options "Wasser nur dort, wo OpenStreetMap Wasser hat" (wa
    Optional: **Schnellvorschau** (quick preview, a rough image from Copernicus, available immediately, not exportable).
 8. **Höhendaten herunterladen** (download elevation data) and wait. The first time, the Studio loads the tiles and keeps them in the cache. After that it is faster. Where a source has no data, the Studio fills the gaps from Copernicus. At the top it finally says "Geladen: … Pixel".
 
+### Your own elevation data as ASC files (for example Province of Trento)
+
+Some state portals supply elevation data as ASC files (ESRI ASCII Grid). You do not have to convert them: in the heightmap dialog choose **DGM1 from your own GeoTIFF tiles** and the folder with the ASC files. If the folder contains no GeoTIFF, the Studio asks for the coordinate system of the data (preselected from the map centre, in South Tyrol and Trento EPSG:25832) and merges the ASC files into one file `asc_zusammengefuegt.tif` in the same folder. Overlaps are averaged, the pixel size is 4 m, and the section is aligned to whole kilometres. Your ASC files stay unchanged. The next time, the Studio uses the finished file.
+
+The coordinate system of your data is stated by the provider or in the `.prj` file next to the ASC files. So far the conversion has only been tested with test data. It also works from the command line without the Studio: `python tools\asc_zu_geotiff.py "FOLDER_WITH_ASC" "output.tif"` (Python with numpy and Pillow).
+
 ### 4. Settings in the dialog
 **Quick start:** at the top of the dialog under **Voreinstellung** (preset) choose "Empfohlen" (recommended: smoothing, levelling, water from OSM with the default values) or "Original" (all options off, real heights). With the DGM1 (1 m) the default values for smoothing and levelling are smaller (10 m) because the model is already precise. The preset jumps to "Eigene Einstellungen" (custom) as soon as you change something by hand. Options that need OSM data stay off without loaded OSM data.
 

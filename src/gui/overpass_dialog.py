@@ -39,6 +39,29 @@ CATEGORY_LABELS = (
 )
 
 
+CATEGORY_HINTS = {
+    "railways": tr("Bahnhofsplan (Station Plan), Einebnung des Geländes unter Gleisen, Studio-Ansicht"),
+    "include_tram": tr("Nur die Auswahl, ob Straßenbahngleise mitgeladen werden"),
+    "highways": tr("Einebnung des Geländes unter Straßen, Studio-Ansicht und eigene Ebenen"),
+    "buildings": tr("Einebnung unter Gebäuden, Bahnhofsgebäude im Bahnhofsplan, Studio-Ansicht"),
+    "parks": tr("Biome-Maske (Gras/Park), Studio-Ansicht"),
+    "landuse": tr("Biome-Maske (Acker, Wiese, Wein ...), Bauernhöfe bei den Industrien, Studio-Ansicht"),
+    "vegetation": tr("Biome-Maske (Wald), Forstwirtschaft bei den Industrien, Studio-Ansicht"),
+    "water": tr("Studio-Ansicht und eigene Ebenen, nicht direkt im TPF3-Editor"),
+    "places": tr("Ortsdatei (Städte und Dörfer) für den TPF3-Editor"),
+    "biome_areas": tr("Biome-Maske (Siedlung, Heide, Moor, Fels), Steinbrüche bei den Industrien"),
+    "industry": tr("Industrien (Sägewerk, Ziegelei, ...) für den TPF3-Editor"),
+    "nature_details": tr("Studio-Ansicht und eigene Ebenen (Natur-Details), nicht direkt im TPF3-Editor"),
+}
+
+CATEGORIES_INFO = tr(
+    "Nur Höhenkarte, Biome-Maske, Orte, Industrien und Bahnhofsplan gehen "
+    "in den TPF3-Editor. Alle anderen Daten dienen der Ansicht im Studio, "
+    "eigenen Ebenen und Ableitungen. Fahre mit der Maus über eine Kategorie, "
+    "um zu sehen, wofür sie gebraucht wird."
+)
+
+
 class OverpassQueryDialog(QDialog):
     """
     Overpass-Abfrage-Baukasten: statt die Overpass-QL-Abfrage von Hand zu
@@ -98,6 +121,7 @@ class OverpassQueryDialog(QDialog):
         for key, label in CATEGORY_LABELS:
 
             checkbox = QCheckBox(label)
+            checkbox.setToolTip(CATEGORY_HINTS.get(key, ""))
 
             self.checkboxes[key] = checkbox
 
@@ -106,6 +130,10 @@ class OverpassQueryDialog(QDialog):
         self.checkboxes["railways"].toggled.connect(
             self._update_tram_enabled
         )
+
+        info = QLabel(CATEGORIES_INFO)
+        info.setWordWrap(True)
+        categories_layout.addWidget(info)
 
         layout.addWidget(categories_group)
 

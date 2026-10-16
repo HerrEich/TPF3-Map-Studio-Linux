@@ -10,6 +10,8 @@ from PySide6.QtWidgets import (
     QLabel,
     QPushButton,
     QFileDialog,
+    QInputDialog,
+    QProgressDialog,
     QMessageBox,
     QCheckBox,
     QComboBox,
@@ -1240,11 +1242,11 @@ class HeightmapDialog(QDialog):
 
         folder = QFileDialog.getExistingDirectory(
             self,
-            tr("Ordner mit DGM1-GeoTIFF-Kacheln wählen"),
+            tr("Ordner mit DGM1-Kacheln (GeoTIFF oder ASC) wählen"),
             str(self._dgm1_folder or Path.home()),
         )
 
-        if not folder:
+        if not folder or not self._prepare_asc_folder(Path(folder)):
             # Abbruch: zurueck zur vorherigen Quelle
             self.source_combo.blockSignals(True)
             self.source_combo.setCurrentIndex(
@@ -1254,6 +1256,88 @@ class HeightmapDialog(QDialog):
             return
 
         self._dgm1_folder = Path(folder)
+
+    def _prepare_asc_folder(self, folder: Path) -> bool:
+        """
+        Liegen im Ordner ASC-Dateien, aber keine GeoTIFF, fasst das Studio sie zu
+        einer GeoTIFF zusammen. False bei Abbruch oder Fehler.
+        """
+
+        from src.heightmap import asc_import
+
+        if not asc_import.needs_conversion(folder):
+            return True
+
+        count = len(asc_import.asc_files(folder))
+        choices = asc_import.EPSG_CHOICES
+        default = asc_import.default_epsg(self.selection.center[1])
+        start = next((i for i, (code, _) in enumerate(choices) if code == default), 0)
+
+        label, ok = QInputDialog.getItem(
+            self,
+            tr("ASC-Dateien umwandeln"),
+            tr(
+                "Im Ordner liegen {count} ASC-Dateien, aber keine GeoTIFF. Das Studio fasst "
+                "sie zu einer GeoTIFF zusammen (4 m Pixelgröße, Ausschnitt an ganzen "
+                "Kilometern). In welchem Koordinatensystem liegen die Daten? Das steht "
+                "beim Anbieter oder in der .prj-Datei neben den ASC-Dateien."
+            ).format(count=count),
+            [name for _, name in choices],
+            start,
+            False,
+        )
+
+        if not ok:
+            return False
+
+        epsg = next(code for code, name in choices if name == label)
+
+        progress = QProgressDialog(
+            tr("ASC-Dateien werden umgewandelt ..."), tr("Abbrechen"), 0, count, self
+        )
+        progress.setWindowTitle(tr("ASC-Dateien umwandeln"))
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setMinimumDuration(0)
+        progress.setValue(0)
+
+        def on_progress(done, total, name):
+            progress.setMaximum(total)
+            progress.setValue(done)
+
+            if name:
+                progress.setLabelText(
+                    tr("{name} ({done} von {total})").format(name=name, done=done, total=total)
+                )
+
+            QApplication.processEvents()
+
+            if progress.wasCanceled():
+                raise asc_import.AscCancelled(tr("Abgebrochen."))
+
+        try:
+            asc_import.convert_folder(
+                folder, folder / asc_import.OUTPUT_NAME, epsg=epsg, pixel=4.0,
+                on_progress=on_progress,
+            )
+        except asc_import.AscCancelled:
+            return False
+        except Exception as exc:  # noqa: BLE001
+            progress.close()
+            QMessageBox.warning(self, tr("ASC-Dateien umwandeln"), str(exc))
+            return False
+
+        progress.close()
+
+        QMessageBox.information(
+            self,
+            tr("ASC-Dateien umwandeln"),
+            tr(
+                "Fertig. Die zusammengefasste Datei liegt als {name} im Ordner. "
+                "Deine ASC-Dateien wurden nicht verändert."
+            ).format(name=asc_import.OUTPUT_NAME),
+        )
+
+        return True
 
     def _build_heightmap_for_source(self):
         """Baut das Hoehenraster aus der gewaehlten Quelle (bei DGM1 Deutschland

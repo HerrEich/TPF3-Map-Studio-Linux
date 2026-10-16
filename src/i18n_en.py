@@ -547,8 +547,6 @@ guide of the heightmap dialog (F1).</p>
         'Creates a mod from the loaded OSM ways that builds roads, tracks, bridges and tunnels in the game. Needs loaded OSM data.',
     'Schließen':
         'Close',
-    'Ordner mit DGM1-GeoTIFF-Kacheln wählen':
-        'Choose folder with DGM1 GeoTIFF tiles',
     'Lade Höhendaten... (kann je nach Kartengröße etwas dauern)':
         'Loading elevation data... (may take a while depending on the map size)',
     'Lade Schnellvorschau...':
@@ -1960,4 +1958,52 @@ guide of the heightmap dialog (F1).</p>
         '{count} tiles downloaded.',
     'Download fehlgeschlagen: {error}':
         'Download failed: {error}',
+    'Bahnhofsplan (Station Plan), Einebnung des Geländes unter Gleisen, Studio-Ansicht':
+        'Station plan, terrain levelling under tracks, Studio view',
+    'Nur die Auswahl, ob Straßenbahngleise mitgeladen werden':
+        'Only controls whether tram tracks are loaded',
+    'Einebnung des Geländes unter Straßen, Studio-Ansicht und eigene Ebenen':
+        'Terrain levelling under roads, Studio view and own layers',
+    'Einebnung unter Gebäuden, Bahnhofsgebäude im Bahnhofsplan, Studio-Ansicht':
+        'Levelling under buildings, station buildings in the station plan, Studio view',
+    'Biome-Maske (Gras/Park), Studio-Ansicht':
+        'Biome mask (grass/park), Studio view',
+    'Biome-Maske (Acker, Wiese, Wein ...), Bauernhöfe bei den Industrien, Studio-Ansicht':
+        'Biome mask (fields, meadow, vineyard ...), farms among the industries, Studio view',
+    'Biome-Maske (Wald), Forstwirtschaft bei den Industrien, Studio-Ansicht':
+        'Biome mask (forest), forestry among the industries, Studio view',
+    'Studio-Ansicht und eigene Ebenen, nicht direkt im TPF3-Editor':
+        'Studio view and own layers, not directly in the TPF3 editor',
+    'Ortsdatei (Städte und Dörfer) für den TPF3-Editor':
+        'Towns file (cities and villages) for the TPF3 editor',
+    'Biome-Maske (Siedlung, Heide, Moor, Fels), Steinbrüche bei den Industrien':
+        'Biome mask (settlement, heath, bog, rock), quarries among the industries',
+    'Industrien (Sägewerk, Ziegelei, ...) für den TPF3-Editor':
+        'Industries (sawmill, brickworks, ...) for the TPF3 editor',
+    'Studio-Ansicht und eigene Ebenen (Natur-Details), nicht direkt im TPF3-Editor':
+        'Studio view and own layers (nature details), not directly in the TPF3 editor',
+    'Nur Höhenkarte, Biome-Maske, Orte, Industrien und Bahnhofsplan gehen in den TPF3-Editor. Alle anderen Daten dienen der Ansicht im Studio, eigenen Ebenen und Ableitungen. Fahre mit der Maus über eine Kategorie, um zu sehen, wofür sie gebraucht wird.':
+        'Only heightmap, biome mask, towns, industries and station plan go to the TPF3 editor. All other data is used for the Studio view, own layers and derivations. Hover over a category to see what it is used for.',
+    'ASC-Dateien umwandeln':
+        'Convert ASC files',
+    'Im Ordner liegen {count} ASC-Dateien, aber keine GeoTIFF. Das Studio fasst sie zu einer GeoTIFF zusammen (4 m Pixelgröße, Ausschnitt an ganzen Kilometern). In welchem Koordinatensystem liegen die Daten? Das steht beim Anbieter oder in der .prj-Datei neben den ASC-Dateien.':
+        'The folder contains {count} ASC files but no GeoTIFF. The Studio merges them into one GeoTIFF (4 m pixel size, section aligned to whole kilometres). Which coordinate system are the data in? The provider states it, or look in the .prj file next to the ASC files.',
+    'ASC-Dateien werden umgewandelt ...':
+        'Converting ASC files ...',
+    '{name} ({done} von {total})':
+        '{name} ({done} of {total})',
+    'Fertig. Die zusammengefasste Datei liegt als {name} im Ordner. Deine ASC-Dateien wurden nicht verändert.':
+        'Done. The merged file is in the folder as {name}. Your ASC files were not changed.',
+    '{name}: kein gültiger ASC-Kopf (es fehlt {key}).':
+        '{name}: not a valid ASC header ({key} is missing).',
+    '{name}: {found} Werte gefunden, erwartet {expected}.':
+        '{name}: {found} values found, {expected} expected.',
+    'Die Pixelgröße muss in 1000 m aufgehen (1, 2, 4, 5, 10 ...).':
+        'The pixel size must divide 1000 m evenly (1, 2, 4, 5, 10 ...).',
+    'Im Ordner {folder} liegen keine ASC-Dateien.':
+        'There are no ASC files in the folder {folder}.',
+    '{name}: Zellgröße {cell} m passt nicht zur Pixelgröße {px} m.':
+        '{name}: cell size {cell} m does not fit the pixel size {px} m.',
+    'Ordner mit DGM1-Kacheln (GeoTIFF oder ASC) wählen':
+        'Choose folder with DGM1 tiles (GeoTIFF or ASC)',
 }

@@ -124,6 +124,76 @@ class OverpassQueryConfig:
         return cls(**filtered)
 
 
+CATEGORY_FLAGS = (
+    "railways",
+    "highways",
+    "buildings",
+    "parks",
+    "landuse",
+    "vegetation",
+    "water",
+    "places",
+    "biome_areas",
+    "industry",
+    "stations",
+    "nature_details",
+)
+
+
+def query_categories(config: OverpassQueryConfig | None = None) -> frozenset:
+    """
+    Die aktivierten Merkmalsgruppen einer Konfiguration als Menge.
+
+    Gleise ohne Strassenbahn zaehlen als eigene Gruppe "railways_notram":
+    ihre Daten sind keine Obermenge der Gleise mit Strassenbahn.
+    """
+
+    if config is None:
+        config = OverpassQueryConfig()
+
+    cats = {flag for flag in CATEGORY_FLAGS if getattr(config, flag)}
+
+    if "railways" in cats and not config.include_tram:
+        cats.discard("railways")
+        cats.add("railways_notram")
+
+    return frozenset(cats)
+
+
+def config_from_categories(categories) -> OverpassQueryConfig:
+    """Gegenstueck zu query_categories: eine Konfiguration nur mit diesen Gruppen."""
+
+    values = {flag: flag in categories for flag in CATEGORY_FLAGS}
+    values["include_tram"] = True
+
+    if "railways_notram" in categories:
+        values["railways"] = True
+        values["include_tram"] = False
+
+    return OverpassQueryConfig(**values)
+
+
+def area_filter(selection: Selection) -> str:
+    """
+    Der Gebietsfilter der Abfrage: rechteckige bbox oder poly: bei gedrehter
+    Auswahl. Dient auch als Kennung einer Kachel im Cache.
+    """
+
+    if selection.is_rotated:
+
+        corner_pairs = " ".join(
+            f"{lat} {lon}"
+            for lat, lon in selection.corners_latlon()
+        )
+
+        return f'poly:"{corner_pairs}"'
+
+    return (
+        f"{selection.min_lat},{selection.min_lon},"
+        f"{selection.max_lat},{selection.max_lon}"
+    )
+
+
 def build_query(
     selection: Selection,
     config: OverpassQueryConfig | None = None,
@@ -143,21 +213,7 @@ def build_query(
     # geladen statt nur fuer das gedrehte Kartenband selbst. Overpass
     # unterstuetzt dafuer den poly:-Filter (beliebiges Polygon) als
     # Alternative zur rechteckigen bbox.
-    if selection.is_rotated:
-
-        corner_pairs = " ".join(
-            f"{lat} {lon}"
-            for lat, lon in selection.corners_latlon()
-        )
-
-        bbox = f'poly:"{corner_pairs}"'
-
-    else:
-
-        bbox = (
-            f"{selection.min_lat},{selection.min_lon},"
-            f"{selection.max_lat},{selection.max_lon}"
-        )
+    bbox = area_filter(selection)
 
     lines: list[str] = []
 
