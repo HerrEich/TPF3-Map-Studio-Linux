@@ -78,6 +78,7 @@ def required_dgm1_tiles(
     selection,
     margin_m: float = MARGIN_M,
     step_m: float = 100.0,
+    zone: int | None = None,
 ) -> list[tuple[int, int, int]]:
     """
     Liste der 1-km-Kacheln (Zone, Ost-km, Nord-km), die das (ggf. gedrehte)
@@ -85,7 +86,9 @@ def required_dgm1_tiles(
     Band braeuchte sonst mehr als dreimal so viele Kacheln.
     """
 
-    return _required_tiles(selection, margin_m, step_m, latlon_to_utm, zone_for_lon)
+    zone_for = zone_for_lon if zone is None else (lambda _lon: zone)
+
+    return _required_tiles(selection, margin_m, step_m, latlon_to_utm, zone_for)
 
 
 def _required_tiles(
@@ -99,11 +102,6 @@ def _required_tiles(
     Gemeinsame Rechnung fuer DGM1 (UTM) und swissALTI3D (LV95): to_grid(lat, lon, zone)
     liefert Ost/Nord, zone_for(mittlere_laenge) die Kennzahl des Rasters.
     """
-
-    if float(getattr(selection, "scale_factor", 1.0) or 1.0) > 1.0001:
-        raise Dgm1Error(
-            tr("Bei gestauchter Karte (Stauchfaktor > 1) bitte Copernicus als Hoehenquelle waehlen.")
-        )
 
     corners = list(selection.corners_latlon())
 
@@ -263,10 +261,12 @@ def fetch_slot(
             continue
 
         if resp.status_code != 200:
-            raise Dgm1Error(
+            raise Dgm1TileRejected(
                 tr(
                     "hoehendaten.de antwortet mit HTTP {status} fuer Kachel {slot_prefix}."
                 ).format(status=resp.status_code, slot_prefix=_slot_prefix(zone, ie, inn))
+                + _service_detail(resp),
+                status=resp.status_code,
             )
 
         try:
@@ -356,13 +356,43 @@ def fetch_tiles_for_selection(
     sleep=time.sleep,
 ) -> FetchSummary:
     """
+    Holt die Kacheln. Lehnt der Dienst die erste Anfrage ab (HTTP 400), wird dieselbe
+    Stelle in der anderen UTM-Zone versucht: Bayern liegt dort auch oestlich von
+    12 Grad Ost in Zone 32, Sachsen in Zone 33.
+    """
+
+    try:
+        return _fetch_tiles_in_zone(
+            selection, cache_dir, None, True, progress, cancelled, min_interval_s, session, sleep
+        )
+    except _ZoneRejected as rejected:
+        other = _other_utm_zone(rejected.zone)
+        if other is None:
+            raise rejected.cause
+        return _fetch_tiles_in_zone(
+            selection, cache_dir, other, False, progress, cancelled, min_interval_s, session, sleep
+        )
+
+
+def _fetch_tiles_in_zone(
+    selection,
+    cache_dir: Path,
+    zone_override,
+    allow_switch,
+    progress,
+    cancelled,
+    min_interval_s,
+    session,
+    sleep,
+) -> FetchSummary:
+    """
     Holt alle fehlenden Kacheln fuer den Ausschnitt, hoechstens so schnell, wie
     der Dienst es erlaubt. progress(done, total, text) wird nach jeder Kachel
     aufgerufen, cancelled() fragt den Abbruchwunsch ab (Dgm1Cancelled).
     """
 
     cache_dir = Path(cache_dir)
-    slots = required_dgm1_tiles(selection)
+    slots = required_dgm1_tiles(selection, zone=zone_override)
 
     summary = FetchSummary(total=len(slots))
 
@@ -391,7 +421,12 @@ def fetch_tiles_for_selection(
 
         last_request = time.monotonic()
 
-        stored = fetch_slot(zone, ie, inn, cache_dir, session=session)
+        try:
+            stored = fetch_slot(zone, ie, inn, cache_dir, session=session)
+        except Dgm1TileRejected as exc:
+            if allow_switch and exc.status == 400 and summary.fetched == 0:
+                raise _ZoneRejected(zone, exc) from exc
+            raise
 
         if stored:
             summary.fetched += 1
@@ -402,6 +437,59 @@ def fetch_tiles_for_selection(
         progress(len(slots), len(slots), "Fertig")
 
     return summary
+
+
+class Dgm1TileRejected(Dgm1Error):
+    """Der Dienst hat eine Kachelanfrage abgelehnt (HTTP-Status in .status)."""
+
+    def __init__(self, message, status=0):
+        super().__init__(message)
+        self.status = status
+
+
+class _ZoneRejected(Exception):
+    def __init__(self, zone, cause):
+        super().__init__("Zone abgelehnt")
+        self.zone = zone
+        self.cause = cause
+
+
+def _service_detail(resp) -> str:
+    """Fehlertext aus der Antwort des Dienstes (leer, wenn keiner vorhanden)."""
+
+    try:
+        data = resp.json()
+        attrs = data.get("Attributes") if isinstance(data, dict) else None
+        err = attrs.get("Error") if isinstance(attrs, dict) else None
+        text = ""
+        if isinstance(err, dict):
+            text = str(err.get("Detail") or err.get("Title") or "").strip()
+    except Exception:  # noqa: BLE001
+        text = ""
+
+    return " (" + text[:200] + ")" if text else ""
+
+
+def _other_utm_zone(zone):
+    return {32: 33, 33: 32}.get(zone)
+
+
+def _tiles_in_cached_zone(selection, cache_dir):
+    """Kachelliste in der Zone, in der schon Kacheln vorliegen (sonst Standardzone)."""
+
+    tiles = required_dgm1_tiles(selection)
+    if not tiles or any(slot_is_cached(cache_dir, *t) for t in tiles):
+        return tiles
+
+    other = _other_utm_zone(tiles[0][0])
+    if other is None:
+        return tiles
+
+    alt = required_dgm1_tiles(selection, zone=other)
+    if any(slot_is_cached(cache_dir, *t) for t in alt):
+        return alt
+
+    return tiles
 
 
 class Dgm1FetchJob:
@@ -826,7 +914,7 @@ class Dgm1Mosaic:
         slots: list[Slot] = []
         missing = 0
 
-        for zone, ie, inn in (tiles if tiles is not None else required_dgm1_tiles(selection)):
+        for zone, ie, inn in (tiles if tiles is not None else _tiles_in_cached_zone(selection, cache_dir)):
             files = cached_files_for_slot(cache_dir, zone, ie, inn)
             if not files:
                 missing += 1

@@ -1,4 +1,5 @@
 import math
+from email.utils import parsedate_to_datetime
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -36,7 +37,6 @@ TRANSIENT_STATUS = (429, 500, 502, 503, 504)
 # Gleichzeitige Kachel-Anfragen (bei 429/504 faellt es auf 1 zurueck) und
 # Obergrenze fuer die Wartezeit nach einem Retry-After-Hinweis.
 TILE_WORKERS = 2
-MAX_RETRY_AFTER_S = 60.0
 
 _R_EARTH = 6371008.8
 
@@ -141,6 +141,12 @@ def _check_remark(data):
         raise OverpassRemarkError(remark)
 
 
+class OverpassUnavailable(RuntimeError):
+    def __init__(self, message, retryable=True):
+        super().__init__(message)
+        self.retryable = retryable
+
+
 class OverpassCancelled(Exception):
     """Der Benutzer hat den OSM-Download abgebrochen."""
 
@@ -176,6 +182,10 @@ class OverpassClient:
 
         # Optional: on_progress(kachel, gesamt), aus dem Download-Thread.
         self.on_progress = None
+        self.on_retry = None
+        self.on_lane = None
+        self.on_status = None
+        self.on_cache_status = None
 
         # Festplatten-Cache je Kachelabfrage (projektuebergreifend).
         # use_cache=False laedt alles neu und aktualisiert den Cache.
@@ -190,6 +200,7 @@ class OverpassClient:
         self._allowed = 1
         self._active = 0
         self._tls = threading.local()
+        self._pending_posts = {}
 
     # ---------------------------------------------------------
 
@@ -254,48 +265,39 @@ class OverpassClient:
         return result
 
     def _cached_tile(self, tile, config, query):
-        """
-        Schaut im Cache nach: (Antwort, None) wenn alles da ist, sonst
-        (None, Plan) mit der Abfrage nur der fehlenden Merkmale, sonst
-        (None, None) wenn die Kachel komplett geladen werden muss.
-        """
-
+        """Reuse all cached groups for the tile, retaining additional details."""
         if not self.use_cache:
             return None, None
-
-        cached = self.tile_cache.get(query)
-
-        if cached is not None:
-            return cached, None
-
         signature = self._signature(tile)
-
         if signature is None:
-            return None, None
+            return self.tile_cache.get(query), None
 
         wanted = query_categories(config)
         entries = self.tile_cache.find_cover(signature, wanted)
+        covered = set().union(*(cats for cats, _data in entries))
+        # A complete railways query includes the subset without tramways.
+        satisfies = covered | ({"railways_notram"} if "railways" in covered else set())
+        if not entries or not set(wanted) <= satisfies:
+            # Compatibility with pre-index cache files: recover an exact match
+            # without discarding indexed extras from the same geographical tile.
+            cached = self.tile_cache.get(query)
+            if cached is not None:
+                entries.append((set(wanted), cached))
+                covered |= set(wanted)
+                self.tile_cache.register(signature, wanted, query)
 
         if not entries:
             return None, None
-
-        covered = set()
-
-        for cats, _data in entries:
-            covered |= cats
-
-        missing = set(wanted) - covered
+        satisfies = covered | ({"railways_notram"} if "railways" in covered else set())
+        missing = set(wanted) - satisfies
         datas = [data for _cats, data in entries]
-
         if not missing:
-            merged = self._merge_results(datas)
-            self.tile_cache.put(query, merged)
-            self.tile_cache.register(signature, wanted, query)
-            return merged, None
-
+            # Cache-only reads must not renew the original files' expiry dates.
+            return datas[0] if len(datas) == 1 else self._merge_results(datas), None
         return None, {
             "signature": signature,
             "wanted": wanted,
+            "available": covered,
             "missing": missing,
             "query": build_query(tile, config_from_categories(missing)),
             "datas": datas,
@@ -316,7 +318,9 @@ class OverpassClient:
 
             merged = self._merge_results(plan["datas"] + [fresh])
             self.tile_cache.put(query, merged)
-            self.tile_cache.register(plan["signature"], plan["wanted"], query)
+            self.tile_cache.register(
+                plan["signature"], set(plan["available"]) | set(plan["missing"]), query
+            )
 
             return merged
 
@@ -327,102 +331,8 @@ class OverpassClient:
 
         return fresh
 
-    def _download(
-        self,
-        selection: Selection,
-        config: OverpassQueryConfig | None = None,
-    ) -> OSMData:
-
-        self._check_cancel()
-
-        query = build_query(selection, config)
-
-        cached, plan = self._cached_tile(selection, config, query)
-
-        if cached is not None:
-            print("Overpass-Cache: Daten aus dem Cache")
-            self.last_cache_hits = 1
-            osm = self.parser.parse(cached)
-            osm.data_timestamp = self._timestamp_of(cached)
-            return osm
-
-        self.last_cache_hits = 0
-        fetch_query = plan["query"] if plan else query
-
-        print("Overpass-Abfrage:")
-        print(fetch_query)
-
-        last_exception = None
-
-        servers = list(self.SERVERS)
-
-        if self._preferred_server in servers:
-            servers.remove(self._preferred_server)
-            servers.insert(0, self._preferred_server)
-
-        for server in servers:
-
-            self._check_cancel()
-
-            print()
-            print("=" * 60)
-            print("Versuche Server:", server)
-
-            try:
-
-                response = self._post(server, fetch_query)
-
-                print("HTTP:", response.status_code)
-
-                response.raise_for_status()
-
-                json_data = response.json()
-
-                self._check_cancel()
-
-                print("JSON erfolgreich empfangen.")
-
-                _check_remark(json_data)
-
-                self.tile_cache.put(fetch_query, json_data)
-                json_data = self._complete_tile(
-                    selection, config, query, plan, json_data
-                )
-
-                osm = self.parser.parse(json_data)
-                osm.data_timestamp = self._timestamp_of(json_data)
-
-                self._preferred_server = server
-
-                print()
-                print("Download erfolgreich.")
-                print(f"Nodes     : {osm.node_count}")
-                print(f"Ways      : {osm.way_count}")
-                print(f"Relations : {osm.relation_count}")
-
-                return osm
-
-            except requests.RequestException as exc:
-
-                last_exception = exc
-
-                print(type(exc).__name__)
-
-                if hasattr(exc, "response") and exc.response is not None:
-
-                    print("HTTP:", exc.response.status_code)
-
-                    try:
-                        print(exc.response.text)
-                    except Exception:
-                        pass
-
-                else:
-                    print(exc)
-
-        raise RuntimeError(
-            tr("Keiner der Overpass-Server war erreichbar.")
-        ) from last_exception
+    def _download(self, selection, config=None):
+        return self._download_tiled(selection, config)
 
     @staticmethod
     def _timestamp_of(data) -> str:
@@ -438,6 +348,7 @@ class OverpassClient:
 
         last_exception = None
         failures = []
+        retryable = False
 
         servers = list(self.SERVERS)
 
@@ -445,19 +356,13 @@ class OverpassClient:
             servers.remove(self._preferred_server)
             servers.insert(0, self._preferred_server)
 
-        for server in servers:
+        for server_index, server in enumerate(servers):
 
             self._check_cancel()
 
             try:
 
-                response = self._post(server, query)
-
-                response.raise_for_status()
-
-                data = response.json()
-
-                _check_remark(data)
+                data = self._request_json(server, query)
 
                 self._check_cancel()
 
@@ -470,17 +375,23 @@ class OverpassClient:
                 last_exception = exc
 
                 status = getattr(getattr(exc, "response", None), "status_code", None)
+                retryable = retryable or status is None or status in TRANSIENT_STATUS
                 label = type(exc).__name__ + (f" (HTTP {status})" if status else "")
                 if isinstance(exc, OverpassRemarkError):
                     label += ": " + str(exc)[:80]
                 print("Server", server, "fehlgeschlagen:", label)
                 failures.append(server.split("/")[2] + ": " + label)
 
+                self._emit_status("error", server=server, error=label,
+                                  http_status=status, error_type=type(exc).__name__)
                 self._note_overload(getattr(exc, "response", None))
+                if server_index + 1 < len(servers):
+                    self._emit_status("switch", server=server,
+                                      next_server=servers[server_index + 1], error=label)
 
-        raise RuntimeError(
+        raise OverpassUnavailable(
             tr("Keiner der Overpass-Server war erreichbar.")
-            + " (" + "; ".join(failures) + ")"
+            + " (" + "; ".join(failures) + ")", retryable=retryable
         ) from last_exception
 
     def _download_tiled(self, selection, config=None) -> OSMData:
@@ -527,12 +438,18 @@ class OverpassClient:
                 "es werden nur die fehlenden Merkmale nachgeladen"
             )
 
-        if self.on_progress is not None and done:
+        cache_status = {
+            "total": total, "done": done, "cached": done,
+            "partial": partial, "new": len(pending) - partial,
+            "initial_partial": partial, "initial_new": len(pending) - partial,
+        }
+        self._notify_cache_status(cache_status)
+        if self.on_progress is not None:
             self.on_progress(done, total)
 
         if pending:
 
-            self._allowed = max(1, min(int(self.workers), len(pending)))
+            self._allowed = max(1, min(2, int(self.workers), len(pending)))
             self._active = 0
 
             executor = ThreadPoolExecutor(
@@ -554,6 +471,9 @@ class OverpassClient:
                         plans[index], future.result(),
                     )
                     done += 1
+                    cache_status["done"] = done
+                    cache_status["partial" if plans[index] is not None else "new"] -= 1
+                    self._notify_cache_status(cache_status)
 
                     if self.on_progress is not None:
                         self.on_progress(done, total)
@@ -565,7 +485,7 @@ class OverpassClient:
                 raise
 
             finally:
-                executor.shutdown(wait=False, cancel_futures=True)
+                executor.shutdown(wait=True, cancel_futures=True)
 
         for data in results:
 
@@ -585,6 +505,13 @@ class OverpassClient:
         osm.data_timestamp = min(stamps) if stamps else ""
 
         return osm
+
+    def _notify_cache_status(self, status):
+        # A snapshot is essential: Qt delivers it asynchronously in the GUI.
+        snapshot = dict(status)
+        print("Kachel-Status:", snapshot)
+        if self.on_cache_status is not None:
+            self.on_cache_status(snapshot)
 
     # ---------------------------------------------------------
     # Parallele Kachel-Anfragen
@@ -622,71 +549,131 @@ class OverpassClient:
 
             time.sleep(min(0.2, left))
 
+    @staticmethod
+    def _server_retry_after(response):
+        try:
+            value = response.headers.get("Retry-After")
+            if not value:
+                return 0.0
+            try:
+                seconds = float(value)
+            except (ValueError, TypeError):
+                seconds = parsedate_to_datetime(value).timestamp() - time.time()
+            return max(0.0, seconds) if math.isfinite(seconds) else 0.0
+        except (AttributeError, ValueError, TypeError, OverflowError):
+            return 0.0
+
     def _note_overload(self, response):
-        """
-        Bei HTTP 429/504: ab sofort nur noch eine Anfrage gleichzeitig und
-        vor dem naechsten Versuch warten (Retry-After, sonst 10 s bzw. 5 s).
-        """
-
         status = getattr(response, "status_code", None)
-
-        # status None = Timeout/Verbindungsfehler: ebenfalls vorruebergehend.
         if status is not None and status not in TRANSIENT_STATUS:
             return
-
+        # Keep upstream's overload brake, but acquire the permit per HTTP
+        # request. A sleeping worker must not block the other worker's progress.
         with self._gate:
+            reduced = self._allowed != 1
             self._allowed = 1
             self._gate.notify_all()
+        if reduced:
+            self._emit_status("throttled")
+        self._tls.wait = max(getattr(self._tls, "wait", 0.0),
+                             self._server_retry_after(response))
 
-        wait = 10.0 if status == 429 else 5.0
+    @staticmethod
+    def _retry_delay(attempt):
+        delays = (10, 30, 60, 90, 180)
+        return delays[min(attempt - 1, len(delays) - 1)]
 
-        try:
-            header = response.headers.get("Retry-After")
-            if header:
-                wait = float(header)
-        except (AttributeError, TypeError, ValueError):
-            pass
+    def _lane_number(self):
+        name = threading.current_thread().name
+        if name.startswith("overpass-tile_"):
+            return int(name.rsplit("_", 1)[1]) + 1
+        return 1
 
-        wait = min(max(wait, 0.0), MAX_RETRY_AFTER_S)
+    def _notify_lane(self, index, state, attempt=0, seconds=0):
+        if self.on_lane is not None:
+            self.on_lane(self._lane_number(), index + 1, state, attempt, seconds)
 
-        self._tls.wait = max(getattr(self._tls, "wait", 0.0), wait)
+    def _emit_status(self, state, **details):
+        """Diagnostic events only; they do not control scheduling or retries."""
+        event = {
+            "lane": self._lane_number(),
+            "tile": getattr(self._tls, "tile", 0) + 1,
+            "attempt": getattr(self._tls, "request_attempt", 0),
+            "server": getattr(self._tls, "server", ""),
+            "time": time.strftime("%H:%M:%S"),
+            "state": state,
+            **details,
+        }
+        if state != "countdown":
+            print("OSM-Status:", event)
+        if self.on_status is not None:
+            self.on_status(event)
 
-    def _load_tile(self, index, query):
-        """Eine Kachel laden (mit Wiederholungen) und im Cache ablegen."""
+    def _wait_retry(self, index, attempt, seconds):
+        print(f"Spur {self._lane_number()}, Kachel {index + 1}: neuer Versuch in {seconds:.0f} s")
+        self._emit_status("retry", seconds=math.ceil(seconds), round=attempt + 1)
+        for remaining in range(math.ceil(seconds), 0, -1):
+            self._check_cancel()
+            self._notify_lane(index, "waiting", attempt, remaining)
+            self._emit_status("countdown", seconds=remaining, round=attempt + 1)
+            if self.on_lane is None and self.on_retry is not None:
+                self.on_retry(index + 1, attempt, remaining)
+            self._sleep(min(1, seconds))
+            seconds -= 1
 
+    def _request_json(self, server, query):
+        # At most two HTTP requests, or one after upstream's overload brake.
+        # Backoff takes place outside this permit, independently in each worker.
+        self._tls.server = server
+        self._emit_status("queued", server=server,
+                          attempt=getattr(self._tls, "request_attempt", 0) + 1)
         self._enter()
-
         try:
-
-            data = None
-
-            for attempt in range(TILE_RETRIES + 1):
-
-                self._tls.wait = 0.0
-
-                try:
-                    data = self._fetch_json(query)
-                    break
-                except RuntimeError:
-
-                    if attempt >= TILE_RETRIES:
-                        raise
-
-                    wait = max(
-                        getattr(self._tls, "wait", 0.0),
-                        BACKOFF_S[min(attempt, len(BACKOFF_S) - 1)],
-                    )
-
-                    print(f"Kachel {index + 1}: neuer Versuch {attempt + 2} in {wait:.0f} s")
-
-                    self._sleep(wait)
-
+            self._check_cancel()
+            self._tls.request_attempt = getattr(self._tls, "request_attempt", 0) + 1
+            self._emit_status("request", server=server)
+            response = self._post(server, query)
+            response.raise_for_status()
+            data = response.json()
+            _check_remark(data)
+            self._check_cancel()
+            return data
         finally:
             self._leave()
 
-        self.tile_cache.put(query, data)
-
-        return data
+    def _load_tile(self, index, query):
+        # As in upstream: a fixed worker retains its tile during every retry.
+        # No fresh tile is substituted just because this tile needs to wait.
+        attempt = 0
+        self._tls.tile = index
+        self._tls.request_attempt = 0
+        self._tls.server = ""
+        while True:
+            self._check_cancel()
+            self._tls.wait = 0.0
+            self._notify_lane(index, "loading")
+            try:
+                data = self._fetch_json(query)
+            except OverpassUnavailable as exc:
+                if not exc.retryable:
+                    raise
+                attempt += 1
+                if attempt > 10:
+                    raise
+                delay = max(self._retry_delay(attempt), getattr(self._tls, "wait", 0.0))
+                self._wait_retry(index, attempt, delay)
+            except RuntimeError:
+                # Unexpected failures retain the original finite bound.
+                if attempt >= TILE_RETRIES:
+                    raise
+                delay = BACKOFF_S[min(attempt, len(BACKOFF_S) - 1)]
+                attempt += 1
+                self._sleep(delay)
+            else:
+                self.tile_cache.put(query, data)
+                self._emit_status("complete")
+                self._notify_lane(index, "idle")
+                return data
 
     def _post(self, server: str, query: str):
         """
@@ -695,6 +682,12 @@ class OverpassClient:
         Anfrage laeuft im Hintergrund aus, ihr Ergebnis wird verworfen.
         """
 
+        lane = self._lane_number()
+        previous = self._pending_posts.get(lane)
+        while previous is not None and previous.is_alive():
+            self._check_cancel()
+            previous.join(0.2)
+        self._check_cancel()
         box = {}
 
         def work():
@@ -714,6 +707,7 @@ class OverpassClient:
         thread = threading.Thread(
             target=work, name="overpass-post", daemon=True
         )
+        self._pending_posts[lane] = thread
         thread.start()
 
         while thread.is_alive():

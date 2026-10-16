@@ -1187,10 +1187,6 @@ class HeightmapDialog(QDialog):
 
         in_germany = lat_min <= lat <= lat_max and lon_min <= lon <= lon_max
 
-        # Gestauchte Karte (Stauchfaktor > 1): nur Copernicus.
-        scaled = bool(getattr(self.selection, "is_scaled", False))
-        in_germany = in_germany and not scaled
-
         item = self.source_combo.model().item(1)
 
         if item is not None:
@@ -1203,7 +1199,6 @@ class HeightmapDialog(QDialog):
         s_lat_min, s_lat_max, s_lon_min, s_lon_max = SWISS_BOUNDS
 
         in_switzerland = s_lat_min <= lat <= s_lat_max and s_lon_min <= lon <= s_lon_max
-        in_switzerland = in_switzerland and not scaled
 
         swiss_item = self.source_combo.model().item(3)
 
@@ -1217,7 +1212,6 @@ class HeightmapDialog(QDialog):
         n_lat_min, n_lat_max, n_lon_min, n_lon_max = NL_BOUNDS
 
         in_netherlands = n_lat_min <= lat <= n_lat_max and n_lon_min <= lon <= n_lon_max
-        in_netherlands = in_netherlands and not scaled
 
         ahn_item = self.source_combo.model().item(4)
 
@@ -1225,14 +1219,6 @@ class HeightmapDialog(QDialog):
             ahn_item.setEnabled(in_netherlands)
 
         if not in_netherlands and self.source_combo.currentIndex() == 4:
-            self.source_combo.setCurrentIndex(0)
-
-        folder_item = self.source_combo.model().item(2)
-
-        if folder_item is not None:
-            folder_item.setEnabled(not scaled)
-
-        if scaled and self.source_combo.currentIndex() == 2:
             self.source_combo.setCurrentIndex(0)
 
     def _on_source_changed(self, index: int):

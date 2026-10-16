@@ -92,9 +92,8 @@ class SelectionTests(unittest.TestCase):
             self.assertTrue(600 <= ie <= 800, ie)
             self.assertTrue(5700 <= inn <= 5900, inn)
 
-    def test_scaled_map_is_rejected(self):
-        with self.assertRaises(Dgm1Error):
-            ahn.required_ahn_tiles(FakeSelection(scale_factor=2.0))
+    def test_scaled_map_is_no_longer_rejected(self):
+        self.assertGreater(len(ahn.required_ahn_tiles(FakeSelection(scale_factor=2.0))), 0)
 
     def test_wcs_parameters_use_the_kilometer_grid(self):
         params = ahn.tile_params(600, 5781)

@@ -136,6 +136,9 @@ class OverpassQueryDialog(QDialog):
         categories_layout.addWidget(info)
 
         layout.addWidget(categories_group)
+        cache_hint = QLabel(tr("Die Haken bestimmen, welche Merkmale zusätzlich geladen werden. Bereits gespeicherte Details bleiben erhalten, auch wenn ihr Haken aus ist."))
+        cache_hint.setWordWrap(True)
+        layout.addWidget(cache_hint)
 
         self.scale_hint = QLabel()
         self.scale_hint.setWordWrap(True)
@@ -230,7 +233,7 @@ class OverpassQueryDialog(QDialog):
 
         selection = self._current_selection()
 
-        if selection is None or not getattr(selection, "is_scaled", False):
+        if selection is None or float(getattr(selection, "scale_factor", 1.0) or 1.0) <= 1.0001:
             return
 
         area_km2 = (

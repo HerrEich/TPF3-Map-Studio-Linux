@@ -149,7 +149,7 @@ class IncrementalDownloadTests(unittest.TestCase):
         self.assertEqual(self.queries, [])
         self.assertEqual(self.ids(osm), [1, 3])
 
-    def test_switched_off_category_does_not_reappear(self):
+    def test_switched_off_category_is_retained_without_download(self):
         self.client.download(
             self.selection, _config(highways=True, buildings=True)
         )
@@ -157,9 +157,8 @@ class IncrementalDownloadTests(unittest.TestCase):
 
         osm = self.client.download(self.selection, _config(highways=True))
 
-        self.assertEqual(self.ids(osm), [1])
-        # Der Eintrag "Strassen + Gebaeude" ist keine Teilmenge: neu laden.
-        self.assertEqual(len(self.queries), 1)
+        self.assertEqual(self.ids(osm), [1, 2])
+        self.assertEqual(self.queries, [])
 
     def test_use_cache_false_loads_everything(self):
         config = _config(highways=True, buildings=True)

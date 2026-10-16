@@ -189,19 +189,18 @@ class TileCache:
 
     def find_cover(self, signature: str, wanted) -> list:
         """
-        Gespeicherte Antworten dieser Kachel, deren Merkmalsgruppen alle zu
-        `wanted` gehoeren (abgeschaltete Gruppen duerfen nicht wieder
-        auftauchen). Gierig nach groesster Gruppenmenge gewaehlt.
+        Alle gueltigen Merkmalsgruppen dieser Kachel bleiben erhalten,
+        auch wenn sie ueber `wanted` hinausgehen. Gierig nach groesster
+        Gruppenmenge gewaehlt; fehlende Gruppen werden vom Client ermittelt.
         Ergebnis: Liste von (Gruppenmenge, Antwort).
         """
 
-        wanted = set(wanted)
         usable = []
 
         for entry in self._read_index(signature):
             cats = set(entry["cats"])
 
-            if cats and cats <= wanted:
+            if cats:
                 usable.append((cats, entry["key"]))
 
         usable.sort(key=lambda item: -len(item[0]))

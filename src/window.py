@@ -35,6 +35,7 @@ from src.gui.toolbar import MainToolbar
 from src.gui.rectangle_dialog import RectangleToolDialog
 from src.gui.heightmap_dialog import HeightmapDialog
 from src.gui.cache_dialog import CacheDialog
+from src.gui.osm_download_status import OsmDownloadStatus, format_download_event
 from src.core.update_check import (
     decide_action,
     default_settings_path,
@@ -126,6 +127,10 @@ class _OsmWorker(QThread):
     failed = Signal(str)
     cancelled = Signal()
     progress = Signal(int, int)
+    retry_status = Signal(int, int, int)
+    lane_status = Signal(int, int, str, int, int)
+    download_status = Signal(object)
+    cache_status = Signal(object)
 
     def __init__(self, controller, selection, config, parent=None):
         super().__init__(parent)
@@ -143,6 +148,15 @@ class _OsmWorker(QThread):
 
         if client is not None and hasattr(client, "on_progress"):
             client.on_progress = lambda n, total: self.progress.emit(n, total)
+        if client is not None and hasattr(client, "on_retry"):
+            client.on_retry = lambda tile, attempt, seconds: self.retry_status.emit(tile, attempt, seconds)
+        if client is not None and hasattr(client, "on_lane"):
+            client.on_lane = lambda lane, tile, state, attempt, seconds: self.lane_status.emit(lane, tile, state, attempt, seconds)
+
+        if client is not None and hasattr(client, "on_status"):
+            client.on_status = self.download_status.emit
+        if client is not None and hasattr(client, "on_cache_status"):
+            client.on_cache_status = self.cache_status.emit
 
     def cancel(self):
         """Bricht den Download ab (vom GUI-Thread aufgerufen)."""
@@ -1285,6 +1299,7 @@ class MainWindow(QMainWindow):
         # ---------------------------------------------------------
 
         view_menu = menu.addMenu(tr("Ansicht"))
+        self.view_menu = view_menu
 
         view_menu.addAction(
             self.project_dock.toggleViewAction()
@@ -1637,6 +1652,19 @@ class MainWindow(QMainWindow):
             self._on_osm_cancelled
         )
 
+        self._osm_completed = 0
+        self._osm_total = 0
+        self._osm_lanes = {}
+        self._osm_events = {}
+        if not hasattr(self, "_osm_download_panel"):
+            self._osm_download_panel = OsmDownloadStatus(self)
+            self.addDockWidget(Qt.BottomDockWidgetArea, self._osm_download_panel)
+            self.view_menu.addAction(self._osm_download_panel.toggleViewAction())
+        self._osm_download_panel.start()
+        self._osm_worker.download_status.connect(self._on_osm_download_status)
+        self._osm_worker.cache_status.connect(self._on_osm_cache_status)
+        self._osm_worker.lane_status.connect(self._on_osm_lane)
+
         self._osm_worker.progress.connect(
             self._on_osm_progress
         )
@@ -1648,6 +1676,9 @@ class MainWindow(QMainWindow):
         self._osm_worker.start()
 
     def _on_osm_loaded(self, osm):
+        if hasattr(self, "_osm_download_panel"):
+            self._osm_download_panel.finish(tr("Alle OSM-Kacheln geladen."))
+
         """
         Laeuft im GUI-Thread: Daten ins Projekt uebernehmen und die
         Karte neu zeichnen.
@@ -1715,14 +1746,43 @@ class MainWindow(QMainWindow):
             print(f"Bahnhöfe konnten nicht gesammelt werden: {error}")
 
     def _on_osm_progress(self, number: int, total: int):
+        self._osm_completed = number
+        self._osm_total = total
+        if hasattr(self, "_osm_download_panel"):
+            self._osm_download_panel.set_progress(number, total)
+        self._show_osm_lanes()
 
-        self.statusBar().showMessage(
-            tr("OSM-Daten werden geladen: Kachel {n} von {total}").format(
-                n=number, total=total
-            )
-        )
+    def _on_osm_lane(self, lane, tile, state, attempt, seconds):
+        self._osm_lanes[lane] = (tile, state, seconds)
+        self._show_osm_lanes()
+
+    def _on_osm_cache_status(self, status):
+        self._osm_download_panel.set_cache_status(status)
+
+    def _on_osm_download_status(self, event):
+        self._osm_events[event["lane"]] = event
+        self._osm_download_panel.update_event(event)
+        self._show_osm_lanes()
+
+    def _show_osm_lanes(self):
+        parts = []
+        for lane, (tile, state, seconds) in sorted(self._osm_lanes.items()):
+            event = getattr(self, "_osm_events", {}).get(lane)
+            if event is not None:
+                parts.append(format_download_event(event))
+            elif state == "waiting":
+                parts.append(tr("Spur {lane}: Kachel {tile}, nächster Versuch in {seconds} s").format(lane=lane, tile=tile, seconds=seconds))
+            elif state == "loading":
+                parts.append(tr("Spur {lane}: Kachel {tile} lädt").format(lane=lane, tile=tile))
+            else:
+                parts.append(tr("Spur {lane}: bereit").format(lane=lane))
+        progress = tr("OSM: {done} von {total} Kacheln fertig").format(done=self._osm_completed, total=self._osm_total)
+        self.statusBar().showMessage(progress + (" | " + " | ".join(parts) if parts else ""))
 
     def _on_osm_failed(self, message: str):
+        if hasattr(self, "_osm_download_panel"):
+            self._osm_download_panel.finish(tr("Download fehlgeschlagen: {error}").format(error=message))
+
 
         self.statusBar().showMessage(
             tr("OSM-Download fehlgeschlagen: {message}").format(message=message)
@@ -1759,6 +1819,9 @@ class MainWindow(QMainWindow):
         )
 
     def _on_osm_cancelled(self):
+        if hasattr(self, "_osm_download_panel"):
+            self._osm_download_panel.finish(tr("Download abgebrochen."))
+
 
         self.statusBar().showMessage(
             tr("OSM-Download abgebrochen. Die bisherigen Daten bleiben unver\u00e4ndert.")

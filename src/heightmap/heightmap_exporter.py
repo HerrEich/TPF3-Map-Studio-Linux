@@ -203,14 +203,6 @@ def build_heightmap_array_ex(
 
     w_px, h_px = pixel_size_for_selection(selection)
 
-    if (
-        source != SOURCE_COPERNICUS
-        and float(getattr(selection, "scale_factor", 1.0) or 1.0) > 1.0001
-    ):
-        raise Dgm1Error(
-            tr("Bei gestauchter Karte (Stauchfaktor > 1) bitte Copernicus als Hoehenquelle waehlen.")
-        )
-
     if source == SOURCE_COPERNICUS:
 
         tile_paths = download_tiles_for_selection(selection, cache_dir)

@@ -1,3 +1,4 @@
+import tempfile
 import threading
 import time
 import unittest
@@ -21,6 +22,10 @@ class CancelTest(unittest.TestCase):
 
     def _client(self):
         client = oc.OverpassClient()
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        from src.osm.tile_cache import TileCache
+        client.tile_cache = TileCache(directory.name)
         return client
 
     def test_cancel_interrupts_slow_request(self):
@@ -42,10 +47,11 @@ class CancelTest(unittest.TestCase):
                 client.download(object(), None)
         self.assertFalse(client._cancel.is_set())
 
-    def test_normal_failure_still_runtime_error(self):
+    def test_permanent_failure_still_runtime_error(self):
         client = self._client()
         with mock.patch.object(oc, "build_query", lambda s, c=None: "q"), \
-                mock.patch.object(oc.requests, "post", _SlowPost(0.0)):
+                mock.patch.object(oc.requests, "post", side_effect=oc.requests.HTTPError(
+                    "bad query", response=mock.Mock(status_code=400))):
             with self.assertRaises(RuntimeError):
                 client.download(object(), None)
 
