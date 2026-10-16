@@ -37,14 +37,9 @@ Ohne OSM-Daten funktionieren die Optionen "Wasser nur dort, wo OpenStreetMap Was
 
 ### Eigene Höhendaten als ASC-Dateien (zum Beispiel Provinz Trient)
 
-Manche Landesportale liefern Höhendaten als ASC-Dateien (ESRI ASCII Grid). Die Quelle "Eigene Kacheln" liest aber nur GeoTIFF, und die Kacheln müssen an ganzen Kilometern ausgerichtet sein. Dafür liegt im Projekt das kleine Skript `tools\asc_zu_geotiff.py`. Es braucht Python mit numpy und Pillow, sonst nichts.
+Manche Landesportale liefern Höhendaten als ASC-Dateien (ESRI ASCII Grid). Dafür brauchst du nichts umzuwandeln: Wähle im Heightmap-Dialog **DGM1 aus eigenen GeoTIFF-Kacheln** und den Ordner mit den ASC-Dateien. Liegt dort keine GeoTIFF, fragt das Studio nach dem Koordinatensystem der Daten (voreingestellt nach dem Kartenmittelpunkt, in Südtirol und Trient EPSG:25832) und fasst die ASC-Dateien zu einer Datei `asc_zusammengefuegt.tif` im selben Ordner zusammen. Überlappungen werden gemittelt, die Pixelgröße ist 4 m, der Ausschnitt liegt an ganzen Kilometern. Deine ASC-Dateien bleiben unverändert. Beim nächsten Mal nutzt das Studio die fertige Datei.
 
-- Alle ASC-Dateien in einen Ordner legen (Überlappungen sind kein Problem, sie werden gemittelt).
-- Im Projektordner starten: `python tools\asc_zu_geotiff.py "ORDNER_MIT_ASC" "ausgabe.tif"`. Standard ist Koordinatensystem EPSG 25832 (ETRS89 / UTM 32N) und 4 m Pixelgröße. Mit `--epsg 25833` (Zone 33) oder `--pixel 2` änderst du das. Welches Koordinatensystem deine Daten haben, steht beim Anbieter oder in der `.prj`-Datei neben den ASC-Dateien.
-- Die entstandene GeoTIFF in einen leeren Ordner legen.
-- Im Heightmap-Dialog **DGM1 aus eigenen GeoTIFF-Kacheln** wählen und diesen Ordner angeben.
-
-Das Skript ist bisher nur mit Testdaten geprüft. Deine ASC-Dateien werden nicht gelöscht oder verändert.
+Welches Koordinatensystem deine Daten haben, steht beim Anbieter oder in der `.prj`-Datei neben den ASC-Dateien. Die Umwandlung ist bisher nur mit Testdaten geprüft. Ohne Studio geht es auch von der Kommandozeile: `python tools\asc_zu_geotiff.py "ORDNER_MIT_ASC" "ausgabe.tif"` (Python mit numpy und Pillow).
 
 ### 4. Einstellungen im Dialog
 **Schnellstart:** Oben im Dialog unter **Voreinstellung** "Empfohlen" wählen (Glätten, Einebnen, Wasser nach OSM mit den Standardwerten) oder "Original" (alle Optionen aus, echte Höhen). Beim DGM1 (1 m) sind die Standardwerte für Glätten und Einebnen kleiner (10 m), weil das Modell schon genau ist. Die Voreinstellung springt auf "Eigene Einstellungen", sobald du etwas von Hand änderst. Optionen, die OSM-Daten brauchen, bleiben ohne geladene OSM-Daten aus.
