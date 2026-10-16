@@ -159,6 +159,11 @@ class RectangleToolDialog(QDialog):
         self.scale_hint.setStyleSheet("color: #d9a400;")
         form.addRow("", self.scale_hint)
 
+        self._hint_large = self.scale_hint.text()
+        self._hint_small = tr("Faktor unter 1: Das reale Gebiet ist kleiner als die Spielkarte, die H\u00f6hen werden entsprechend angehoben.")
+        self._update_scale_hint(self.scale_input.value())
+        self.scale_input.valueChanged.connect(self._update_scale_hint)
+
         self.height_scale_input = QDoubleSpinBox()
         self.height_scale_input.setRange(0.01, 2.0)
         self.height_scale_input.setDecimals(3)
@@ -274,6 +279,11 @@ class RectangleToolDialog(QDialog):
                 return
 
         self.accept()
+
+    def _update_scale_hint(self, value: float):
+        self.scale_hint.setText(
+            self._hint_small if value < 0.9999 else self._hint_large
+        )
 
     def _on_scale_changed(self, value: float):
         if not self._height_manual:

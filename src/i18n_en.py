@@ -1328,6 +1328,7 @@ guide of the heightmap dialog (F1).</p>
     'Auf dieser Strecke unter der Baumgrenze werden die Baumgruppen nach oben hin allmählich weniger, statt an einer harten Linie zu enden. 0 = harte Linie.':
         'Over this distance below the tree limit the tree groups thin out gradually towards the top instead of ending at a hard line. 0 = hard line.',
     'Stauchfaktor (1 = Originalmaßstab, unter 1 = gedehnt):': 'Compression factor (1 = original scale, below 1 = stretched):',
+    'Faktor unter 1: Das reale Gebiet ist kleiner als die Spielkarte, die Höhen werden entsprechend angehoben.': 'Factor below 1: the real area is smaller than the game map, heights are raised accordingly.',
     'Höhen-Faktor:': 'Height factor:',
     'Reale Fläche: {w:.1f} x {h:.1f} km, Höhen x{f:.3f}': 'Real area: {w:.1f} x {h:.1f} km, heights x{f:.3f}',
     'Wie oft die Kartengröße in das reale Gebiet passt. Beispiel: 14,3 km Spielkarte mit Faktor 5 ergibt 71,7 km reales Gebiet. Netz, Städte und Gelände werden entsprechend verkleinert.': 'How many times the map size fits into the real area. Example: a 14.3 km game map with factor 5 covers 71.7 km of real terrain. Network, towns and terrain are shrunk accordingly.',
