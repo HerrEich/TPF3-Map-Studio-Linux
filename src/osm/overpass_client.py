@@ -9,7 +9,13 @@ from src.http_identity import USER_AGENT
 from src.map.objects.selection import Selection
 from src.osm.osm_parser import OSMParser
 from src.osm.objects.osm_data import OSMData
-from src.osm.overpass_query_builder import OverpassQueryConfig, build_query
+from src.osm.overpass_query_builder import (
+    OverpassQueryConfig,
+    area_filter,
+    build_query,
+    config_from_categories,
+    query_categories,
+)
 from src.osm.tile_cache import TileCache
 from src.i18n import tr
 
@@ -180,6 +186,116 @@ class OverpassClient:
         finally:
             self._cancel.clear()
 
+    # ---------------------------------------------------------
+    # Cache je Kachel und Merkmalsgruppe (nur Fehlendes nachladen)
+
+    @staticmethod
+    def _signature(tile):
+        """Kennung der Kachel im Cache (ihr Gebietsfilter) oder None."""
+
+        try:
+            return area_filter(tile)
+        except Exception:  # noqa: BLE001
+            return None
+
+    @staticmethod
+    def _merge_results(datas):
+        """Fuehrt mehrere Overpass-Antworten zusammen (aeltester Datenstand)."""
+
+        merged = {}
+        stamps = []
+
+        for data in datas:
+
+            stamp = OverpassClient._timestamp_of(data)
+
+            if stamp:
+                stamps.append(stamp)
+
+            for element in data.get("elements", []):
+                merged[(element.get("type"), element.get("id"))] = element
+
+        result = {"elements": list(merged.values())}
+
+        if stamps:
+            result["osm3s"] = {"timestamp_osm_base": min(stamps)}
+
+        return result
+
+    def _cached_tile(self, tile, config, query):
+        """
+        Schaut im Cache nach: (Antwort, None) wenn alles da ist, sonst
+        (None, Plan) mit der Abfrage nur der fehlenden Merkmale, sonst
+        (None, None) wenn die Kachel komplett geladen werden muss.
+        """
+
+        if not self.use_cache:
+            return None, None
+
+        cached = self.tile_cache.get(query)
+
+        if cached is not None:
+            return cached, None
+
+        signature = self._signature(tile)
+
+        if signature is None:
+            return None, None
+
+        wanted = query_categories(config)
+        entries = self.tile_cache.find_cover(signature, wanted)
+
+        if not entries:
+            return None, None
+
+        covered = set()
+
+        for cats, _data in entries:
+            covered |= cats
+
+        missing = set(wanted) - covered
+        datas = [data for _cats, data in entries]
+
+        if not missing:
+            merged = self._merge_results(datas)
+            self.tile_cache.put(query, merged)
+            self.tile_cache.register(signature, wanted, query)
+            return merged, None
+
+        return None, {
+            "signature": signature,
+            "wanted": wanted,
+            "missing": missing,
+            "query": build_query(tile, config_from_categories(missing)),
+            "datas": datas,
+        }
+
+    def _complete_tile(self, tile, config, query, plan, fresh):
+        """
+        Nach dem Laden: Teilantwort mit den Cache-Teilen zusammenfuehren und
+        im Index vermerken. `fresh` liegt schon unter der geladenen Abfrage
+        im Cache. Ergebnis: die vollstaendige Antwort fuer diese Kachel.
+        """
+
+        if plan is not None:
+
+            self.tile_cache.register(
+                plan["signature"], plan["missing"], plan["query"]
+            )
+
+            merged = self._merge_results(plan["datas"] + [fresh])
+            self.tile_cache.put(query, merged)
+            self.tile_cache.register(plan["signature"], plan["wanted"], query)
+
+            return merged
+
+        signature = self._signature(tile)
+
+        if signature is not None:
+            self.tile_cache.register(signature, query_categories(config), query)
+
+        return fresh
+
     def _download(
         self,
         selection: Selection,
@@ -190,8 +306,20 @@ class OverpassClient:
 
         query = build_query(selection, config)
 
+        cached, plan = self._cached_tile(selection, config, query)
+
+        if cached is not None:
+            print("Overpass-Cache: Daten aus dem Cache")
+            self.last_cache_hits = 1
+            osm = self.parser.parse(cached)
+            osm.data_timestamp = self._timestamp_of(cached)
+            return osm
+
+        self.last_cache_hits = 0
+        fetch_query = plan["query"] if plan else query
+
         print("Overpass-Abfrage:")
-        print(query)
+        print(fetch_query)
 
         last_exception = None
 
@@ -211,7 +339,7 @@ class OverpassClient:
 
             try:
 
-                response = self._post(server, query)
+                response = self._post(server, fetch_query)
 
                 print("HTTP:", response.status_code)
 
@@ -222,6 +350,13 @@ class OverpassClient:
                 self._check_cancel()
 
                 print("JSON erfolgreich empfangen.")
+
+                _check_remark(json_data)
+
+                self.tile_cache.put(fetch_query, json_data)
+                json_data = self._complete_tile(
+                    selection, config, query, plan, json_data
+                )
 
                 osm = self.parser.parse(json_data)
                 osm.data_timestamp = self._timestamp_of(json_data)
@@ -329,24 +464,37 @@ class OverpassClient:
         stamps = []
 
         queries = [build_query(tile, config) for tile in tiles]
+        fetch_queries = list(queries)
+        plans = [None] * total
         results = [None] * total
         pending = []
         done = 0
+        partial = 0
 
         self.last_cache_hits = 0
 
         for index, query in enumerate(queries):
 
-            cached = self.tile_cache.get(query) if self.use_cache else None
+            cached, plan = self._cached_tile(tiles[index], config, query)
 
             if cached is not None:
                 results[index] = cached
                 self.last_cache_hits += 1
                 done += 1
             else:
+                if plan is not None:
+                    plans[index] = plan
+                    fetch_queries[index] = plan["query"]
+                    partial += 1
                 pending.append(index)
 
         print(f"Kachel-Cache: {self.last_cache_hits} von {total} Kacheln aus dem Cache")
+
+        if partial:
+            print(
+                f"Kachel-Cache: {partial} Kacheln nur teilweise im Cache, "
+                "es werden nur die fehlenden Merkmale nachgeladen"
+            )
 
         if self.on_progress is not None and done:
             self.on_progress(done, total)
@@ -361,7 +509,7 @@ class OverpassClient:
             )
 
             futures = {
-                executor.submit(self._load_tile, index, queries[index]): index
+                executor.submit(self._load_tile, index, fetch_queries[index]): index
                 for index in pending
             }
 
@@ -369,7 +517,11 @@ class OverpassClient:
 
                 for future in as_completed(futures):
 
-                    results[futures[future]] = future.result()
+                    index = futures[future]
+                    results[index] = self._complete_tile(
+                        tiles[index], config, queries[index],
+                        plans[index], future.result(),
+                    )
                     done += 1
 
                     if self.on_progress is not None:

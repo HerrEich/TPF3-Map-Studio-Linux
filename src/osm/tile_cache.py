@@ -92,6 +92,138 @@ class TileCache:
 
             return None
 
+    # ------------------------------------------------------------------
+    # Index je Kachel: welche Merkmalsgruppen liegen schon im Cache?
+    #
+    # Eine Kachel kann mehrere Eintraege haben (zum Beispiel "alles ausser
+    # Gebaeude" und spaeter "nur Gebaeude"). Der Index merkt sich je Kachel
+    # Gruppenmenge -> Schluessel, damit beim Aktivieren eines weiteren
+    # Merkmals nur das Fehlende neu geladen werden muss.
+
+    def _index_path(self, signature: str) -> Path:
+
+        text = f"osm-tile-index-v{CACHE_FORMAT}\n{signature}"
+        digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+        return self.directory / f"idx_{digest[:40]}.json"
+
+    def _read_index(self, signature: str) -> list:
+
+        try:
+            raw = json.loads(
+                self._index_path(signature).read_text(encoding="utf-8")
+            )
+            entries = raw.get("entries", [])
+        except (OSError, ValueError, AttributeError):
+            return []
+
+        return [
+            entry for entry in entries
+            if isinstance(entry, dict)
+            and isinstance(entry.get("cats"), list)
+            and isinstance(entry.get("key"), str)
+        ]
+
+    def _load(self, path: Path):
+        """Wie get(), aber ueber den Dateipfad (fuer den Index)."""
+
+        try:
+            age = self._clock() - path.stat().st_mtime
+        except OSError:
+            return None
+
+        if age > self.max_age_s:
+            return None
+
+        try:
+            with gzip.open(path, "rb") as handle:
+                data = json.loads(handle.read().decode("utf-8"))
+
+            if not isinstance(data, dict) or "elements" not in data:
+                raise ValueError("kein Overpass-Ergebnis")
+
+            return data
+
+        except (OSError, ValueError, EOFError, zlib.error):
+            return None
+
+    def register(self, signature: str, categories, query: str) -> bool:
+        """
+        Merkt, dass `query` (schon im Cache) fuer die Kachel `signature`
+        genau die Merkmalsgruppen `categories` enthaelt. Schlaegt nie fehl.
+        """
+
+        cats = sorted(categories)
+
+        if not cats:
+            return False
+
+        path = self._index_path(signature)
+        tmp = path.with_name(
+            f"{path.name}.{os.getpid()}.{threading.get_ident()}.tmp"
+        )
+
+        entries = [
+            entry for entry in self._read_index(signature)
+            if sorted(entry["cats"]) != cats
+        ]
+        entries.append({"cats": cats, "key": self.key(query)})
+
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp.write_text(
+                json.dumps({"entries": entries}, separators=(",", ":")),
+                encoding="utf-8",
+            )
+            os.replace(tmp, path)
+            return True
+
+        except (OSError, TypeError, ValueError):
+
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
+
+            return False
+
+    def find_cover(self, signature: str, wanted) -> list:
+        """
+        Gespeicherte Antworten dieser Kachel, deren Merkmalsgruppen alle zu
+        `wanted` gehoeren (abgeschaltete Gruppen duerfen nicht wieder
+        auftauchen). Gierig nach groesster Gruppenmenge gewaehlt.
+        Ergebnis: Liste von (Gruppenmenge, Antwort).
+        """
+
+        wanted = set(wanted)
+        usable = []
+
+        for entry in self._read_index(signature):
+            cats = set(entry["cats"])
+
+            if cats and cats <= wanted:
+                usable.append((cats, entry["key"]))
+
+        usable.sort(key=lambda item: -len(item[0]))
+
+        covered = set()
+        chosen = []
+
+        for cats, key in usable:
+
+            if cats <= covered:
+                continue
+
+            data = self._load(self.directory / f"{key}.json.gz")
+
+            if data is None:
+                continue
+
+            chosen.append((cats, data))
+            covered |= cats
+
+        return chosen
+
     def put(self, query: str, data) -> bool:
         """Speichert eine Antwort atomar. Gibt False zurueck, schlaegt aber nie fehl."""
 
