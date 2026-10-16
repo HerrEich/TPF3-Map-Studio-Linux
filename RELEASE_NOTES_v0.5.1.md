@@ -20,7 +20,7 @@ Eigene DGM1-Kacheln als ASC-Dateien direkt im Studio nutzen, Stauchfaktor mit al
 
 **Installation:** `TPF3-Map-Studio-v0.5.1-win64.zip` herunterladen, die **ganze** ZIP entpacken, `TPF3-Map-Studio.exe` starten. Windows warnt beim ersten Start eventuell („Weitere Informationen“ -> „Trotzdem ausführen“), bei PyInstaller-Programmen sind Virenscanner-Fehlalarme bekannt.
 
-**SHA-256:** `(wird nach dem Build eingetragen)`
+**SHA-256:** `5c27d21c61ed86203f48488dba72491c229ec389e9e1709390f05b25578f82e3`
 
 **Hinweis:** inoffizielles Werkzeug, keine Verbindung zu Urban Games.
 
@@ -42,6 +42,6 @@ Eigene DGM1-Kacheln als ASC-Dateien direkt im Studio nutzen, Stauchfaktor mit al
 
 **Install:** download `TPF3-Map-Studio-v0.5.1-win64.zip`, extract the **whole** ZIP, run `TPF3-Map-Studio.exe`. Windows may warn on first start ("More info" -> "Run anyway"); antivirus false positives are known for PyInstaller programs.
 
-**SHA-256:** `(will be added after the build)`
+**SHA-256:** `5c27d21c61ed86203f48488dba72491c229ec389e9e1709390f05b25578f82e3`
 
 **Note:** unofficial tool, not affiliated with Urban Games.
