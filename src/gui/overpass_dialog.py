@@ -230,7 +230,7 @@ class OverpassQueryDialog(QDialog):
 
         selection = self._current_selection()
 
-        if selection is None or not getattr(selection, "is_scaled", False):
+        if selection is None or float(getattr(selection, "scale_factor", 1.0) or 1.0) <= 1.0001:
             return
 
         area_km2 = (

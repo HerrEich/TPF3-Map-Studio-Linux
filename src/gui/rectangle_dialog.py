@@ -132,10 +132,10 @@ class RectangleToolDialog(QDialog):
         self._height_manual = False
 
         self.scale_input = QDoubleSpinBox()
-        self.scale_input.setRange(1.0, 200.0)
+        self.scale_input.setRange(0.5, 200.0)
         self.scale_input.setDecimals(2)
         self.scale_input.setSingleStep(0.5)
-        self.scale_input.setValue(max(1.0, float(prefill_scale)))
+        self.scale_input.setValue(max(0.5, float(prefill_scale)))
         self.scale_input.setToolTip(
             tr(
                 "Wie oft die Kartengr\u00f6\u00dfe in das reale Gebiet passt. "
@@ -145,7 +145,7 @@ class RectangleToolDialog(QDialog):
         )
 
         form.addRow(
-            tr("Stauchfaktor (1 = Originalma\u00dfstab):"), self.scale_input
+            tr("Stauchfaktor (1 = Originalma\u00dfstab, unter 1 = gedehnt):"), self.scale_input
         )
 
         self.scale_hint = QLabel(
@@ -278,7 +278,7 @@ class RectangleToolDialog(QDialog):
     def _on_scale_changed(self, value: float):
         if not self._height_manual:
             self._setting_height = True
-            self.height_scale_input.setValue(round(1.0 / max(value, 1.0), 3))
+            self.height_scale_input.setValue(round(1.0 / max(value, 0.5), 3))
             self._setting_height = False
 
         self._update_real_label()
@@ -303,9 +303,6 @@ class RectangleToolDialog(QDialog):
             h=size.height_m * factor / 1000.0,
             f=self.height_scale_input.value(),
         )
-
-        if factor > 1.0001:
-            text += tr(" - nur Copernicus als H\u00f6henquelle")
 
         self.real_label.setText(text)
 
