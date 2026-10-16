@@ -22,9 +22,11 @@ from src.i18n import tr
 
 # Ab dieser Kantenlaenge (reale Meter) wird in Kacheln geladen.
 TILE_THRESHOLD_M = 25_000.0
-# Zielkante einer Kachel und Ueberlappung (reale Meter).
-TILE_SIZE_M = 11_000.0
-TILE_OVERLAP_M = 200.0
+# Festes, an der Weltkarte verankertes Kachelraster: Kantenlaenge in Grad
+# Breite (ca. 11 km). Die Laengengrad-Schrittweite je Breitenband wird
+# daraus abgeleitet. Weil das Raster nicht von Auswahl, Drehung oder
+# Stauchfaktor abhaengt, bleiben gleiche Kacheln im Cache wiederverwendbar.
+TILE_GRID_DEG = 0.1
 TILE_RETRIES = 4
 # Wartezeit (s) vor dem 2., 3., ... Versuch einer Kachel, falls der Server
 # keinen Retry-After nennt. Overpass ist oft minutenlang ueberlastet.
@@ -39,11 +41,50 @@ MAX_RETRY_AFTER_S = 60.0
 _R_EARTH = 6371008.8
 
 
+def _lon_step(band):
+    """Laengengrad-Schrittweite des Breitenbands `band` (feste, gerundete Zahl)."""
+
+    mid = math.radians((band + 0.5) * TILE_GRID_DEG)
+
+    return round(TILE_GRID_DEG / max(math.cos(mid), 0.05), 3)
+
+
+def _overlaps(poly, box):
+    """Schneidet das konvexe Polygon (lon, lat)-Punkte das Rechteck box? (SAT)"""
+
+    x0, y0, x1, y1 = box
+    rect = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+
+    axes = [(1.0, 0.0), (0.0, 1.0)]
+
+    for i in range(len(poly)):
+        ax, ay = poly[i]
+        bx, by = poly[(i + 1) % len(poly)]
+        axes.append((-(by - ay), bx - ax))
+
+    for nx, ny in axes:
+
+        if nx == 0 and ny == 0:
+            continue
+
+        p = [nx * x + ny * y for x, y in poly]
+        r = [nx * x + ny * y for x, y in rect]
+
+        if max(p) < min(r) or max(r) < min(p):
+            return False
+
+    return True
+
+
 def plan_tiles(selection):
     """
-    Zerlegt eine grosse Auswahl in Kachel-Selections im (gedrehten)
-    Raster der Auswahl. Kleine oder nicht vermessene Auswahlen kommen
-    unveraendert als Liste mit einem Eintrag zurueck.
+    Zerlegt eine grosse Auswahl in Kacheln eines festen Weltrasters
+    (TILE_GRID_DEG Grad Breite, Laengenschritt je Breitenband). Nur Kacheln,
+    die das (ggf. gedrehte) Auswahlband beruehren, werden geladen. Da das
+    Raster nicht von Mittelpunkt, Drehung oder Stauchfaktor abhaengt, treffen
+    geaenderte Einstellungen dieselben Kacheln wieder im Cache.
+    Kleine oder nicht vermessene Auswahlen kommen unveraendert als Liste mit
+    einem Eintrag zurueck.
     """
 
     width = getattr(selection, "real_width_m", None)
@@ -52,42 +93,32 @@ def plan_tiles(selection):
     if not width or not height or max(width, height) <= TILE_THRESHOLD_M:
         return [selection]
 
-    nx = max(1, math.ceil(width / TILE_SIZE_M))
-    ny = max(1, math.ceil(height / TILE_SIZE_M))
+    corners = selection.corners_latlon()
+    lats = [c[0] for c in corners]
+    lons = [c[1] for c in corners]
+    poly = [(lon, lat) for lat, lon in corners]
 
-    step_x = width / nx
-    step_y = height / ny
-
-    center_lat, center_lon = selection.center
-    theta = math.radians(selection.rotation_deg)
-    up = (math.sin(theta), math.cos(theta))
-    right = (math.sin(theta + math.pi / 2), math.cos(theta + math.pi / 2))
-    cos0 = math.cos(math.radians(center_lat))
-
+    d = TILE_GRID_DEG
     tiles = []
 
-    for j in range(ny):
-        for i in range(nx):
+    for band in range(math.floor(min(lats) / d), math.floor(max(lats) / d) + 1):
 
-            x = -width / 2 + (i + 0.5) * step_x
-            y = height / 2 - (j + 0.5) * step_y
+        lat0 = round(band * d, 6)
+        lat1 = round((band + 1) * d, 6)
+        step = _lon_step(band)
 
-            e = right[0] * x + up[0] * y
-            n = right[1] * x + up[1] * y
+        for k in range(math.floor(min(lons) / step), math.floor(max(lons) / step) + 1):
 
-            lat = center_lat + math.degrees(n / _R_EARTH)
-            lon = center_lon + math.degrees(e / (_R_EARTH * cos0))
+            lon0 = round(k * step, 6)
+            lon1 = round((k + 1) * step, 6)
 
-            tiles.append(
-                type(selection).from_center(
-                    lat,
-                    lon,
-                    step_x + 2 * TILE_OVERLAP_M,
-                    step_y + 2 * TILE_OVERLAP_M,
-                    rotation_deg=selection.rotation_deg,
-                    scale_factor=1.0,
+            if _overlaps(poly, (lon0, lat0, lon1, lat1)):
+                tiles.append(
+                    type(selection)(
+                        min_lat=lat0, min_lon=lon0,
+                        max_lat=lat1, max_lon=lon1,
+                    )
                 )
-            )
 
     return tiles
 

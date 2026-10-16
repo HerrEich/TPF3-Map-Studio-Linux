@@ -1960,4 +1960,30 @@ guide of the heightmap dialog (F1).</p>
         '{count} tiles downloaded.',
     'Download fehlgeschlagen: {error}':
         'Download failed: {error}',
+    'Bahnhofsplan (Station Plan), Einebnung des Geländes unter Gleisen, Studio-Ansicht':
+        'Station plan, terrain levelling under tracks, Studio view',
+    'Nur die Auswahl, ob Straßenbahngleise mitgeladen werden':
+        'Only controls whether tram tracks are loaded',
+    'Einebnung des Geländes unter Straßen, Studio-Ansicht und eigene Ebenen':
+        'Terrain levelling under roads, Studio view and own layers',
+    'Einebnung unter Gebäuden, Bahnhofsgebäude im Bahnhofsplan, Studio-Ansicht':
+        'Levelling under buildings, station buildings in the station plan, Studio view',
+    'Biome-Maske (Gras/Park), Studio-Ansicht':
+        'Biome mask (grass/park), Studio view',
+    'Biome-Maske (Acker, Wiese, Wein ...), Bauernhöfe bei den Industrien, Studio-Ansicht':
+        'Biome mask (fields, meadow, vineyard ...), farms among the industries, Studio view',
+    'Biome-Maske (Wald), Forstwirtschaft bei den Industrien, Studio-Ansicht':
+        'Biome mask (forest), forestry among the industries, Studio view',
+    'Studio-Ansicht und eigene Ebenen, nicht direkt im TPF3-Editor':
+        'Studio view and own layers, not directly in the TPF3 editor',
+    'Ortsdatei (Städte und Dörfer) für den TPF3-Editor':
+        'Towns file (cities and villages) for the TPF3 editor',
+    'Biome-Maske (Siedlung, Heide, Moor, Fels), Steinbrüche bei den Industrien':
+        'Biome mask (settlement, heath, bog, rock), quarries among the industries',
+    'Industrien (Sägewerk, Ziegelei, ...) für den TPF3-Editor':
+        'Industries (sawmill, brickworks, ...) for the TPF3 editor',
+    'Studio-Ansicht und eigene Ebenen (Natur-Details), nicht direkt im TPF3-Editor':
+        'Studio view and own layers (nature details), not directly in the TPF3 editor',
+    'Nur Höhenkarte, Biome-Maske, Orte, Industrien und Bahnhofsplan gehen in den TPF3-Editor. Alle anderen Daten dienen der Ansicht im Studio, eigenen Ebenen und Ableitungen. Fahre mit der Maus über eine Kategorie, um zu sehen, wofür sie gebraucht wird.':
+        'Only heightmap, biome mask, towns, industries and station plan go to the TPF3 editor. All other data is used for the Studio view, own layers and derivations. Hover over a category to see what it is used for.',
 }
