@@ -7,6 +7,22 @@ uebereinstimmen. Schreibweise: britisches Englisch wie in README.en.md.
 """
 
 CATALOG = {
+    'Eigene TPF2-Heightmap (PNG)':
+        'Own TPF2 heightmap (PNG)',
+    'TPF2-Heightmap':
+        'TPF2 heightmap',
+    'TPF2-Heightmap (PNG) wählen':
+        'Choose TPF2 heightmap (PNG)',
+    'Höhe in Metern für Schwarz (Min):':
+        'Height in metres for black (min):',
+    'Höhe in Metern für Weiß (Max):':
+        'Height in metres for white (max):',
+    'Max muss über Min liegen.':
+        'Max must be above min.',
+    'Die PNG ({w} x {h} Pixel) passt nicht zum Rechteck ({bw} x {bh} Pixel).':
+        'The PNG ({w} x {h} pixels) does not match the rectangle ({bw} x {bh} pixels).',
+    'Keine TPF2-Heightmap angegeben.':
+        'No TPF2 heightmap specified.',
     'Aktuelles Projekt schließen und mit einem leeren Projekt weiterarbeiten':
         'Close the current project and continue with an empty project',
     'Auswahl':

@@ -32,6 +32,7 @@ SOURCE_DGM1_DE = "dgm1_de"          # Kacheln ueber hoehendaten.de (Zwischenspei
 SOURCE_DGM1_FOLDER = "dgm1_folder"  # selbst heruntergeladene GeoTIFF-Kacheln
 SOURCE_SWISSALTI3D = "swissalti3d"  # swissALTI3D (Schweiz), Kacheln von data.geo.admin.ch
 SOURCE_AHN_NL = "ahn_nl"            # AHN (Niederlande), Kacheln von PDOK
+SOURCE_TPF2_PNG = "tpf2_png"        # eigene TPF2-Heightmap (16-Bit-PNG)
 
 
 @dataclass
@@ -188,6 +189,9 @@ def build_heightmap_array_ex(
     dgm1_folder: Path | None = None,
     swiss_cache_dir: Path | None = None,
     ahn_cache_dir: Path | None = None,
+    tpf2_png: Path | None = None,
+    tpf2_low_m: float = 0.0,
+    tpf2_high_m: float = 0.0,
 ) -> tuple[np.ndarray, HeightmapBuildInfo]:
     """
     Wie build_heightmap_array(), waehlt aber die Hoehenquelle und liefert
@@ -212,6 +216,35 @@ def build_heightmap_array_ex(
             selection, mosaic, w_px, h_px,
             oversample=oversample_for_selection(selection),
         )
+
+        info = HeightmapBuildInfo(source=source)
+
+    elif source == SOURCE_TPF2_PNG:
+
+        from src.heightmap.tpf2_heightmap_import import load_tpf2_heightmap
+        from src.heightmap.tpf2_png_dem import Tpf2PngMosaic, Tpf2PngSizeError
+
+        if tpf2_png is None:
+            raise Dgm1Error(tr("Keine TPF2-Heightmap angegeben."))
+
+        png = load_tpf2_heightmap(tpf2_png)
+
+        if png.raw.shape != (h_px, w_px):
+            raise Tpf2PngSizeError(
+                tr("Die PNG ({w} x {h} Pixel) passt nicht zum Rechteck ({bw} x {bh} Pixel).").format(
+                    w=png.raw.shape[1], h=png.raw.shape[0], bw=w_px, bh=h_px
+                )
+            )
+
+        c_lat, c_lon = selection.center
+        scale = float(getattr(selection, "scale_factor", 1.0) or 1.0)
+        mosaic = Tpf2PngMosaic(
+            png.raw, tpf2_low_m, tpf2_high_m,
+            TPF2Geometry(c_lat, c_lon, selection.rotation_deg, scale),
+            (c_lat, c_lon), selection.width_m, selection.height_m, scale,
+        )
+
+        out = _sample_grid(selection, mosaic, w_px, h_px)
 
         info = HeightmapBuildInfo(source=source)
 
