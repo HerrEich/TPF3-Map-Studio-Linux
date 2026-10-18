@@ -29,4 +29,4 @@ Die Daten stehen unter **CC BY 4.0**. Die Quellenangabe ist Pflicht, das Studio 
 
 - Wo dem BEV-Modell Daten fehlen, ergänzt das Studio aus Copernicus.
 - Das BEV bietet auch historische Karten an (zum Beispiel um 1900). Das sind keine Höhendaten, das Studio nutzt sie nicht.
-- Getestet im Studio bei Graz (kleines Rechteck von 4 × 4 km und ein hohes Rechteck von etwa 7 × 36 km). *Im Spiel noch nicht getestet.*
+- Getestet bei Graz: im Studio mit einem kleinen Rechteck (4 × 4 km) und im Spiel mit der Kartengröße „Größenwahnsinnig 1:5“.
