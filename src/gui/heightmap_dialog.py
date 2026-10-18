@@ -39,6 +39,7 @@ from src.heightmap.industries_export import Terrain
 from src.gui.towns_dialog import TownsDialog
 from src.gui.network_dialog import NetworkDialog
 from src.gui.stations_action import save_stations_dialog
+from src.gui.zoom_preview_label import ZoomPreviewLabel
 from src.gui.map_size_presets import find_by_pixels
 from src.gui.dgm1_fetch_dialog import Dgm1FetchDialog
 from src.gui.share_description_dialog import ShareDescriptionDialog
@@ -52,6 +53,8 @@ from src.heightmap.heightmap_exporter import (
     build_heightmap_array_ex,
     build_heightmap_array_preview,
     export_heightmap_png,
+    SOURCE_TPF2_PNG,
+    SOURCE_BEV_AT,
     pixel_size_for_selection,
 )
 from src.heightmap.height_hints import height_hint
@@ -70,6 +73,7 @@ from src.heightmap.height_clipping import (
 )
 from src.heightmap.lv95 import SWISS_BOUNDS
 from src.heightmap.swissalti3d_dem import SwissFetchJob
+from src.heightmap.bev_dem import AT_BOUNDS, BevFetchJob
 from src.heightmap.ahn_nl_dem import NL_BOUNDS, AhnFetchJob
 from src.heightmap.tpf3_paths import find_tpf3_heightmaps_folder
 from src.heightmap.infrastructure_flatten import (
@@ -100,6 +104,7 @@ DEFAULT_CACHE_DIR = APP_DIR / "dem_cache"
 DEFAULT_DGM1_CACHE_DIR = APP_DIR / "dgm1_cache"
 DEFAULT_SWISS_CACHE_DIR = APP_DIR / "swissalti3d_cache"
 DEFAULT_AHN_CACHE_DIR = APP_DIR / "ahn_nl_cache"
+DEFAULT_BEV_CACHE_DIR = APP_DIR / "bev_at_cache"
 # OSM-Kacheln: der Ordner wird von src/osm/tile_cache.py benutzt (gleicher Name,
 # damit die Cache-Verwaltung ihn findet).
 DEFAULT_OSM_CACHE_DIR = APP_DIR / "osm_cache"
@@ -245,6 +250,8 @@ class HeightmapDialog(QDialog):
             tr("DGM1 aus eigenen GeoTIFF-Kacheln (Ordner)"),
             tr("swissALTI3D Schweiz (2 m, über data.geo.admin.ch)"),
             tr("AHN Niederlande (2 m, über PDOK)"),
+            tr("Eigene TPF2-Heightmap (PNG)"),
+            tr("BEV Österreich (1 m, über data.bev.gv.at)"),
         ])
         self.source_combo.setToolTip(
             tr("Copernicus: weltweit, aber nur 30 m fein und mit Baumkronen. "
@@ -258,6 +265,14 @@ class HeightmapDialog(QDialog):
             "Nur bei Karten in der Schweiz wählbar.")
         )
         self.source_combo.setItemData(4, tr("AHN Niederlande: Höhenmodell der Niederlande (2 m Auflösung, ohne Gebäude und Bewuchs). Die Kacheln werden von PDOK geladen und liegen danach im Zwischenspeicher. Nur bei Karten in den Niederlanden wählbar."), 3)  # 3 = Qt.ToolTipRole
+        self.source_combo.setItemData(
+            6,
+            tr("BEV Österreich: Höhenmodell des Bundesamts für Eich- und Vermessungswesen "
+            "(1 m, ohne Gebäude und Bewuchs). Geladen werden nur die Ausschnitte, die dein "
+            "Rechteck braucht, nicht die ganzen Dateien von rund 8 GB. Nur bei Karten in "
+            "Österreich wählbar. Quellenangabe: BEV, CC BY 4.0."),
+            3,  # 3 = Qt.ToolTipRole
+        )
         self.source_combo.currentIndexChanged.connect(
             self._on_source_changed
         )
@@ -330,7 +345,7 @@ class HeightmapDialog(QDialog):
         # Vorschau
         # -------------------------------------------------
 
-        self.preview_label = QLabel()
+        self.preview_label = ZoomPreviewLabel()
         self.preview_label.setAlignment(Qt.AlignCenter)
         self.preview_label.setMinimumHeight(300)
         preview_row = QHBoxLayout()
@@ -1171,12 +1186,16 @@ class HeightmapDialog(QDialog):
     # ---------------------------------------------------------
 
     def _current_source(self) -> str:
+        from src.heightmap.heightmap_exporter import SOURCE_TPF2_PNG
+
         return (
             SOURCE_COPERNICUS,
             SOURCE_DGM1_DE,
             SOURCE_DGM1_FOLDER,
             SOURCE_SWISSALTI3D,
             SOURCE_AHN_NL,
+            SOURCE_TPF2_PNG,
+            SOURCE_BEV_AT,
         )[self.source_combo.currentIndex()]
 
     def _update_source_availability(self):
@@ -1208,6 +1227,19 @@ class HeightmapDialog(QDialog):
         if not in_switzerland and self.source_combo.currentIndex() == 3:
             self.source_combo.setCurrentIndex(0)
 
+        # BEV nur bei Karten in Oesterreich
+        a_lat_min, a_lat_max, a_lon_min, a_lon_max = AT_BOUNDS
+
+        in_austria = a_lat_min <= lat <= a_lat_max and a_lon_min <= lon <= a_lon_max
+
+        bev_item = self.source_combo.model().item(6)
+
+        if bev_item is not None:
+            bev_item.setEnabled(in_austria)
+
+        if not in_austria and self.source_combo.currentIndex() == 6:
+            self.source_combo.setCurrentIndex(0)
+
         # AHN nur bei Karten in den Niederlanden
         n_lat_min, n_lat_max, n_lon_min, n_lon_max = NL_BOUNDS
 
@@ -1222,6 +1254,10 @@ class HeightmapDialog(QDialog):
             self.source_combo.setCurrentIndex(0)
 
     def _on_source_changed(self, index: int):
+
+        if index == 5:
+            self._choose_tpf2_png()
+            return
 
         if index != 2:
             return
@@ -1242,6 +1278,71 @@ class HeightmapDialog(QDialog):
             return
 
         self._dgm1_folder = Path(folder)
+
+    def _choose_tpf2_png(self):
+        """Eigene TPF2-Heightmap (PNG) waehlen, Min/Max in Metern abfragen."""
+
+        from PySide6.QtWidgets import QInputDialog, QMessageBox
+        from src.heightmap.heightmap_exporter import pixel_size_for_selection
+        from src.heightmap.tpf2_heightmap_import import load_tpf2_heightmap
+
+        def back():
+            self.source_combo.blockSignals(True)
+            self.source_combo.setCurrentIndex(0)
+            self.source_combo.blockSignals(False)
+
+        title = tr("TPF2-Heightmap")
+
+        path, _ = QFileDialog.getOpenFileName(
+            self, tr("TPF2-Heightmap (PNG) wählen"), str(Path.home()), "PNG (*.png)"
+        )
+
+        if not path:
+            back()
+            return
+
+        try:
+            png = load_tpf2_heightmap(path)
+        except Exception as exc:
+            QMessageBox.warning(self, title, str(exc))
+            back()
+            return
+
+        w_px, h_px = pixel_size_for_selection(self.selection)
+
+        if png.raw.shape != (h_px, w_px):
+            QMessageBox.warning(
+                self,
+                title,
+                tr("Die PNG ({w} x {h} Pixel) passt nicht zum Rechteck ({bw} x {bh} Pixel).").format(
+                    w=png.raw.shape[1], h=png.raw.shape[0], bw=w_px, bh=h_px
+                ),
+            )
+            back()
+            return
+
+        low, ok = QInputDialog.getDouble(
+            self, title, tr("Höhe in Metern für Schwarz (Min):"), 0.0, -20.0, 3177.0, 1
+        )
+        if not ok:
+            back()
+            return
+
+        high, ok = QInputDialog.getDouble(
+            self, title, tr("Höhe in Metern für Weiß (Max):"), max(low + 100.0, 300.0), -20.0, 3177.0, 1
+        )
+        if not ok:
+            back()
+            return
+
+        if high <= low:
+            QMessageBox.warning(self, title, tr("Max muss über Min liegen."))
+            back()
+            return
+
+        self._tpf2_png = Path(path)
+        self._tpf2_low_m = float(low)
+        self._tpf2_high_m = float(high)
 
     def _prepare_asc_folder(self, folder: Path) -> bool:
         """
@@ -1391,6 +1492,31 @@ class HeightmapDialog(QDialog):
             self.status_label.setText(tr("Berechne Höhenraster..."))
             self.repaint()
 
+        elif source == SOURCE_BEV_AT:
+
+            fetch_dialog = Dgm1FetchDialog(
+                self,
+                self.selection,
+                DEFAULT_BEV_CACHE_DIR,
+                job=BevFetchJob(self.selection, DEFAULT_BEV_CACHE_DIR),
+                title=tr("BEV-Kacheln laden"),
+                note=(
+                    tr("Die Kacheln kommen vom BEV (data.bev.gv.at). Geladen werden nur die "
+                    "Ausschnitte, die dein Rechteck braucht (rund 0,6 MB je Kachel). Bereits "
+                    "geladene Kacheln werden übersprungen. Du kannst jederzeit abbrechen und "
+                    "später weitermachen.")
+                ),
+                seconds_per_tile=1.0,
+            )
+
+            if not fetch_dialog.run():
+                raise RuntimeError(
+                    fetch_dialog.error or tr("Abgebrochen.")
+                )
+
+            self.status_label.setText(tr("Berechne Höhenraster..."))
+            self.repaint()
+
         elif source == SOURCE_COPERNICUS:
 
             if missing_tiles(self.selection, DEFAULT_CACHE_DIR):
@@ -1426,6 +1552,10 @@ class HeightmapDialog(QDialog):
             dgm1_folder=self._dgm1_folder,
             swiss_cache_dir=DEFAULT_SWISS_CACHE_DIR,
             ahn_cache_dir=DEFAULT_AHN_CACHE_DIR,
+            bev_cache_dir=DEFAULT_BEV_CACHE_DIR,
+            tpf2_png=getattr(self, "_tpf2_png", None),
+            tpf2_low_m=getattr(self, "_tpf2_low_m", 0.0),
+            tpf2_high_m=getattr(self, "_tpf2_high_m", 0.0),
         )
 
         self._build_info = info
@@ -1436,13 +1566,15 @@ class HeightmapDialog(QDialog):
 
         info = self._build_info
 
-        if info is None or info.source == SOURCE_COPERNICUS:
+        if info is None or info.source in (SOURCE_COPERNICUS, SOURCE_TPF2_PNG):
             return ""
 
         if info.source == SOURCE_SWISSALTI3D:
             name = "swissALTI3D"
         elif info.source == SOURCE_AHN_NL:
             name = "AHN"
+        elif info.source == SOURCE_BEV_AT:
+            name = "BEV"
         else:
             name = "DGM1"
 
@@ -1462,7 +1594,7 @@ class HeightmapDialog(QDialog):
 
         info = self._build_info
 
-        if info is None or info.source == SOURCE_COPERNICUS:
+        if info is None or info.source in (SOURCE_COPERNICUS, SOURCE_TPF2_PNG):
             self.source_label.setVisible(False)
             return
 
@@ -1488,7 +1620,7 @@ class HeightmapDialog(QDialog):
                     "(dort Copernicus)."
                 ).format(
                     count=info.missing_tiles,
-                    source="swissALTI3D" if swiss else ("AHN" if info.source == SOURCE_AHN_NL else "DGM1"),
+                    source="swissALTI3D" if swiss else ("AHN" if info.source == SOURCE_AHN_NL else ("BEV" if info.source == SOURCE_BEV_AT else "DGM1")),
                 )
             )
 
@@ -1739,9 +1871,7 @@ class HeightmapDialog(QDialog):
         pixmap = QPixmap()
         pixmap.loadFromData(buffer.getvalue())
 
-        self.preview_label.setPixmap(
-            pixmap.scaledToHeight(400, Qt.SmoothTransformation)
-        )
+        self.preview_label.set_source(pixmap)
 
         self.status_label.setText(
             tr(
@@ -1980,7 +2110,7 @@ class HeightmapDialog(QDialog):
         # geaendert worden sein kann)
         info = getattr(self, "_build_info", None)
         source = info.source if info is not None else self._current_source()
-        dgm1 = source in (SOURCE_DGM1_DE, SOURCE_DGM1_FOLDER, SOURCE_SWISSALTI3D, SOURCE_AHN_NL)
+        dgm1 = source in (SOURCE_DGM1_DE, SOURCE_DGM1_FOLDER, SOURCE_SWISSALTI3D, SOURCE_AHN_NL, SOURCE_TPF2_PNG, SOURCE_BEV_AT)
 
         wanted_on = {
             1: (),
@@ -2976,7 +3106,9 @@ class HeightmapDialog(QDialog):
         if not getattr(self, "_downloaded_once", False):
             return dict(getattr(self, "_pending_settings", {}) or {})
 
-        result = {"source": self._current_source()}
+        _src = self._current_source()
+        # Die eigene TPF2-PNG wird nicht im Projekt gespeichert (Datei und Min/Max fehlen dort)
+        result = {"source": SOURCE_COPERNICUS if _src == SOURCE_TPF2_PNG else _src}
 
         for key, box in self._settings_checks():
             result[key] = bool(box.isChecked())
@@ -3109,12 +3241,7 @@ class HeightmapDialog(QDialog):
         pixmap = QPixmap()
         pixmap.loadFromData(buffer.getvalue())
 
-        self.preview_label.setPixmap(
-            pixmap.scaledToHeight(
-                400,
-                Qt.SmoothTransformation
-            )
-        )
+        self.preview_label.set_source(pixmap)
 
         self._update_preview_3d(array)
 

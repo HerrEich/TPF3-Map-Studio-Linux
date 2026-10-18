@@ -16,6 +16,7 @@ import math
 import os
 import re
 import threading
+from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -277,6 +278,59 @@ class DemTile:
         )
 
 
+# Wie viele Kacheln gleichzeitig im Arbeitsspeicher bleiben duerfen. Eine
+# Kachel (3600 x 3600, float32) ist knapp 50 MB gross. Bei grossem
+# Stauchfaktor braucht eine Karte viele Kacheln; alle auf einmal zu laden
+# fuellt den Arbeitsspeicher (MemoryError).
+MAX_CACHED_TILES = 4
+
+
+class LazyDemTile:
+    """Hoehenkachel, deren Pixel erst bei Bedarf geladen werden.
+
+    Beim Anlegen wird nur der Kopf der Datei gelesen (Lage und Groesse),
+    nicht die Hoehenwerte.
+    """
+
+    def __init__(self, path, lon0, lat0, dlon, dlat, shape, loader=None):
+        self.path = Path(path)
+        self.lon0 = lon0
+        self.lat0 = lat0
+        self.dlon = dlon
+        self.dlat = dlat
+        self.shape = tuple(shape)
+        self._loader = loader
+
+    @classmethod
+    def open(cls, path: Path) -> "LazyDemTile":
+        from PIL import Image
+
+        Image.MAX_IMAGE_PIXELS = None
+        with Image.open(path) as im:
+            tags = im.tag_v2
+            scale = tags[33550]
+            tiepoint = tags[33922]
+            width, height = im.size
+        return cls(
+            path=path,
+            lon0=tiepoint[3],
+            lat0=tiepoint[4],
+            dlon=scale[0],
+            dlat=scale[1],
+            shape=(height, width),
+        )
+
+    def load_array(self) -> np.ndarray:
+        if self._loader is not None:
+            return self._loader(self.path)
+        return DemTile.load(self.path).array
+
+    @property
+    def array(self) -> np.ndarray:
+        # Nur fuer Aufrufer, die direkt auf .array zugreifen (nicht zwischengespeichert).
+        return self.load_array()
+
+
 class DemMosaic:
     """Mehrere Hoehenkacheln, angesprochen wie eine einzige zusammenhaengende Quelle.
 
@@ -288,10 +342,27 @@ class DemMosaic:
 
     def __init__(self, tiles: list[DemTile]):
         self.tiles = tiles
+        self._cache = OrderedDict()
 
     @classmethod
     def from_paths(cls, paths: list[Path]) -> "DemMosaic":
-        return cls([DemTile.load(p) for p in paths])
+        # Nur die Kopfdaten lesen; die Hoehenwerte kommen erst beim Abfragen.
+        return cls([LazyDemTile.open(p) for p in paths])
+
+    def _array_of(self, tile):
+        """Hoehenwerte einer Kachel; geladene Kacheln werden begrenzt zwischengespeichert."""
+
+        if not hasattr(tile, "load_array"):
+            return tile.array
+
+        key = tile.path
+        array = self._cache.pop(key, None)
+        if array is None:
+            array = tile.load_array()
+        self._cache[key] = array
+        while len(self._cache) > MAX_CACHED_TILES:
+            self._cache.popitem(last=False)
+        return array
 
     def sample_grid(self, lat: np.ndarray, lon: np.ndarray) -> np.ndarray:
         """Bilineare Hoehenabfrage fuer ganze Arrays von lat/lon-Punkten."""
@@ -304,11 +375,11 @@ class DemMosaic:
                 break
             row = (tile.lat0 - lat) / tile.dlat - 0.5
             col = (lon - tile.lon0) / tile.dlon - 0.5
-            h, w = tile.array.shape
+            h, w = getattr(tile, "shape", None) or tile.array.shape
             in_tile = remaining & (row >= -0.5) & (row < h - 0.5) & (col >= -0.5) & (col < w - 0.5)
             if not in_tile.any():
                 continue
-            out[in_tile] = _bilinear(tile.array, row[in_tile], col[in_tile])
+            out[in_tile] = _bilinear(self._array_of(tile), row[in_tile], col[in_tile])
             remaining &= ~in_tile
 
         return out

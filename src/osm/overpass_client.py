@@ -37,6 +37,13 @@ TRANSIENT_STATUS = (429, 500, 502, 503, 504)
 # Gleichzeitige Kachel-Anfragen (bei 429/504 faellt es auf 1 zurueck) und
 # Obergrenze fuer die Wartezeit nach einem Retry-After-Hinweis.
 TILE_WORKERS = 2
+# Dauerhafte Fehler: nach COOLDOWN_AFTER Fehlrunden in Folge (ohne einen einzigen
+# Erfolg dazwischen) warten ALLE Spuren laenger, damit die Server nicht weiter
+# bedraengt werden. Nach GIVE_UP_STREAK Fehlrunden in Folge wird der Download
+# beendet; geladene Kacheln bleiben im Zwischenspeicher.
+COOLDOWN_AFTER = 3
+COOLDOWN_S = (30.0, 60.0, 120.0, 240.0, 480.0, 600.0)
+GIVE_UP_STREAK = 12
 
 _R_EARTH = 6371008.8
 
@@ -151,6 +158,10 @@ class OverpassCancelled(Exception):
     """Der Benutzer hat den OSM-Download abgebrochen."""
 
 
+class _TileGaveUp(Exception):
+    """Eine einzelne Kachel blieb nach allen Versuchen ohne Antwort (der Rest wird weiter geladen)."""
+
+
 class OverpassClient:
     """
     Overpass-Client mit Fallback auf mehrere Server.
@@ -201,6 +212,10 @@ class OverpassClient:
         self._active = 0
         self._tls = threading.local()
         self._pending_posts = {}
+
+        # Fehlrunden in Folge ueber alle Spuren (Erfolg setzt auf 0 zurueck).
+        self._streak = 0
+        self._streak_lock = threading.Lock()
 
     # ---------------------------------------------------------
 
@@ -412,6 +427,7 @@ class OverpassClient:
         pending = []
         done = 0
         partial = 0
+        failed = 0
 
         self.last_cache_hits = 0
 
@@ -466,9 +482,17 @@ class OverpassClient:
                 for future in as_completed(futures):
 
                     index = futures[future]
+
+                    try:
+                        fresh = future.result()
+                    except _TileGaveUp:
+                        # Diese Kachel ueberspringen, der Rest wird weiter geladen.
+                        failed += 1
+                        continue
+
                     results[index] = self._complete_tile(
                         tiles[index], config, queries[index],
-                        plans[index], future.result(),
+                        plans[index], fresh,
                     )
                     done += 1
                     cache_status["done"] = done
@@ -486,6 +510,12 @@ class OverpassClient:
 
             finally:
                 executor.shutdown(wait=True, cancel_futures=True)
+
+            if failed:
+                raise OverpassUnavailable(
+                    tr("{count} von {total} Kacheln konnten nicht geladen werden. Die übrigen Kacheln sind gespeichert. Starte den Download später erneut, dann werden nur die fehlenden Kacheln geladen.").format(count=failed, total=total),
+                    retryable=True,
+                )
 
         for data in results:
 
@@ -578,6 +608,21 @@ class OverpassClient:
         self._tls.wait = max(getattr(self._tls, "wait", 0.0),
                              self._server_retry_after(response))
 
+    def _round_failed(self):
+        with self._streak_lock:
+            self._streak += 1
+            return self._streak
+
+    def _round_ok(self):
+        with self._streak_lock:
+            self._streak = 0
+
+    @staticmethod
+    def _cooldown_delay(streak):
+        if streak < COOLDOWN_AFTER:
+            return 0.0
+        return COOLDOWN_S[min(streak - COOLDOWN_AFTER, len(COOLDOWN_S) - 1)]
+
     @staticmethod
     def _retry_delay(attempt):
         delays = (10, 30, 60, 90, 180)
@@ -658,9 +703,19 @@ class OverpassClient:
                 if not exc.retryable:
                     raise
                 attempt += 1
+                streak = self._round_failed()
+                if streak >= GIVE_UP_STREAK:
+                    raise OverpassUnavailable(
+                        tr("Die Overpass-Server antworten seit längerer Zeit nicht. Bereits geladene Kacheln sind gespeichert. Starte den Download später erneut (am besten nachts oder morgens), dann werden nur die fehlenden Kacheln geladen."),
+                        retryable=True,
+                    ) from exc
                 if attempt > 10:
-                    raise
-                delay = max(self._retry_delay(attempt), getattr(self._tls, "wait", 0.0))
+                    raise _TileGaveUp() from exc
+                delay = max(
+                    self._retry_delay(attempt),
+                    getattr(self._tls, "wait", 0.0),
+                    self._cooldown_delay(streak),
+                )
                 self._wait_retry(index, attempt, delay)
             except RuntimeError:
                 # Unexpected failures retain the original finite bound.
@@ -671,6 +726,7 @@ class OverpassClient:
                 self._sleep(delay)
             else:
                 self.tile_cache.put(query, data)
+                self._round_ok()
                 self._emit_status("complete")
                 self._notify_lane(index, "idle")
                 return data

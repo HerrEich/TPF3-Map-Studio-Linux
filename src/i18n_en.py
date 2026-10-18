@@ -7,6 +7,28 @@ uebereinstimmen. Schreibweise: britisches Englisch wie in README.en.md.
 """
 
 CATALOG = {
+    'Die Overpass-Server antworten seit längerer Zeit nicht. Bereits geladene Kacheln sind gespeichert. Starte den Download später erneut (am besten nachts oder morgens), dann werden nur die fehlenden Kacheln geladen.':
+        'The Overpass servers have not been responding for a while. Tiles already downloaded are saved. Start the download again later (ideally at night or in the morning); only the missing tiles will be loaded.',
+    '{count} von {total} Kacheln konnten nicht geladen werden. Die übrigen Kacheln sind gespeichert. Starte den Download später erneut, dann werden nur die fehlenden Kacheln geladen.':
+        '{count} of {total} tiles could not be loaded. The other tiles are saved. Start the download again later; only the missing tiles will be loaded.',
+    'Mausrad: zoomen. Mit gedrückter Maustaste ziehen: verschieben. Doppelklick: ganze Karte.':
+        'Mouse wheel: zoom. Drag with the mouse button held: pan. Double-click: show the whole map.',
+    'Eigene TPF2-Heightmap (PNG)':
+        'Own TPF2 heightmap (PNG)',
+    'TPF2-Heightmap':
+        'TPF2 heightmap',
+    'TPF2-Heightmap (PNG) wählen':
+        'Choose TPF2 heightmap (PNG)',
+    'Höhe in Metern für Schwarz (Min):':
+        'Height in metres for black (min):',
+    'Höhe in Metern für Weiß (Max):':
+        'Height in metres for white (max):',
+    'Max muss über Min liegen.':
+        'Max must be above min.',
+    'Die PNG ({w} x {h} Pixel) passt nicht zum Rechteck ({bw} x {bh} Pixel).':
+        'The PNG ({w} x {h} pixels) does not match the rectangle ({bw} x {bh} pixels).',
+    'Keine TPF2-Heightmap angegeben.':
+        'No TPF2 heightmap specified.',
     'Aktuelles Projekt schließen und mit einem leeren Projekt weiterarbeiten':
         'Close the current project and continue with an empty project',
     'Auswahl':
@@ -2032,4 +2054,71 @@ guide of the heightmap dialog (F1).</p>
     'Noch zu ergänzen: {partial} · Noch vollständig zu laden: {new}': 'Still to complete: {partial} · Still to download in full: {new}',
     'Spur {lane}: nicht benötigt – keine weitere Kachel offen': 'Worker {lane}: not needed – no further tile pending',
     'Die Haken bestimmen, welche Merkmale zusätzlich geladen werden. Bereits gespeicherte Details bleiben erhalten, auch wenn ihr Haken aus ist.': 'The checkboxes determine which additional categories to download. Previously cached details are retained even when their checkbox is off.',
+    'Berechne ...': 'Calculating ...',
+    'Biome nach Höhe (Anteil der Landhöhe):': 'Biomes by height (share of land height):',
+    'Biome-Maske speichern...': 'Save biome mask...',
+    'Bitte einen anderen Dateinamen wählen – die TPF2-Datei wird nicht überschrieben.': 'Please choose a different file name – the TPF2 file will not be overwritten.',
+    'Das Bild enthält Werte außerhalb von 16 Bit.': 'The image contains values outside 16 bit.',
+    'Das Bild hat nur 8 Bit und wurde auf 16 Bit gestreckt; Höhenstufen können sichtbar sein.': 'The image only has 8 bit and was stretched to 16 bit; height steps may be visible.',
+    'Das Bild ist kein Graustufenbild. Erwartet wird eine 16-Bit-Graustufen-PNG wie aus dem TPF2-Ordner heightmaps.': 'The image is not a greyscale image. A 16-bit greyscale PNG as found in the TPF2 heightmaps folder is expected.',
+    'Das Bild ist zu klein oder hat mehrere Farbkanäle.': 'The image is too small or has several colour channels.',
+    'Das Bild liegt quer zu dieser Kartengröße.': 'The image is rotated relative to this map size.',
+    'Die Berechnung ist fehlgeschlagen:\n{error}': 'The calculation failed:\n{error}',
+    'Die Datei konnte nicht als Bild gelesen werden.': 'The file could not be read as an image.',
+    'Die Datei wurde nicht gefunden.': 'The file was not found.',
+    'Die Heightmap konnte nicht geladen werden.': 'The heightmap could not be loaded.',
+    'Die Maximalhöhe muss größer als die Mindesthöhe sein.': 'The maximum height must be greater than the minimum height.',
+    'Die PNG enthält keine Meter. Stelle die Wasserhöhe so ein, dass in der Vorschau Seen und Flüsse gefüllt sind, aber kein Land absäuft. Gleiche Höhe wie Mindesthöhe = kein Wasser.': 'The PNG contains no metres. Set the water level so that lakes and rivers are filled in the preview but no land is flooded. Same value as the minimum height = no water.',
+    'Die Wasserhöhe muss zwischen Mindest- und Maximalhöhe liegen.': 'The water level must lie between the minimum and maximum height.',
+    'Die untere Biom-Grenze muss kleiner als die obere sein.': 'The lower biome limit must be smaller than the upper one.',
+    'Entfernt kleine Pfützen, hebt flaches Land knapp über dem Wasser an und vertieft flaches Wasser, damit klare Ufer entstehen. Gelände weiter weg vom Wasser bleibt unverändert.': 'Removes small puddles, raises flat land just above the water and deepens shallow water so that clear shores are formed. Terrain further away from the water stays unchanged.',
+    'Gespeichert:\n{path}\n\nIm Spiel: Karteneditor → Heightmap importieren → diese Datei wählen und eintragen:\nMindesthöhe {low:g}, Maximalhöhe {high:g}, Wasserhöhe {water:g}': 'Saved:\n{path}\n\nIn the game: map editor → Import heightmap → choose this file and enter:\nminimum height {low:g}, maximum height {high:g}, water level {water:g}',
+    'Grenze Mitte/oben:': 'Limit middle/top:',
+    'Grenze unten/Mitte:': 'Limit bottom/middle:',
+    'Heightmap speichern': 'Save heightmap',
+    'Heightmap speichern...': 'Save heightmap...',
+    'Heightmap wählen...': 'Choose heightmap...',
+    'Höhen müssen zwischen -20 und 3177 m liegen (Grenzen des TPF3-Imports).': 'Heights must lie between -20 and 3177 m (limits of the TPF3 import).',
+    'Kartengröße: {labels}.': 'Map size: {labels}.',
+    'Keine bekannte TPF3-Kartengröße – der Karteneditor nimmt die Datei eventuell nicht an.': 'Not a known TPF3 map size – the map editor may not accept the file.',
+    'Land mindestens über Wasser:': 'Land at least above water:',
+    'Maximalhöhe:': 'Maximum height:',
+    'Mindesthöhe:': 'Minimum height:',
+    'Mitte:': 'Middle:',
+    'Noch keine Heightmap gewählt.': 'No heightmap chosen yet.',
+    'Oben:': 'Top:',
+    'Pfützen entfernen bis:': 'Remove puddles up to:',
+    'TPF2-Heightmap wählen': 'Choose TPF2 heightmap',
+    'TPF2-Karte übernehmen': 'Take over TPF2 map',
+    'TPF2-Karte übernehmen...': 'Take over TPF2 map...',
+    'Ufer bereinigen': 'Clean up shores',
+    'Ufer bereinigt: {puddles} Pfützen entfernt, {raised} Pixel angehoben, {lowered} Pixel vertieft.': 'Shores cleaned up: {puddles} puddles removed, {raised} pixels raised, {lowered} pixels deepened.',
+    'Unten:': 'Bottom:',
+    'Unter Wasser:': 'Under water:',
+    'Vorschau:': 'Preview:',
+    'Wasser (blau)': 'Water (blue)',
+    'Wasser mindestens tief:': 'Water at least deep:',
+    'Wasser: {share:.2f} % der Karte.': 'Water: {share:.2f} % of the map.',
+    '{w} x {h} Pixel = {wkm:.2f} x {hkm:.2f} km.': '{w} x {h} pixels = {wkm:.2f} x {hkm:.2f} km.',
+    'Übernimmt die Heightmap einer TPF2-Karte nach TPF3: Höhen und Wasserhöhe festlegen, Ufer bereinigen und eine Biome-Maske aus der Höhe erzeugen. Gedacht für fiktive Karten, bei denen alles Wasser auf einer Höhe liegt. Fels und Schnee färbt das Spiel selbst.': 'Takes over the heightmap of a TPF2 map into TPF3: set heights and water level, clean up shores and create a biome mask from the height. Intended for fictional maps where all water lies at one level. The game colours rock and snow itself.',
+    'Kein Wasser eingestellt (Wasserhöhe = Mindesthöhe).': 'No water set (water level = minimum height).',
+    'Es ist kein Wasser eingestellt: Die Wasserhöhe steht auf der Mindesthöhe. Dann werden keine Ufer bereinigt. Wird im Spiel trotzdem eine höhere Wasserhöhe eingetragen, entstehen Pfützen und Löcher.\n\nTrotzdem speichern?': 'No water is set: the water level equals the minimum height. Shores are then not cleaned up. If a higher water level is entered in the game anyway, puddles and holes will appear.\n\nSave anyway?',
+    "BEV-Kachel ist beschädigt (falsche Größe nach dem Entpacken).": "BEV tile is damaged (wrong size after unpacking).",
+    "Netzwerkfehler: {exc}": "Network error: {exc}",
+    "Dienstfehler HTTP {status}": "Service error HTTP {status}",
+    "BEV antwortet mit HTTP {status} (erwartet 206, Teilabruf) für {url}.": "BEV answered with HTTP {status} (expected 206, partial download) for {url}.",
+    "unvollständige Antwort": "incomplete response",
+    "unbekannter Fehler": "unknown error",
+    "BEV nicht erreichbar ({error}).": "BEV not reachable ({error}).",
+    "Die BEV-Datei ist kein BigTIFF, das Studio kann sie nicht lesen.": "The BEV file is not a BigTIFF; the Studio cannot read it.",
+    "Die BEV-Datei hat keine Ebene {level}.": "The BEV file has no level {level}.",
+    "Die BEV-Datei nutzt eine unbekannte Kompression.": "The BEV file uses an unknown compression.",
+    "Keine BEV-Kacheln fuer diesen Ausschnitt gefunden. Liegt der Ausschnitt ausserhalb Oesterreichs, bitte Copernicus waehlen.": "No BEV tiles found for this area. If the area is outside Austria, please choose Copernicus.",
+    "BEV Österreich (1 m, über data.bev.gv.at)": "BEV Austria (1 m, via data.bev.gv.at)",
+    "BEV Österreich: Höhenmodell des Bundesamts für Eich- und Vermessungswesen (1 m, ohne Gebäude und Bewuchs). Geladen werden nur die Ausschnitte, die dein Rechteck braucht, nicht die ganzen Dateien von rund 8 GB. Nur bei Karten in Österreich wählbar. Quellenangabe: BEV, CC BY 4.0.": "BEV Austria: terrain model of the Federal Office of Metrology and Surveying (1 m, without buildings and vegetation). Only the parts your rectangle needs are downloaded, not the whole files of about 8 GB. Selectable only for maps in Austria. Source: BEV, CC BY 4.0.",
+    "BEV-Kacheln laden": "Load BEV tiles",
+    "Die Kacheln kommen vom BEV (data.bev.gv.at). Geladen werden nur die Ausschnitte, die dein Rechteck braucht (rund 0,6 MB je Kachel). Bereits geladene Kacheln werden übersprungen. Du kannst jederzeit abbrechen und später weitermachen.": "The tiles come from the BEV (data.bev.gv.at). Only the parts your rectangle needs are downloaded (about 0.6 MB per tile). Tiles already downloaded are skipped. You can cancel at any time and continue later.",
 }
+
+
+CATALOG.update({'Anleitungen': 'Guides', 'Anleitungen...': 'Guides...', 'Suchen...': 'Search...'})

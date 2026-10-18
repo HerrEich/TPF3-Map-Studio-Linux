@@ -1,0 +1,22 @@
+{
+  "pages": [
+    {"id": "erste-schritte", "title": "Erste Schritte", "file": "erste-schritte.md"},
+    {"id": "karte-und-rechteck", "title": "Karte und Rechteck", "file": "karte-und-rechteck.md"},
+    {"id": "osm-daten", "title": "OSM-Daten laden", "file": "osm-daten.md"},
+    {
+      "id": "heightmap", "title": "Heightmap erstellen", "file": "heightmap.md",
+      "children": [
+        {"id": "hoehenquellen", "title": "Höhenquellen im Überblick", "file": "hoehenquellen.md"},
+        {"id": "oesterreich-bev", "title": "Österreich (BEV)", "file": "oesterreich-bev.md"},
+        {"id": "wasser-und-gelaende", "title": "Wasser und Gelände einstellen", "file": "wasser-und-gelaende.md"},
+        {"id": "hoehenfenster", "title": "Höhenfenster und Alpen", "file": "hoehenfenster.md"}
+      ]
+    },
+    {"id": "export-und-import", "title": "Export und Import im Spiel", "file": "export-und-import.md"},
+    {"id": "biome-staedte-industrien", "title": "Biome, Städte und Industrien", "file": "biome-staedte-industrien.md"},
+    {"id": "tpf2-nach-tpf3", "title": "TPF2-Karte nach TPF3 übernehmen", "file": "tpf2-nach-tpf3.md"},
+    {"id": "haeufige-fragen", "title": "Häufige Fragen und Fehler", "file": "haeufige-fragen.md"},
+    {"id": "quellen-und-lizenzen", "title": "Quellen und Lizenzen", "file": "quellen-und-lizenzen.md"},
+    {"id": "weitere-anleitungen", "title": "Weitere Anleitungen im Programm", "file": "weitere-anleitungen.md"}
+  ]
+}

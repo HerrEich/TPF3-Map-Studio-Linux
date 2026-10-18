@@ -994,6 +994,12 @@ class MainWindow(QMainWindow):
     # Cache verwalten (Hilfe-Menue)
     # ---------------------------------------------------------
 
+    def _open_tpf2_import(self, *_):
+        """Werkzeuge -> TPF2-Karte übernehmen (Szenario A, v0.6.0)."""
+        from src.gui.tpf2_import_dialog import Tpf2ImportDialog
+
+        Tpf2ImportDialog(self).exec()
+
     def _open_cache_dialog(self, *_):
 
         dialog = CacheDialog(self)
@@ -1400,6 +1406,14 @@ class MainWindow(QMainWindow):
             self._open_heightmap_tool
         )
 
+        tpf2_import_action = tools_menu.addAction(
+            tr("TPF2-Karte übernehmen...")
+        )
+
+        tpf2_import_action.triggered.connect(
+            self._open_tpf2_import
+        )
+
         if VACUUMTUBE_IMPORTER:
             mod_checker_action = tools_menu.addAction(
                 tr("Mod-Checker...")
@@ -1422,6 +1436,10 @@ class MainWindow(QMainWindow):
         # ---------------------------------------------------------
 
         help_menu = menu.addMenu(tr("Hilfe"))
+
+        help_center_action = help_menu.addAction(tr("Anleitungen..."))
+
+        help_center_action.triggered.connect(self._open_help_center)
 
         # Die Import-Anleitung beschreibt den Importer von VacuumTube (src/features.py).
         if VACUUMTUBE_IMPORTER:
@@ -1960,6 +1978,11 @@ class MainWindow(QMainWindow):
     # ---------------------------------------------------------
     # Funktionsübersicht
     # ---------------------------------------------------------
+
+    def _open_help_center(self):
+        from src.gui.help_center_dialog import HelpCenterDialog
+
+        HelpCenterDialog(self).exec()
 
     def _open_feature_overview(self):
 
