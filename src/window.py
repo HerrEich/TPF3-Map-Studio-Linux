@@ -994,6 +994,12 @@ class MainWindow(QMainWindow):
     # Cache verwalten (Hilfe-Menue)
     # ---------------------------------------------------------
 
+    def _open_tpf2_import(self, *_):
+        """Werkzeuge -> TPF2-Karte übernehmen (Szenario A, v0.6.0)."""
+        from src.gui.tpf2_import_dialog import Tpf2ImportDialog
+
+        Tpf2ImportDialog(self).exec()
+
     def _open_cache_dialog(self, *_):
 
         dialog = CacheDialog(self)
@@ -1398,6 +1404,14 @@ class MainWindow(QMainWindow):
 
         heightmap_action.triggered.connect(
             self._open_heightmap_tool
+        )
+
+        tpf2_import_action = tools_menu.addAction(
+            tr("TPF2-Karte übernehmen...")
+        )
+
+        tpf2_import_action.triggered.connect(
+            self._open_tpf2_import
         )
 
         if VACUUMTUBE_IMPORTER:
