@@ -21,6 +21,7 @@ from src.heightmap.height_clipping import normalize_heights
 from src.heightmap.copernicus_dem import DemMosaic, download_tiles_for_selection
 from src.heightmap.dgm1_dem import Dgm1Error, Dgm1Mosaic
 from src.heightmap.swissalti3d_dem import required_swiss_tiles
+from src.heightmap.bev_dem import BevMosaic
 from src.heightmap.ahn_nl_dem import required_ahn_tiles
 from src.i18n import tr
 
@@ -32,6 +33,7 @@ SOURCE_DGM1_DE = "dgm1_de"          # Kacheln ueber hoehendaten.de (Zwischenspei
 SOURCE_DGM1_FOLDER = "dgm1_folder"  # selbst heruntergeladene GeoTIFF-Kacheln
 SOURCE_SWISSALTI3D = "swissalti3d"  # swissALTI3D (Schweiz), Kacheln von data.geo.admin.ch
 SOURCE_AHN_NL = "ahn_nl"            # AHN (Niederlande), Kacheln von PDOK
+SOURCE_BEV_AT = "bev_at"            # BEV (Oesterreich), ALS-DTM 1 m, Teilabruf per HTTP-Range
 SOURCE_TPF2_PNG = "tpf2_png"        # eigene TPF2-Heightmap (16-Bit-PNG)
 
 
@@ -192,6 +194,7 @@ def build_heightmap_array_ex(
     tpf2_png: Path | None = None,
     tpf2_low_m: float = 0.0,
     tpf2_high_m: float = 0.0,
+    bev_cache_dir: Path | None = None,
 ) -> tuple[np.ndarray, HeightmapBuildInfo]:
     """
     Wie build_heightmap_array(), waehlt aber die Hoehenquelle und liefert
@@ -248,7 +251,7 @@ def build_heightmap_array_ex(
 
         info = HeightmapBuildInfo(source=source)
 
-    elif source in (SOURCE_DGM1_DE, SOURCE_DGM1_FOLDER, SOURCE_SWISSALTI3D, SOURCE_AHN_NL):
+    elif source in (SOURCE_DGM1_DE, SOURCE_DGM1_FOLDER, SOURCE_SWISSALTI3D, SOURCE_AHN_NL, SOURCE_BEV_AT):
 
         if source == SOURCE_DGM1_DE:
             if dgm1_cache_dir is None:
@@ -263,6 +266,10 @@ def build_heightmap_array_ex(
                 METERS_PER_PIXEL,
                 tiles=required_swiss_tiles(selection),
             )
+        elif source == SOURCE_BEV_AT:
+            if bev_cache_dir is None:
+                raise Dgm1Error("Kein Zwischenspeicher fuer BEV-Kacheln angegeben.")
+            dgm1 = BevMosaic.from_cache(selection, bev_cache_dir)
         elif source == SOURCE_AHN_NL:
             if ahn_cache_dir is None:
                 raise Dgm1Error("Kein Zwischenspeicher fuer AHN-Kacheln angegeben.")
@@ -278,6 +285,11 @@ def build_heightmap_array_ex(
             dgm1 = Dgm1Mosaic.from_folder(selection, dgm1_folder, METERS_PER_PIXEL)
 
         if dgm1.slot_count == 0:
+            if source == SOURCE_BEV_AT:
+                raise Dgm1Error(
+                    tr("Keine BEV-Kacheln fuer diesen Ausschnitt gefunden. Liegt der "
+                    "Ausschnitt ausserhalb Oesterreichs, bitte Copernicus waehlen.")
+                )
             if source == SOURCE_AHN_NL:
                 raise Dgm1Error(tr("Keine AHN-Kacheln fuer diesen Ausschnitt gefunden. Liegt der Ausschnitt ausserhalb der Niederlande, bitte Copernicus waehlen."))
             if source == SOURCE_SWISSALTI3D:

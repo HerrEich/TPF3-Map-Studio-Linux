@@ -2113,4 +2113,9 @@ guide of the heightmap dialog (F1).</p>
     "Die BEV-Datei ist kein BigTIFF, das Studio kann sie nicht lesen.": "The BEV file is not a BigTIFF; the Studio cannot read it.",
     "Die BEV-Datei hat keine Ebene {level}.": "The BEV file has no level {level}.",
     "Die BEV-Datei nutzt eine unbekannte Kompression.": "The BEV file uses an unknown compression.",
+    "Keine BEV-Kacheln fuer diesen Ausschnitt gefunden. Liegt der Ausschnitt ausserhalb Oesterreichs, bitte Copernicus waehlen.": "No BEV tiles found for this area. If the area is outside Austria, please choose Copernicus.",
+    "BEV Österreich (1 m, über data.bev.gv.at)": "BEV Austria (1 m, via data.bev.gv.at)",
+    "BEV Österreich: Höhenmodell des Bundesamts für Eich- und Vermessungswesen (1 m, ohne Gebäude und Bewuchs). Geladen werden nur die Ausschnitte, die dein Rechteck braucht, nicht die ganzen Dateien von rund 8 GB. Nur bei Karten in Österreich wählbar. Quellenangabe: BEV, CC BY 4.0.": "BEV Austria: terrain model of the Federal Office of Metrology and Surveying (1 m, without buildings and vegetation). Only the parts your rectangle needs are downloaded, not the whole files of about 8 GB. Selectable only for maps in Austria. Source: BEV, CC BY 4.0.",
+    "BEV-Kacheln laden": "Load BEV tiles",
+    "Die Kacheln kommen vom BEV (data.bev.gv.at). Geladen werden nur die Ausschnitte, die dein Rechteck braucht (rund 0,6 MB je Kachel). Bereits geladene Kacheln werden übersprungen. Du kannst jederzeit abbrechen und später weitermachen.": "The tiles come from the BEV (data.bev.gv.at). Only the parts your rectangle needs are downloaded (about 0.6 MB per tile). Tiles already downloaded are skipped. You can cancel at any time and continue later.",
 }

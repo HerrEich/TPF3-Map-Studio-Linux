@@ -341,7 +341,7 @@ class DialogWiringTest(unittest.TestCase):
             self.assertIn(needle, source, needle)
         # Import, Liste der Quellen im Dialog und Voreinstellung "wie DGM1"
         self.assertIn("    SOURCE_SWISSALTI3D,\n    build_heightmap_array,", source)
-        self.assertIn("            SOURCE_SWISSALTI3D,\n            SOURCE_AHN_NL,\n            SOURCE_TPF2_PNG,\n        )[self.source_combo.currentIndex()]", source)
+        self.assertIn("            SOURCE_SWISSALTI3D,\n            SOURCE_AHN_NL,\n            SOURCE_TPF2_PNG,\n            SOURCE_BEV_AT,\n        )[self.source_combo.currentIndex()]", source)
         self.assertIn("dgm1 = source in (SOURCE_DGM1_DE, SOURCE_DGM1_FOLDER, SOURCE_SWISSALTI3D, SOURCE_AHN_NL, SOURCE_TPF2_PNG)", source)
 
     def test_attribution_names_the_owner(self):
