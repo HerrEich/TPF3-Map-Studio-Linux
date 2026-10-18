@@ -9,7 +9,10 @@ Textur des Spiels auf Land knapp ueber dem Wasser - nicht bestaetigt).
 
 Abhilfe, alles in Metern gerechnet und mit derselben Skala zurueck in
 Rohwerte (im Spiel bleiben Min/Max/Wasserhoehe gleich):
-  1. Pfuetzen: zusammenhaengende Wasserflaechen unter min_area_px -> Land.
+  1. Pfuetzen: zusammenhaengende Wasserflaechen unter min_area_px -> Land,
+     aufgefuellt bis zu ihrem Rand (tiefster Nachbarpunkt). Sonst bliebe
+     eine Mulde in einem Huegel als trockenes Loch stehen (im Spiel
+     gesehen, 18.10.2026, fiktive Testkarte).
   2. Land: mindestens `margin_m` ueber der Wasserhoehe; direkt am Ufer
      als Rampe ueber `ramp_px` Pixel.
   3. Wasser: mindestens `depth_m` unter der Wasserhoehe, zum Ufer hin
@@ -76,6 +79,51 @@ def remove_puddles(water: np.ndarray, min_area_px: int) -> tuple[np.ndarray, int
     return water & ~puddle, int(small.sum()), int(puddle.sum())
 
 
+def fill_to_rim(h: np.ndarray, puddle: np.ndarray, max_rounds: int = 400) -> np.ndarray:
+    """Jede Flaeche in `puddle` glatt auffuellen: eine Flaeche, die sich an
+    ALLE Randpixel anschmiegt (am Hang schraeg, in der Mulde eben), statt
+    flach auf den tiefsten Randpunkt - sonst bleibt am Hang eine Stufe, die
+    das Spiel als Fels zeigt (im Spiel gesehen, 18.10.2026).
+
+    Rechnerisch: Mittelwert der vier Nachbarn, so oft wiederholt, bis sich
+    nichts mehr aendert (harmonische Interpolation). Die Werte liegen
+    zwischen tiefstem und hoechstem Randpunkt; nie wird abgesenkt.
+    Gerechnet wird je Pfuetze nur in ihrem kleinen Ausschnitt."""
+    if not puddle.any():
+        return h
+    labels, n = ndimage.label(puddle, structure=_EIGHT)
+    out = h.copy()
+    rows, cols = h.shape
+    for idx, box in enumerate(ndimage.find_objects(labels), start=1):
+        if box is None:
+            continue
+        y0 = max(box[0].start - 1, 0)
+        y1 = min(box[0].stop + 1, rows)
+        x0 = max(box[1].start - 1, 0)
+        x1 = min(box[1].stop + 1, cols)
+        inner = labels[y0:y1, x0:x1] == idx
+        patch = out[y0:y1, x0:x1].astype(np.float64)
+        ring = ndimage.binary_dilation(inner, structure=_EIGHT) & ~inner
+        if not ring.any():
+            continue
+        lo = float(patch[ring].min())
+        hi = float(patch[ring].max())
+        work = patch.copy()
+        work[inner] = lo
+        padded = np.pad(work, 1, mode="edge")
+        for _ in range(max_rounds):
+            mean = 0.25 * (padded[:-2, 1:-1] + padded[2:, 1:-1]
+                           + padded[1:-1, :-2] + padded[1:-1, 2:])
+            change = float(np.abs(mean[inner] - padded[1:-1, 1:-1][inner]).max())
+            padded[1:-1, 1:-1][inner] = mean[inner]
+            if change < 0.005:
+                break
+        filled = np.clip(padded[1:-1, 1:-1], lo, hi)
+        region = out[y0:y1, x0:x1]
+        region[inner] = np.maximum(region[inner], filled[inner].astype(region.dtype))
+    return out
+
+
 def clean_water(
     raw: np.ndarray,
     low_m: float,
@@ -93,7 +141,9 @@ def clean_water(
         raise ValueError("Abstand, Tiefe und Rampe duerfen nicht negativ sein")
 
     h = raw_to_meters(raw, low_m, high_m)
-    water, n_puddles, puddle_px = remove_puddles(h < water_m, min_area_px)
+    wet = h < water_m
+    water, n_puddles, puddle_px = remove_puddles(wet, min_area_px)
+    h = fill_to_rim(h, wet & ~water)
     land = ~water
 
     # Rampenfaktor 0..1 je nach Abstand zum Ufer (1 = volle Wirkung)

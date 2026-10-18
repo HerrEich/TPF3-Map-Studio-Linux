@@ -418,7 +418,10 @@ class Tpf2ImportDialog(QDialog):
             )
         )
 
-        text = tr("Wasser: {share:.2f} % der Karte.").format(share=100 * result.flooded_share)
+        if result.settings.water_m <= result.settings.low_m:
+            text = tr("Kein Wasser eingestellt (Wasserhöhe = Mindesthöhe).")
+        else:
+            text = tr("Wasser: {share:.2f} % der Karte.").format(share=100 * result.flooded_share)
         if result.cleanup is not None:
             text += " " + tr(
                 "Ufer bereinigt: {puddles} Pfützen entfernt, {raised} Pixel "
@@ -463,6 +466,24 @@ class Tpf2ImportDialog(QDialog):
             return None
         return path
 
+    def _confirm_no_water(self, result) -> bool:
+        """Warnt, wenn keine Wasserhöhe eingestellt ist (häufiger Fehler:
+        im Dialog 0 gelassen, im Spiel dann eine Wasserhöhe eingetragen)."""
+        s = result.settings
+        if s.water_m > s.low_m:
+            return True
+        answer = QMessageBox.question(
+            self,
+            tr("TPF2-Karte übernehmen"),
+            tr("Es ist kein Wasser eingestellt: Die Wasserhöhe steht auf der "
+               "Mindesthöhe. Dann werden keine Ufer bereinigt. Wird im Spiel "
+               "trotzdem eine höhere Wasserhöhe eingetragen, entstehen "
+               "Pfützen und Löcher.\n\nTrotzdem speichern?"),
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        return answer == QMessageBox.Yes
+
     def _heightmap_folder(self) -> Path:
         folder = find_tpf3_heightmaps_folder()
         return folder if folder is not None else Path.home()
@@ -470,6 +491,8 @@ class Tpf2ImportDialog(QDialog):
     def _save_heightmap(self):
         result = self._current_result()
         if result is None or self._hm is None:
+            return
+        if not self._confirm_no_water(result):
             return
         path = self._ask_path(
             tr("Heightmap speichern"), self._heightmap_folder(),
@@ -504,6 +527,8 @@ class Tpf2ImportDialog(QDialog):
     def _save_biome(self):
         result = self._current_result()
         if result is None or self._hm is None:
+            return
+        if not self._confirm_no_water(result):
             return
         heightmaps = self._heightmap_folder()
         biomes = heightmaps.parent / "biomes"

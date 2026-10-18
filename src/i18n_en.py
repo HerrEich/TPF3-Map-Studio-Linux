@@ -2079,4 +2079,6 @@ guide of the heightmap dialog (F1).</p>
     'Wasser: {share:.2f} % der Karte.': 'Water: {share:.2f} % of the map.',
     '{w} x {h} Pixel = {wkm:.2f} x {hkm:.2f} km.': '{w} x {h} pixels = {wkm:.2f} x {hkm:.2f} km.',
     'Übernimmt die Heightmap einer TPF2-Karte nach TPF3: Höhen und Wasserhöhe festlegen, Ufer bereinigen und eine Biome-Maske aus der Höhe erzeugen. Gedacht für fiktive Karten, bei denen alles Wasser auf einer Höhe liegt. Fels und Schnee färbt das Spiel selbst.': 'Takes over the heightmap of a TPF2 map into TPF3: set heights and water level, clean up shores and create a biome mask from the height. Intended for fictional maps where all water lies at one level. The game colours rock and snow itself.',
+    'Kein Wasser eingestellt (Wasserhöhe = Mindesthöhe).': 'No water set (water level = minimum height).',
+    'Es ist kein Wasser eingestellt: Die Wasserhöhe steht auf der Mindesthöhe. Dann werden keine Ufer bereinigt. Wird im Spiel trotzdem eine höhere Wasserhöhe eingetragen, entstehen Pfützen und Löcher.\n\nTrotzdem speichern?': 'No water is set: the water level equals the minimum height. Shores are then not cleaned up. If a higher water level is entered in the game anyway, puddles and holes will appear.\n\nSave anyway?',
 }

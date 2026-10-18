@@ -97,6 +97,41 @@ class CleanWaterTest(unittest.TestCase):
             clean_water(self._flussaue(), LOW, HIGH, 150.0)
 
 
+class FillToRimTest(unittest.TestCase):
+    def test_mulde_im_huegel_wird_aufgefuellt(self):
+        m = np.full((40, 40), 80.0, dtype=np.float32)
+        m[20:23, 20:23] = 49.8              # kleine Mulde unter Wasser
+        res = clean_water(_raw(m), LOW, HIGH, WATER, min_area_px=50)
+        out = _m(res.raw)
+        self.assertEqual(res.puddles_removed, 1)
+        self.assertTrue(np.allclose(out[20:23, 20:23], 80.0, atol=0.01))
+
+    def test_zwischen_tiefstem_und_hoechstem_rand(self):
+        m = np.full((30, 30), 90.0, dtype=np.float32)
+        m[10:20, 9] = 60.0                  # niedrige Seite
+        m[10:12, 10:12] = 49.0
+        res = clean_water(_raw(m), LOW, HIGH, WATER, min_area_px=50)
+        out = _m(res.raw)[10:12, 10:12]
+        self.assertTrue((out > 60.0).all())
+        self.assertTrue((out < 90.0).all())
+
+    def test_am_hang_ohne_stufe(self):
+        y, x = np.mgrid[0:40, 0:40].astype(np.float32)
+        m = 60.0 + 1.0 * y                  # gleichmaessiger Hang
+        m[18:24, 18:24] = 49.0              # Mulde unter Wasser
+        res = clean_water(_raw(m), LOW, HIGH, WATER, min_area_px=50)
+        out = _m(res.raw)
+        # aufgefuellte Stelle folgt dem Hang (Abweichung < 0,5 m)
+        hang = 60.0 + y[18:24, 18:24]
+        self.assertLess(float(np.abs(out[18:24, 18:24] - hang).max()), 0.5)
+
+    def test_grosser_see_bleibt(self):
+        m = np.full((60, 60), 80.0, dtype=np.float32)
+        m[10:50, 10:50] = 40.0
+        res = clean_water(_raw(m), LOW, HIGH, WATER, min_area_px=50)
+        self.assertTrue((_m(res.raw)[15:45, 15:45] < WATER).all())
+
+
 class SaveTest(unittest.TestCase):
     def test_16bit(self):
         raw = np.array([[0, 65535], [1234, 40000]], dtype=np.uint16)
