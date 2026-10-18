@@ -39,7 +39,7 @@ class AutoRetryTest(unittest.TestCase):
         c._load_tile(4, "bad")
         self.assertEqual(c._post.call_count, 8)
         self.assertTrue(all(call.args[1] == "bad" for call in c._post.call_args_list))
-        self.assertEqual([next(s for t,a,s in waits if a == n) for n in range(1,8)], [10,30,60,90,180,180,180])
+        self.assertEqual([next(s for t,a,s in waits if a == n) for n in range(1,8)], [10,30,60,90,180,240,480])
         self.assertIsNotNone(c.tile_cache.get("bad"))
         self.assertEqual(c._active, 0)
 
