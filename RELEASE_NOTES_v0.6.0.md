@@ -16,7 +16,7 @@ Neue Höhenquelle Österreich (BEV, 1 m), TPF2-Karten nach TPF3 übernehmen, ein
 
 **Installation:** `TPF3-Map-Studio-v0.6.0-win64.zip` herunterladen, die **ganze** ZIP entpacken, `TPF3-Map-Studio.exe` starten. Windows warnt beim ersten Start eventuell („Weitere Informationen“ -> „Trotzdem ausführen“), bei PyInstaller-Programmen sind Virenscanner-Fehlalarme bekannt.
 
-**SHA-256:** `<SHA256>`
+**SHA-256:** `b03df38af4f1861bba60a0b35dc7937cf883e5db592ad33bbf9a229ad540bc17`
 
 **Hinweis:** inoffizielles Werkzeug, keine Verbindung zu Urban Games.
 
@@ -34,6 +34,6 @@ Neue Höhenquelle Österreich (BEV, 1 m), TPF2-Karten nach TPF3 übernehmen, ein
 
 **Install:** download `TPF3-Map-Studio-v0.6.0-win64.zip`, extract the **whole** ZIP, run `TPF3-Map-Studio.exe`. Windows may warn on first start ("More info" -> "Run anyway"); antivirus false positives are known for PyInstaller programs.
 
-**SHA-256:** `<SHA256>`
+**SHA-256:** `b03df38af4f1861bba60a0b35dc7937cf883e5db592ad33bbf9a229ad540bc17`
 
 **Note:** unofficial tool, not affiliated with Urban Games.
