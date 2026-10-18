@@ -7,6 +7,12 @@ uebereinstimmen. Schreibweise: britisches Englisch wie in README.en.md.
 """
 
 CATALOG = {
+    'Die Overpass-Server antworten seit längerer Zeit nicht. Bereits geladene Kacheln sind gespeichert. Starte den Download später erneut (am besten nachts oder morgens), dann werden nur die fehlenden Kacheln geladen.':
+        'The Overpass servers have not been responding for a while. Tiles already downloaded are saved. Start the download again later (ideally at night or in the morning); only the missing tiles will be loaded.',
+    '{count} von {total} Kacheln konnten nicht geladen werden. Die übrigen Kacheln sind gespeichert. Starte den Download später erneut, dann werden nur die fehlenden Kacheln geladen.':
+        '{count} of {total} tiles could not be loaded. The other tiles are saved. Start the download again later; only the missing tiles will be loaded.',
+    'Mausrad: zoomen. Mit gedrückter Maustaste ziehen: verschieben. Doppelklick: ganze Karte.':
+        'Mouse wheel: zoom. Drag with the mouse button held: pan. Double-click: show the whole map.',
     'Eigene TPF2-Heightmap (PNG)':
         'Own TPF2 heightmap (PNG)',
     'TPF2-Heightmap':

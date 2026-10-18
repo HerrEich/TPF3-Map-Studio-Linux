@@ -39,6 +39,7 @@ from src.heightmap.industries_export import Terrain
 from src.gui.towns_dialog import TownsDialog
 from src.gui.network_dialog import NetworkDialog
 from src.gui.stations_action import save_stations_dialog
+from src.gui.zoom_preview_label import ZoomPreviewLabel
 from src.gui.map_size_presets import find_by_pixels
 from src.gui.dgm1_fetch_dialog import Dgm1FetchDialog
 from src.gui.share_description_dialog import ShareDescriptionDialog
@@ -332,7 +333,7 @@ class HeightmapDialog(QDialog):
         # Vorschau
         # -------------------------------------------------
 
-        self.preview_label = QLabel()
+        self.preview_label = ZoomPreviewLabel()
         self.preview_label.setAlignment(Qt.AlignCenter)
         self.preview_label.setMinimumHeight(300)
         preview_row = QHBoxLayout()
@@ -1816,9 +1817,7 @@ class HeightmapDialog(QDialog):
         pixmap = QPixmap()
         pixmap.loadFromData(buffer.getvalue())
 
-        self.preview_label.setPixmap(
-            pixmap.scaledToHeight(400, Qt.SmoothTransformation)
-        )
+        self.preview_label.set_source(pixmap)
 
         self.status_label.setText(
             tr(
@@ -3188,12 +3187,7 @@ class HeightmapDialog(QDialog):
         pixmap = QPixmap()
         pixmap.loadFromData(buffer.getvalue())
 
-        self.preview_label.setPixmap(
-            pixmap.scaledToHeight(
-                400,
-                Qt.SmoothTransformation
-            )
-        )
+        self.preview_label.set_source(pixmap)
 
         self._update_preview_3d(array)
 
