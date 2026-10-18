@@ -1437,6 +1437,10 @@ class MainWindow(QMainWindow):
 
         help_menu = menu.addMenu(tr("Hilfe"))
 
+        help_center_action = help_menu.addAction(tr("Anleitungen..."))
+
+        help_center_action.triggered.connect(self._open_help_center)
+
         # Die Import-Anleitung beschreibt den Importer von VacuumTube (src/features.py).
         if VACUUMTUBE_IMPORTER:
             import_guide_action = help_menu.addAction(
@@ -1974,6 +1978,11 @@ class MainWindow(QMainWindow):
     # ---------------------------------------------------------
     # Funktionsübersicht
     # ---------------------------------------------------------
+
+    def _open_help_center(self):
+        from src.gui.help_center_dialog import HelpCenterDialog
+
+        HelpCenterDialog(self).exec()
 
     def _open_feature_overview(self):
 

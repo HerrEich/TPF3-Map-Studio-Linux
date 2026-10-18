@@ -24,6 +24,7 @@ block_cipher = None
 datas = [
     ("src/map/web", "src/map/web"),
     ("src/icons", "src/icons"),
+    ("src/help", "src/help"),
     # Symbole und Bedienelemente des Studio-Designs (src/gui/icon_set.py, src/gui/theme.py)
     ("src/gui/icons", "src/gui/icons"),
 ]

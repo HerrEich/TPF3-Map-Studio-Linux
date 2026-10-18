@@ -2119,3 +2119,6 @@ guide of the heightmap dialog (F1).</p>
     "BEV-Kacheln laden": "Load BEV tiles",
     "Die Kacheln kommen vom BEV (data.bev.gv.at). Geladen werden nur die Ausschnitte, die dein Rechteck braucht (rund 0,6 MB je Kachel). Bereits geladene Kacheln werden übersprungen. Du kannst jederzeit abbrechen und später weitermachen.": "The tiles come from the BEV (data.bev.gv.at). Only the parts your rectangle needs are downloaded (about 0.6 MB per tile). Tiles already downloaded are skipped. You can cancel at any time and continue later.",
 }
+
+
+CATALOG.update({'Anleitungen': 'Guides', 'Anleitungen...': 'Guides...', 'Suchen...': 'Search...'})
