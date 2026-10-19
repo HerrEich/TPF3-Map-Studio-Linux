@@ -820,6 +820,10 @@ def _slots_from_cache_file(path: Path, cell_m: float, wanted) -> list[Slot]:
 class Dgm1Mosaic:
     """DGM1-Kacheln, angesprochen wie eine einzige Hoehenquelle (sample_grid)."""
 
+    # sample_grid liest nur feste Arrays (alle Kacheln liegen schon im Speicher),
+    # darf also von mehreren Threads gleichzeitig benutzt werden.
+    parallel_safe = True
+
     def __init__(self, slots: list[Slot], missing: int = 0):
         self.missing_slots = missing
         # Zone -> {Ost-km * 100000 + Nord-km: (aufgefuellte Zellen, Zellgroesse in m)}

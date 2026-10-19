@@ -67,13 +67,26 @@ class WaterLevelSuggestion:
     robust_range_max_m: float = 0.0
 
 
+# Ab dieser Pixelzahl rechnen die Perzentile aus einer Stichprobe.
+PERCENTILE_SAMPLE_PIXELS = 4_000_000
+
+
 def suggest_water_level(heightmap: np.ndarray) -> WaterLevelSuggestion:
     core = heightmap[EDGE_MARGIN_PX:-EDGE_MARGIN_PX, EDGE_MARGIN_PX:-EDGE_MARGIN_PX]
     if core.size == 0:
         core = heightmap
 
-    p5, p10 = np.percentile(core, [5, 10])
-    suggested = float(np.percentile(core, SUGGESTION_PERCENTILE))
+    # Bei riesigen Rastern (Gigantomanie 1:3: rund 50 Mio. Pixel) braucht jede
+    # Perzentil-Berechnung Sekunden; eine gleichmaessige Stichprobe liefert
+    # dieselben Werte auf Zehntelprozent genau.
+    sample = core
+
+    if core.size > PERCENTILE_SAMPLE_PIXELS:
+        step = int(np.ceil(np.sqrt(core.size / PERCENTILE_SAMPLE_PIXELS)))
+        sample = core[::step, ::step]
+
+    p5, p10 = np.percentile(sample, [5, 10])
+    suggested = float(np.percentile(sample, SUGGESTION_PERCENTILE))
 
     range_min = float(np.floor(heightmap.min()))
     range_max = float(np.ceil(heightmap.max()))
@@ -82,7 +95,7 @@ def suggest_water_level(heightmap: np.ndarray) -> WaterLevelSuggestion:
     # Ausreisser"-Grenze (Q1 - 3xIQR / Q3 + 3xIQR) der Kernflaeche (ohne
     # Rand) - typischerweise einzelne sehr tiefe Bergbau-Restloecher oder
     # Rand-Artefakte, nicht die normale Streuung des Gelaendes.
-    q1, q3 = np.percentile(core, [25, 75])
+    q1, q3 = np.percentile(sample, [25, 75])
     iqr = q3 - q1
     robust_low = q1 - OUTLIER_IQR_FACTOR * iqr
     robust_high = q3 + OUTLIER_IQR_FACTOR * iqr

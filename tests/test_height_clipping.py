@@ -287,7 +287,8 @@ class DialogWiringTest(unittest.TestCase):
 
     def test_export_writes_the_same_array_as_the_preview(self):
         # Beides geht ueber _effective_heightmap()
-        self.assertIn("export_heightmap_png(\n                self._effective_heightmap(),", self.dialog)
+        self.assertIn("export_array = self._effective_heightmap()", self.dialog)
+        self.assertIn("export_heightmap_png(\n                export_array,", self.dialog)
         self.assertIn("array = self._effective_heightmap()", self.dialog)
 
     def test_checkbox_is_documented_as_height_window(self):

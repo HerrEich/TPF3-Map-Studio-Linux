@@ -10,37 +10,112 @@ Größenordnung der Datenauflösung entfernt das, ohne das Relief zu verändern.
 
 from __future__ import annotations
 
+import math
+import os
+from concurrent.futures import ThreadPoolExecutor
+
 import numpy as np
 from scipy.ndimage import gaussian_filter
 
+from src.core.task_control import TaskControl
+
+# Ab so vielen Pixeln lohnt es sich, das Raster in Streifen auf mehreren
+# Kernen zu glaetten (scipy gibt dabei die GIL frei).
+PARALLEL_MIN_PIXELS = 2_000_000
+STRIPE_ROWS = 512
+
 # Auf dieser Größenordnung liegt die echte Datenauflösung (Copernicus GLO-30).
 DEFAULT_SMOOTHING_SIGMA_M = 15.0
+
+
+def _worker_count(workers: int | None) -> int:
+
+    if workers is not None:
+        return max(1, int(workers))
+
+    return max(1, min(8, os.cpu_count() or 1))
 
 
 def smooth_terrain(
     heightmap: np.ndarray,
     sigma_m: float,
     pixel_size_m: float,
+    workers: int | None = None,
+    control: TaskControl | None = None,
 ) -> np.ndarray:
     """
-    Glättet das Höhenraster mit einem Gauß-Filter der Breite sigma_m.
-    Liefert eine NEUE Kopie, heightmap bleibt unverändert. sigma_m <= 0
-    bedeutet keine Glättung.
+    Glaettet das Hoehenraster mit einem Gauss-Filter der Breite sigma_m.
+    Liefert eine NEUE Kopie, heightmap bleibt unveraendert. sigma_m <= 0
+    bedeutet keine Glaettung.
+
+    Grosse Raster werden in Zeilenstreifen (mit Rand, damit keine Naehte
+    entstehen) auf mehreren Kernen gerechnet; das Ergebnis ist identisch zur
+    einfachen Rechnung. control (optional) bekommt Fortschritt und kann
+    abbrechen (TaskCancelled).
     """
 
     if sigma_m <= 0:
         return heightmap.copy()
 
     sigma_px = sigma_m / pixel_size_m
+    truncate = 3.0
 
-    smoothed = gaussian_filter(
-        heightmap.astype(np.float32, copy=False),
-        sigma=sigma_px,
-        mode="nearest",
-        truncate=3.0,
-    )
+    source = heightmap.astype(np.float32, copy=False)
 
-    return smoothed.astype(heightmap.dtype, copy=False)
+    rows = source.shape[0]
+    n_workers = _worker_count(workers)
+
+    if n_workers <= 1 or source.size < PARALLEL_MIN_PIXELS or rows < 2 * STRIPE_ROWS:
+
+        if control is not None:
+            control.check()
+
+        smoothed = gaussian_filter(
+            source, sigma=sigma_px, mode="nearest", truncate=truncate,
+        )
+
+        if control is not None:
+            control.report(1.0)
+
+        return smoothed.astype(heightmap.dtype, copy=False)
+
+    halo = int(math.ceil(truncate * sigma_px)) + 1
+    result = np.empty(source.shape, dtype=np.float32)
+    stripes = [(r0, min(rows, r0 + STRIPE_ROWS)) for r0 in range(0, rows, STRIPE_ROWS)]
+    done = [0]
+
+    def work(stripe):
+
+        r0, r1 = stripe
+
+        if control is not None:
+            control.check()
+
+        a = max(0, r0 - halo)
+        b = min(rows, r1 + halo)
+
+        part = gaussian_filter(
+            source[a:b], sigma=sigma_px, mode="nearest", truncate=truncate,
+        )
+
+        result[r0:r1] = part[r0 - a:r0 - a + (r1 - r0)]
+
+        done[0] += 1
+
+        if control is not None:
+            control.report(done[0] / len(stripes))
+
+    with ThreadPoolExecutor(max_workers=n_workers) as pool:
+        futures = [pool.submit(work, s) for s in stripes]
+        try:
+            for f in futures:
+                f.result()
+        except BaseException:
+            for f in futures:
+                f.cancel()
+            raise
+
+    return result.astype(heightmap.dtype, copy=False)
 
 
 # Bis zu diesem Anteil der neuen Gipfelhoehe (ueber dem Wasser) bleibt das

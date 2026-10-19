@@ -10,6 +10,9 @@ gegeneinander verschoben sein.
 
 from __future__ import annotations
 
+import os
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -23,6 +26,7 @@ from src.heightmap.dgm1_dem import Dgm1Error, Dgm1Mosaic
 from src.heightmap.swissalti3d_dem import required_swiss_tiles
 from src.heightmap.bev_dem import BevMosaic
 from src.heightmap.ahn_nl_dem import required_ahn_tiles
+from src.core.task_control import TaskControl
 from src.i18n import tr
 
 METERS_PER_PIXEL = 4.0
@@ -58,21 +62,43 @@ class _FallbackMosaic:
         self.primary = primary
         self._make_fallback = make_fallback
         self._fallback = None
+        self._lock = threading.Lock()
+        self._workers = 1
         self.total_pixels = 0
         self.fallback_pixels = 0
+
+    @property
+    def parallel_safe(self) -> bool:
+        # Copernicus als Ergaenzung ist thread-sicher; es kommt auf DGM1 & Co. an.
+        return bool(getattr(self.primary, "parallel_safe", False))
+
+    def prepare_parallel(self, workers: int):
+        self._workers = int(workers)
+
+        if hasattr(self.primary, "prepare_parallel"):
+            self.primary.prepare_parallel(workers)
+
+    def _get_fallback(self):
+        # Nur ein Thread legt das (Download-)Ergaenzungs-Mosaik an.
+        with self._lock:
+            if self._fallback is None:
+                self._fallback = self._make_fallback()
+                if hasattr(self._fallback, "prepare_parallel"):
+                    self._fallback.prepare_parallel(self._workers)
+            return self._fallback
 
     def sample_grid(self, lat, lon):
         out = self.primary.sample_grid(lat, lon)
 
-        self.total_pixels += out.size
-
         hole = np.isnan(out)
+        holes = int(hole.sum())
 
-        if hole.any():
-            if self._fallback is None:
-                self._fallback = self._make_fallback()
-            out[hole] = self._fallback.sample_grid(lat[hole], lon[hole])
-            self.fallback_pixels += int(hole.sum())
+        with self._lock:
+            self.total_pixels += out.size
+            self.fallback_pixels += holes
+
+        if holes:
+            out[hole] = self._get_fallback().sample_grid(lat[hole], lon[hole])
 
         return out
 
@@ -88,6 +114,8 @@ def pixel_size_for_selection(selection: Selection) -> tuple[int, int]:
 # zwei Rasterpunkten ein Vielfaches davon; ohne Mittelung wuerden Haenge
 # ausfransen.
 DEM_RESOLUTION_M = 30.0
+# Hoechstzahl Abfragepunkte je Abruf (Speicher je Arbeits-Thread, grob 100 Byte/Punkt)
+MAX_POINTS_PER_CALL = 6_000_000
 MAX_OVERSAMPLE = 3
 
 
@@ -114,6 +142,15 @@ def _apply_height_scale(heights: np.ndarray, selection: Selection) -> np.ndarray
     return (heights * np.float32(factor)).astype(np.float32, copy=False)
 
 
+def _worker_count_for(mosaic) -> int:
+    """Arbeits-Threads fuer das Abtasten: nur, wenn die Quelle das vertraegt."""
+
+    if not getattr(mosaic, "parallel_safe", False):
+        return 1
+
+    return max(1, min(4, os.cpu_count() or 1))
+
+
 def _sample_grid(
     selection: Selection,
     mosaic: DemMosaic,
@@ -121,6 +158,8 @@ def _sample_grid(
     h_px: int,
     chunk: int = 300,
     oversample: int = 1,
+    control: TaskControl | None = None,
+    workers: int | None = None,
 ) -> np.ndarray:
     """
     Gemeinsame Kernrechnung fuer build_heightmap_array() und
@@ -128,6 +167,13 @@ def _sample_grid(
     genau w_px x h_px Punkten ab. Bei kleinem w_px/h_px (Vorschau)
     braucht es dank chunk keine Anpassung - eine einzelne Runde durch
     die Schleife reicht dann ohnehin.
+
+    Je Zeilenstreifen werden ALLE Teilpunkte der Mittelung (oversample^2)
+    in einem einzigen Abruf abgefragt: so wird jede Hoehenkachel pro Streifen
+    nur einmal geladen (frueher bis zu neun Mal, weil der Kachel-Speicher
+    nur wenige Kacheln fasst). Die Streifen laufen, wenn die Quelle es
+    erlaubt (parallel_safe), auf mehreren Kernen. control (optional) meldet
+    den Fortschritt und kann abbrechen (TaskCancelled).
     """
 
     center_lat, center_lon = selection.center
@@ -148,11 +194,29 @@ def _sample_grid(
     out = np.zeros((h_px, w_px), dtype=np.float32)
     cols = np.arange(w_px)
 
-    for r0 in range(0, h_px, chunk):
+    n_workers = workers if workers is not None else _worker_count_for(mosaic)
+    n_workers = max(1, int(n_workers))
+
+    if n_workers > 1 and hasattr(mosaic, "prepare_parallel"):
+        mosaic.prepare_parallel(n_workers)
+
+    # Streifenhoehe so waehlen, dass ein Abruf (alle Teilpunkte) nicht zu viel
+    # Arbeitsspeicher braucht: bei neunfacher Mittelung entsprechend flacher.
+    chunk = max(32, min(chunk, MAX_POINTS_PER_CALL // max(1, w_px * n_sub * n_sub)))
+
+    starts = list(range(0, h_px, chunk))
+    finished = [0]
+
+    def do_chunk(r0):
+
+        if control is not None:
+            control.check()
+
         r1 = min(h_px, r0 + chunk)
         rows = np.arange(r0, r1)
 
-        acc = None
+        lats = []
+        lons = []
 
         for oy in offsets:
             y_local = (hy - (rows + 0.5 + oy) * pitch_y) * scale
@@ -165,20 +229,42 @@ def _sample_grid(
                 # da diese nur einzelne Punkte kann.
                 e = geometry.right_vector[0] * xl + geometry.up_vector[0] * yl
                 n = geometry.right_vector[1] * xl + geometry.up_vector[1] * yl
-                lat = center_lat + n / geometry.METERS_PER_DEGREE_LAT
-                lon = center_lon + e / geometry.longitude_scale
+                lats.append(center_lat + n / geometry.METERS_PER_DEGREE_LAT)
+                lons.append(center_lon + e / geometry.longitude_scale)
 
-                values = np.array(mosaic.sample_grid(lat, lon), dtype=np.float32)
+        # Ein Abruf fuer alle Teilpunkte: (n_sub^2, Zeilen, Spalten)
+        values = np.asarray(
+            mosaic.sample_grid(np.stack(lats), np.stack(lons)), dtype=np.float32
+        )
 
-                if acc is None:
-                    acc = values
-                else:
-                    acc += values
+        acc = values[0].copy()
+
+        for k in range(1, values.shape[0]):
+            acc += values[k]
 
         if n_sub > 1:
             acc /= np.float32(n_sub * n_sub)
 
         out[r0:r1, :] = acc
+
+        finished[0] += 1
+
+        if control is not None:
+            control.report(finished[0] / len(starts))
+
+    if n_workers <= 1 or len(starts) == 1:
+        for r0 in starts:
+            do_chunk(r0)
+    else:
+        with ThreadPoolExecutor(max_workers=n_workers) as pool:
+            futures = [pool.submit(do_chunk, r0) for r0 in starts]
+            try:
+                for f in futures:
+                    f.result()
+            except BaseException:
+                for f in futures:
+                    f.cancel()
+                raise
 
     return out
 
@@ -195,6 +281,7 @@ def build_heightmap_array_ex(
     tpf2_low_m: float = 0.0,
     tpf2_high_m: float = 0.0,
     bev_cache_dir: Path | None = None,
+    control: TaskControl | None = None,
 ) -> tuple[np.ndarray, HeightmapBuildInfo]:
     """
     Wie build_heightmap_array(), waehlt aber die Hoehenquelle und liefert
@@ -218,6 +305,7 @@ def build_heightmap_array_ex(
         out = _sample_grid(
             selection, mosaic, w_px, h_px,
             oversample=oversample_for_selection(selection),
+            control=control,
         )
 
         info = HeightmapBuildInfo(source=source)
@@ -247,7 +335,7 @@ def build_heightmap_array_ex(
             (c_lat, c_lon), selection.width_m, selection.height_m, scale,
         )
 
-        out = _sample_grid(selection, mosaic, w_px, h_px)
+        out = _sample_grid(selection, mosaic, w_px, h_px, control=control)
 
         info = HeightmapBuildInfo(source=source)
 
@@ -311,6 +399,7 @@ def build_heightmap_array_ex(
         out = _sample_grid(
             selection, mosaic, w_px, h_px,
             oversample=oversample_for_selection(selection),
+            control=control,
         )
 
         info = HeightmapBuildInfo(
