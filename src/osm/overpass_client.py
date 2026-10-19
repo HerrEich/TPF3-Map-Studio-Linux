@@ -394,6 +394,9 @@ class OverpassClient:
                 label = type(exc).__name__ + (f" (HTTP {status})" if status else "")
                 if isinstance(exc, OverpassRemarkError):
                     label += ": " + str(exc)[:80]
+                snippet = self._response_snippet(getattr(exc, "response", None))
+                if snippet:
+                    label += " | Antwort: " + snippet
                 print("Server", server, "fehlgeschlagen:", label)
                 failures.append(server.split("/")[2] + ": " + label)
 
@@ -592,6 +595,18 @@ class OverpassClient:
             return max(0.0, seconds) if math.isfinite(seconds) else 0.0
         except (AttributeError, ValueError, TypeError, OverflowError):
             return 0.0
+
+    @staticmethod
+    def _response_snippet(response, limit=150):
+        """Anfang des Antworttexts (z. B. Grund fuer HTTP 406) fuers Log."""
+        try:
+            text = getattr(response, "text", "")
+            if not isinstance(text, str):
+                return ""
+            text = " ".join(text.split())
+        except Exception:  # noqa: BLE001
+            return ""
+        return text[:limit]
 
     def _note_overload(self, response):
         status = getattr(response, "status_code", None)
