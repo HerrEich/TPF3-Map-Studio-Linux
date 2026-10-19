@@ -13,7 +13,7 @@ Große Karten (z. B. „Gigantomanie“ 1:3) werden deutlich schneller berechnet
 
 **Installation:** `TPF3-Map-Studio-v0.6.1-win64.zip` herunterladen, die **ganze** ZIP entpacken, `TPF3-Map-Studio.exe` starten. Windows warnt beim ersten Start eventuell („Weitere Informationen“ -> „Trotzdem ausführen“), bei PyInstaller-Programmen sind Virenscanner-Fehlalarme bekannt.
 
-**SHA-256:** `SHA256_PLATZHALTER`
+**SHA-256:** `56dc9486d6ce5cae224b1868f9c29b4d05632f5f6c9b4cedd69bc3063d4b5a8b`
 
 **Hinweis:** inoffizielles Werkzeug, keine Verbindung zu Urban Games.
 
@@ -28,6 +28,6 @@ Große Karten (z. B. „Gigantomanie“ 1:3) werden deutlich schneller berechnet
 
 **Install:** download `TPF3-Map-Studio-v0.6.1-win64.zip`, extract the **whole** ZIP, run `TPF3-Map-Studio.exe`. Windows may warn on first start ("More info" -> "Run anyway"); antivirus false positives are known for PyInstaller programs.
 
-**SHA-256:** `SHA256_PLATZHALTER`
+**SHA-256:** `56dc9486d6ce5cae224b1868f9c29b4d05632f5f6c9b4cedd69bc3063d4b5a8b`
 
 **Note:** unofficial tool, not affiliated with Urban Games.
