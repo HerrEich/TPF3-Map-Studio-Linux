@@ -1,4 +1,5 @@
 import io
+import threading
 from pathlib import Path
 
 from PySide6.QtWidgets import (
@@ -31,6 +32,8 @@ from src.heightmap.height_zones import (
     zone_shares,
 )
 
+from src.core.task_control import ScaledControl, TaskCancelled
+from src.gui.progress_runner import run_with_progress
 from src.i18n import tr
 from src.gui.biome_dialog import BiomeMaskDialog
 from src.gui.heightmap_guide import HeightmapGuideDialog
@@ -99,6 +102,10 @@ from src.heightmap.water_slope_compensation import (
 )
 
 from src.app_paths import APP_DIR  # noqa: E402
+
+# Ab dieser Rasterzahl laufen Berechnungen mit Fortschrittsfenster im Hintergrund
+# (typische Karten bleiben ohne Fenster, grosse wie Gigantomanie 1:3 nicht).
+BIG_RASTER_PIXELS = 4_000_000
 
 DEFAULT_CACHE_DIR = APP_DIR / "dem_cache"
 DEFAULT_DGM1_CACHE_DIR = APP_DIR / "dgm1_cache"
@@ -1006,11 +1013,14 @@ class HeightmapDialog(QDialog):
             )
             return
 
-        heights = (
-            self._effective_heightmap()
-            if self.heightmap_array is not None
-            else None
-        )
+        try:
+            heights = (
+                self._effective_heightmap()
+                if self.heightmap_array is not None
+                else None
+            )
+        except TaskCancelled:
+            return
 
         dialog = BiomeMaskDialog(
             self,
@@ -1544,10 +1554,9 @@ class HeightmapDialog(QDialog):
                 self.status_label.setText(tr("Berechne H\u00f6henraster..."))
                 self.repaint()
 
-        array, info = build_heightmap_array_ex(
-            self.selection,
-            DEFAULT_CACHE_DIR,
-            source,
+        # Alle Werte im GUI-Thread auslesen; die Rechnung selbst laeuft im
+        # Hintergrund (Fortschritt, Restzeit, Abbrechen, mehrere Kerne).
+        build_args = dict(
             dgm1_cache_dir=DEFAULT_DGM1_CACHE_DIR,
             dgm1_folder=self._dgm1_folder,
             swiss_cache_dir=DEFAULT_SWISS_CACHE_DIR,
@@ -1556,6 +1565,24 @@ class HeightmapDialog(QDialog):
             tpf2_png=getattr(self, "_tpf2_png", None),
             tpf2_low_m=getattr(self, "_tpf2_low_m", 0.0),
             tpf2_high_m=getattr(self, "_tpf2_high_m", 0.0),
+        )
+
+        selection = self.selection
+
+        def work(control):
+            return build_heightmap_array_ex(
+                selection,
+                DEFAULT_CACHE_DIR,
+                source,
+                control=control,
+                **build_args,
+            )
+
+        array, info = run_with_progress(
+            self,
+            tr("Höhenraster berechnen"),
+            tr("Berechne Höhenraster..."),
+            work,
         )
 
         self._build_info = info
@@ -1645,6 +1672,10 @@ class HeightmapDialog(QDialog):
 
         try:
             self.heightmap_array = self._build_heightmap_for_source()
+        except TaskCancelled:
+            self.status_label.setText(tr("Abgebrochen."))
+            self.download_button.setEnabled(True)
+            return
         except Exception as exc:
             self.status_label.setText(
                 f"Fehlgeschlagen: {exc}"
@@ -1989,7 +2020,12 @@ class HeightmapDialog(QDialog):
 
         if self._reference_mask is None:
 
-            QApplication.setOverrideCursor(Qt.WaitCursor)
+            # Wird auch aus dem Hintergrund-Thread aufgerufen; den Wartecursor
+            # darf nur der GUI-Thread setzen.
+            in_gui_thread = threading.current_thread() is threading.main_thread()
+
+            if in_gui_thread:
+                QApplication.setOverrideCursor(Qt.WaitCursor)
 
             try:
 
@@ -2004,7 +2040,8 @@ class HeightmapDialog(QDialog):
                 )
 
             finally:
-                QApplication.restoreOverrideCursor()
+                if in_gui_thread:
+                    QApplication.restoreOverrideCursor()
 
         return self._reference_mask
 
@@ -2432,6 +2469,137 @@ class HeightmapDialog(QDialog):
         self._clip_array = None
         self._clip_report = None
 
+    def _compute_processed(self, p, control):
+        """
+        Rechnet die angehakten Gelaende-Schritte der Reihe nach. p enthaelt alle
+        Einstellungen (im GUI-Thread ausgelesen), control (oder None) meldet
+        Fortschritt und bricht bei "Abbrechen" ab. Laeuft ggf. im Hintergrund.
+        """
+
+        names = []
+
+        if p["smooth_on"]:
+            names.append(tr("Gelände glätten"))
+        if p["flatten_on"]:
+            names.append(tr("Trassen und Siedlungen einebnen"))
+        if p["slope_on"]:
+            names.append(tr("Gefälle ausgleichen"))
+        if p["enforce_on"]:
+            names.append(tr("Wasser nach OSM einsetzen"))
+        elif p["blend_on"]:
+            names.append(tr("Terrain ans Wasser anpassen"))
+        if p["compress_on"]:
+            names.append(tr("Höhen stauchen"))
+
+        total = max(1, len(names))
+        index = [0]
+
+        def begin(text):
+            """Schritt anmelden; liefert den Teil-Fortschritt dafuer (oder None)."""
+
+            if control is None:
+                return None
+
+            control.check()
+            start = index[0] / total
+            control.report(start, text)
+            index[0] += 1
+
+            return ScaledControl(control, start, index[0] / total)
+
+        array = self.heightmap_array
+        water_level = p["water_level"]
+        pixel_size = p["pixel_size"]
+
+        # 1. Glaetten (vor allen Wasserschritten, damit Flussbett und
+        #    Ufer danach scharf bleiben)
+        if p["smooth_on"]:
+
+            sub = begin(tr("Gelände glätten"))
+
+            array = smooth_terrain(
+                array,
+                p["smooth_sigma"],
+                pixel_size,
+                control=sub,
+            )
+
+        # 2. Trassen und Siedlungen einebnen (vor den Wasserschritten,
+        #    damit Gewaesser anschliessend wieder ihr festes Bett bekommen)
+        if p["flatten_on"]:
+
+            begin(tr("Trassen und Siedlungen einebnen"))
+
+            array = flatten_infrastructure(
+                array,
+                self._get_flatten_mask(),
+                pixel_size,
+                sigma_m=p["flatten_sigma"],
+            )
+
+        if p["slope_on"]:
+
+            begin(tr("Gefälle ausgleichen"))
+
+            array = compensate_water_slope(
+                array,
+                self._get_reference_mask(),
+                water_level_m=water_level,
+                pixel_size_m=pixel_size,
+                strength=p["slope_strength"] / 100.0,
+                smoothing_m=p["slope_smoothing"],
+                max_reference_height_above_water_m=p["slope_max_ref"],
+            )
+
+        if p["enforce_on"]:
+
+            begin(tr("Wasser nach OSM einsetzen"))
+
+            array = enforce_osm_water(
+                array,
+                self._get_water_mask(),
+                water_level_m=water_level,
+                pixel_size_m=pixel_size,
+                transition_m=p["enforce_transition"],
+                bed_depth_m=p["enforce_depth"],
+                edge_depth_m=p["enforce_edge"],
+                bank_height_m=p["enforce_bank"],
+                max_height_above_water_m=p["enforce_max_rise"],
+            )
+
+        elif p["blend_on"]:
+
+            begin(tr("Terrain ans Wasser anpassen"))
+
+            array = blend_terrain_to_water(
+                array,
+                self._get_water_mask(),
+                water_level_m=water_level,
+                transition_m=p["transition"],
+                pixel_size_m=pixel_size,
+                max_height_above_water_m=p["blend_max_rise"],
+                # Gelaende unterhalb des Wasserspiegels wird mit der
+                # halben Uebergangsbreite weichgezeichnet.
+                underwater_smoothing_m=p["transition"] / 2.0,
+            )
+
+        # Letzter Schritt: Hoehen ueber dem Wasserspiegel stauchen
+        if p["compress_on"]:
+
+            begin(tr("Höhen stauchen"))
+
+            array = compress_heights(
+                array,
+                water_level,
+                p["compress_percent"] / 100.0,
+            )
+
+        if control is not None:
+            control.check()
+            control.report(1.0)
+
+        return array
+
     def _unclipped_heightmap(self):
         """
         Liefert das Hoehenraster, das fuer Vorschau/Export tatsaechlich
@@ -2467,94 +2635,50 @@ class HeightmapDialog(QDialog):
         if key == self._processed_key and self._processed_array is not None:
             return self._processed_array
 
-        QApplication.setOverrideCursor(Qt.WaitCursor)
+        # Alle Einstellungen im GUI-Thread auslesen (Widgets duerfen im
+        # Hintergrund nicht angefasst werden).
+        params = dict(
+            smooth_on=smooth_on,
+            smooth_sigma=self.smooth_sigma_input.value(),
+            flatten_on=flatten_on,
+            flatten_sigma=self.flatten_sigma_input.value(),
+            slope_on=slope_on,
+            slope_strength=self.slope_strength_input.value(),
+            slope_smoothing=self.slope_smoothing_input.value(),
+            slope_max_ref=self.slope_max_ref_input.value(),
+            enforce_on=enforce_on,
+            enforce_transition=self.enforce_transition_input.value(),
+            enforce_depth=self.enforce_depth_input.value(),
+            enforce_edge=self.enforce_edge_input.value(),
+            enforce_bank=self.enforce_bank_input.value(),
+            enforce_max_rise=self.enforce_max_rise_input.value(),
+            blend_on=blend_on,
+            transition=self.transition_input.value(),
+            blend_max_rise=self.blend_max_rise_input.value(),
+            compress_on=compress_on,
+            compress_percent=self.compress_input.value(),
+            water_level=self.water_level_input.value(),
+            pixel_size=self._pixel_size_m(),
+        )
 
-        try:
+        if self.heightmap_array.size >= BIG_RASTER_PIXELS:
 
-            array = self.heightmap_array
-            water_level = self.water_level_input.value()
-            pixel_size = self._pixel_size_m()
+            # Grosse Karte: im Hintergrund mit Fortschritt, Restzeit, Abbrechen
+            array = run_with_progress(
+                self,
+                tr("Gelände berechnen"),
+                tr("Berechne Gelände..."),
+                lambda control: self._compute_processed(params, control),
+            )
 
-            # 1. Glaetten (vor allen Wasserschritten, damit Flussbett und
-            #    Ufer danach scharf bleiben)
-            if smooth_on:
+        else:
 
-                array = smooth_terrain(
-                    array,
-                    self.smooth_sigma_input.value(),
-                    pixel_size,
-                )
+            QApplication.setOverrideCursor(Qt.WaitCursor)
 
-            # 2. Trassen und Siedlungen einebnen (vor den Wasserschritten,
-            #    damit Gewaesser anschliessend wieder ihr festes Bett bekommen)
-            if flatten_on:
-
-                array = flatten_infrastructure(
-                    array,
-                    self._get_flatten_mask(),
-                    pixel_size,
-                    sigma_m=self.flatten_sigma_input.value(),
-                )
-
-            if slope_on:
-
-                array = compensate_water_slope(
-                    array,
-                    self._get_reference_mask(),
-                    water_level_m=water_level,
-                    pixel_size_m=pixel_size,
-                    strength=self.slope_strength_input.value() / 100.0,
-                    smoothing_m=self.slope_smoothing_input.value(),
-                    max_reference_height_above_water_m=(
-                        self.slope_max_ref_input.value()
-                    ),
-                )
-
-            if enforce_on:
-
-                array = enforce_osm_water(
-                    array,
-                    self._get_water_mask(),
-                    water_level_m=water_level,
-                    pixel_size_m=pixel_size,
-                    transition_m=self.enforce_transition_input.value(),
-                    bed_depth_m=self.enforce_depth_input.value(),
-                    edge_depth_m=self.enforce_edge_input.value(),
-                    bank_height_m=self.enforce_bank_input.value(),
-                    max_height_above_water_m=(
-                        self.enforce_max_rise_input.value()
-                    ),
-                )
-
-            elif blend_on:
-
-                array = blend_terrain_to_water(
-                    array,
-                    self._get_water_mask(),
-                    water_level_m=water_level,
-                    transition_m=self.transition_input.value(),
-                    pixel_size_m=pixel_size,
-                    max_height_above_water_m=(
-                        self.blend_max_rise_input.value()
-                    ),
-                    # Gelaende unterhalb des Wasserspiegels wird mit der
-                    # halben Uebergangsbreite weichgezeichnet.
-                    underwater_smoothing_m=(
-                        self.transition_input.value() / 2.0
-                    ),
-                )
-
-            # Letzter Schritt: Hoehen ueber dem Wasserspiegel stauchen
-            if compress_on:
-
-                array = compress_heights(
-                    array,
-                    water_level,
-                    self.compress_input.value() / 100.0,
-                )
-
-        finally:
-            QApplication.restoreOverrideCursor()
+            try:
+                array = self._compute_processed(params, None)
+            finally:
+                QApplication.restoreOverrideCursor()
 
         self._processed_array = array
         self._processed_key = key
@@ -3170,6 +3294,17 @@ class HeightmapDialog(QDialog):
             self._applying_preset = False
 
     def _update_preview(self):
+        """Vorschau neu aufbauen; bricht der Benutzer eine lange Berechnung ab,
+        bleibt die Vorschau stehen."""
+
+        try:
+            self._update_preview_impl()
+        except TaskCancelled:
+            self.status_label.setText(
+                tr("Berechnung abgebrochen. Ändere eine Einstellung, um sie erneut zu starten.")
+            )
+
+    def _update_preview_impl(self):
 
         # Waehrend eine Voreinstellung die Haken setzt, nicht nach jedem
         # einzelnen Haken neu rechnen - am Ende einmal.
@@ -3298,15 +3433,34 @@ class HeightmapDialog(QDialog):
         if not filename:
             return
 
-        range_min, range_max = self._effective_range()
-
         try:
+            range_min, range_max = self._effective_range()
+            export_array = self._effective_heightmap()
+        except TaskCancelled:
+            self.status_label.setText(tr("Berechnung abgebrochen."))
+            return
+
+        def write_png():
             export_heightmap_png(
-                self._effective_heightmap(),
+                export_array,
                 Path(filename),
                 range_min_m=range_min,
                 range_max_m=range_max,
             )
+
+        try:
+            if export_array.size >= BIG_RASTER_PIXELS:
+                # Das Schreiben grosser PNG dauert; Fenster bleibt bedienbar.
+                run_with_progress(
+                    self,
+                    tr("Heightmap exportieren"),
+                    tr("Schreibe PNG-Datei..."),
+                    lambda control: write_png(),
+                    cancelable=False,
+                    busy=True,
+                )
+            else:
+                write_png()
         except Exception as exc:
             QMessageBox.critical(
                 self,

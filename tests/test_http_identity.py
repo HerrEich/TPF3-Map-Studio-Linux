@@ -16,7 +16,10 @@ MODULE_PFADE = (
 class HttpIdentityTest(unittest.TestCase):
 
     def test_user_agent_identifiziert_programm(self):
-        self.assertIn("TPF3-Map-Studio/", USER_AGENT)
+        self.assertIn("TPF3-Map-Studio ", USER_AGENT)
+        # Die Overpass-Server (nginx) lehnten die Form Name/Version mit
+        # HTTP 406 ab, deshalb kein Schraegstrich nach dem Programmnamen.
+        self.assertNotIn("TPF3-Map-Studio/", USER_AGENT)
         self.assertIn("https://github.com/sharpi13822/TPF3-Map-Studio", USER_AGENT)
 
     def test_user_agent_ohne_email(self):

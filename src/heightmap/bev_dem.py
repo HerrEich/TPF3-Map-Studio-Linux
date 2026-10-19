@@ -600,6 +600,9 @@ class BevFetchJob(Dgm1FetchJob):
 class BevMosaic:
     """Zwischengespeicherte BEV-Kacheln, angesprochen wie eine einzige Hoehenquelle (sample_grid)."""
 
+    # Mehrere Threads duerfen gleichzeitig abfragen (Kachel-Speicher ist abgesichert).
+    parallel_safe = True
+
     def __init__(self, cache_dir: Path, level: int, tiles, missing: int = 0):
         self.cache_dir = Path(cache_dir)
         self.level = level
@@ -609,6 +612,13 @@ class BevMosaic:
         self.attributions = [ATTRIBUTION] if self._have else []
         self.actualities = [ACTUALITY] if self._have else []
         self._cache: OrderedDict = OrderedDict()
+        self._lock = threading.Lock()
+        self._max_cached = MAX_CACHED_TILES
+
+    def prepare_parallel(self, workers: int):
+        """Mehr Arbeits-Threads brauchen etwas mehr Kachel-Speicher."""
+
+        self._max_cached = max(MAX_CACHED_TILES, 2 * int(workers))
 
     @classmethod
     def from_cache(cls, selection, cache_dir: Path, level: int | None = None) -> "BevMosaic":
@@ -618,12 +628,15 @@ class BevMosaic:
         return cls(cache_dir, level, tiles, missing)
 
     def _array(self, tile):
-        arr = self._cache.pop(tile, None)
+        with self._lock:
+            arr = self._cache.pop(tile, None)
         if arr is None:
+            # Laden ausserhalb der Sperre, damit Threads gleichzeitig laden koennen.
             arr = np.load(tile_path(self.cache_dir, *tile))
-        self._cache[tile] = arr
-        while len(self._cache) > MAX_CACHED_TILES:
-            self._cache.popitem(last=False)
+        with self._lock:
+            self._cache[tile] = arr
+            while len(self._cache) > self._max_cached:
+                self._cache.popitem(last=False)
         return arr
 
     def _gather(self, e_key, n_key, rows, cols):

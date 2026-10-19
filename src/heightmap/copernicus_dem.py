@@ -340,9 +340,20 @@ class DemMosaic:
     noerdlich 50°N eine andere Ost-West- als Nord-Sued-Pixelbreite hat).
     """
 
+    # Darf von mehreren Threads gleichzeitig abgefragt werden (Kachel-Speicher
+    # ist abgesichert) - siehe heightmap_exporter._sample_grid.
+    parallel_safe = True
+
     def __init__(self, tiles: list[DemTile]):
         self.tiles = tiles
         self._cache = OrderedDict()
+        self._lock = threading.Lock()
+        self._max_cached = MAX_CACHED_TILES
+
+    def prepare_parallel(self, workers: int):
+        """Mehr Arbeits-Threads brauchen etwas mehr Kachel-Speicher."""
+
+        self._max_cached = max(MAX_CACHED_TILES, 2 * int(workers))
 
     @classmethod
     def from_paths(cls, paths: list[Path]) -> "DemMosaic":
@@ -356,12 +367,16 @@ class DemMosaic:
             return tile.array
 
         key = tile.path
-        array = self._cache.pop(key, None)
+        with self._lock:
+            array = self._cache.pop(key, None)
         if array is None:
+            # Das Laden (Platte, Entpacken) laeuft ausserhalb der Sperre,
+            # damit mehrere Threads gleichzeitig laden koennen.
             array = tile.load_array()
-        self._cache[key] = array
-        while len(self._cache) > MAX_CACHED_TILES:
-            self._cache.popitem(last=False)
+        with self._lock:
+            self._cache[key] = array
+            while len(self._cache) > self._max_cached:
+                self._cache.popitem(last=False)
         return array
 
     def sample_grid(self, lat: np.ndarray, lon: np.ndarray) -> np.ndarray:

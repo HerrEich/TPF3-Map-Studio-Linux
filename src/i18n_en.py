@@ -7,6 +7,28 @@ uebereinstimmen. Schreibweise: britisches Englisch wie in README.en.md.
 """
 
 CATALOG = {
+    'Berechne Gelände...':
+        'Calculating terrain...',
+    'Berechnung abgebrochen.':
+        'Calculation cancelled.',
+    'Berechnung abgebrochen. Ändere eine Einstellung, um sie erneut zu starten.':
+        'Calculation cancelled. Change a setting to start it again.',
+    'Gelände berechnen':
+        'Calculating terrain',
+    'Höhen stauchen':
+        'Compressing heights',
+    'Höhenraster berechnen':
+        'Calculating height grid',
+    'Noch etwa {time}':
+        'About {time} left',
+    'Schreibe PNG-Datei...':
+        'Writing PNG file...',
+    'Terrain ans Wasser anpassen':
+        'Adjusting terrain to water',
+    'Wasser nach OSM einsetzen':
+        'Applying water from OSM',
+    'Wird abgebrochen... (der aktuelle Schritt wird noch beendet)':
+        'Cancelling... (the current step is still being finished)',
     'Die Overpass-Server antworten seit längerer Zeit nicht. Bereits geladene Kacheln sind gespeichert. Starte den Download später erneut (am besten nachts oder morgens), dann werden nur die fehlenden Kacheln geladen.':
         'The Overpass servers have not been responding for a while. Tiles already downloaded are saved. Start the download again later (ideally at night or in the morning); only the missing tiles will be loaded.',
     '{count} von {total} Kacheln konnten nicht geladen werden. Die übrigen Kacheln sind gespeichert. Starte den Download später erneut, dann werden nur die fehlenden Kacheln geladen.':

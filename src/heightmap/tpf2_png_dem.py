@@ -21,6 +21,8 @@ class Tpf2PngSizeError(ValueError):
 
 
 class Tpf2PngMosaic:
+    parallel_safe = True   # nur lesende Zugriffe auf feste Arrays
+
     def __init__(self, raw, low_m, high_m, geometry, center, width_m, height_m,
                  scale=1.0):
         if not high_m > low_m:
