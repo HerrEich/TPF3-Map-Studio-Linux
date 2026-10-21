@@ -1332,14 +1332,14 @@ class HeightmapDialog(QDialog):
             return
 
         low, ok = QInputDialog.getDouble(
-            self, title, tr("Höhe in Metern für Schwarz (Min):"), 0.0, -20.0, 3177.0, 1
+            self, title, tr("Höhe in Metern für Schwarz (Min):"), 0.0, -100.0, 3177.0, 1
         )
         if not ok:
             back()
             return
 
         high, ok = QInputDialog.getDouble(
-            self, title, tr("Höhe in Metern für Weiß (Max):"), max(low + 100.0, 300.0), -20.0, 3177.0, 1
+            self, title, tr("Höhe in Metern für Weiß (Max):"), max(low + 100.0, 300.0), -100.0, 3177.0, 1
         )
         if not ok:
             back()
