@@ -2100,7 +2100,7 @@ guide of the heightmap dialog (F1).</p>
     'Heightmap speichern': 'Save heightmap',
     'Heightmap speichern...': 'Save heightmap...',
     'Heightmap wählen...': 'Choose heightmap...',
-    'Höhen müssen zwischen -20 und 3177 m liegen (Grenzen des TPF3-Imports).': 'Heights must lie between -20 and 3177 m (limits of the TPF3 import).',
+    'Höhen müssen zwischen -100 und 3177 m liegen (Grenzen des TPF3-Imports).': 'Heights must lie between -100 and 3177 m (limits of the TPF3 import).',
     'Kartengröße: {labels}.': 'Map size: {labels}.',
     'Keine bekannte TPF3-Kartengröße – der Karteneditor nimmt die Datei eventuell nicht an.': 'Not a known TPF3 map size – the map editor may not accept the file.',
     'Land mindestens über Wasser:': 'Land at least above water:',

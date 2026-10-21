@@ -357,7 +357,7 @@ class Tpf2ImportDialog(QDialog):
             water_biome=int(self.water_biome.currentData()),
         )
         texts = {
-            "limits": tr("Höhen müssen zwischen -20 und 3177 m liegen (Grenzen des TPF3-Imports)."),
+            "limits": tr("Höhen müssen zwischen -100 und 3177 m liegen (Grenzen des TPF3-Imports)."),
             "order": tr("Die Maximalhöhe muss größer als die Mindesthöhe sein."),
             "water": tr("Die Wasserhöhe muss zwischen Mindest- und Maximalhöhe liegen."),
         }

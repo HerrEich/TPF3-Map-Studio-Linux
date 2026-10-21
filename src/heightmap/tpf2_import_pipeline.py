@@ -41,7 +41,7 @@ from src.heightmap.tpf2_water_cleanup import (
 )
 
 # Grenzen des TPF3-Heightmap-Imports (im Spiel getestet, Okt. 2026)
-TPF3_MIN_M = -20.0
+TPF3_MIN_M = -100.0
 TPF3_MAX_M = 3177.0
 
 PIXEL_M = 4.0
@@ -79,7 +79,7 @@ class ImportResult:
 
 def validate_settings(s: ImportSettings) -> None:
     if not (TPF3_MIN_M <= s.low_m <= TPF3_MAX_M and TPF3_MIN_M <= s.high_m <= TPF3_MAX_M):
-        raise ImportSettingsError("limits", "Hoehen ausserhalb -20 bis 3177 m")
+        raise ImportSettingsError("limits", "Hoehen ausserhalb -100 bis 3177 m")
     if s.high_m <= s.low_m:
         raise ImportSettingsError("order", "Maximalhoehe muss groesser als Mindesthoehe sein")
     if not s.low_m <= s.water_m <= s.high_m:
