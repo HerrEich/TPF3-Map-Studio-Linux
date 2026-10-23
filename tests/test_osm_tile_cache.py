@@ -17,9 +17,32 @@ class _Resp:
         self.headers = headers or {}
 
 
+class _Data:
+    """Test-Container: sammelt Elemente ohne Doppelte (Typ, ID)."""
+
+    node_count = 0
+    relation_count = 0
+    data_timestamp = ""
+
+    def __init__(self):
+        self._m = {}
+
+    @property
+    def elements(self):
+        return list(self._m.values())
+
+    @property
+    def way_count(self):
+        return len(self._m)
+
+
 class _Parser:
-    def parse(self, data):
-        return types.SimpleNamespace(elements=data["elements"])
+    def new_data(self):
+        return _Data()
+
+    def parse_into(self, osm, data):
+        for element in data["elements"]:
+            osm._m[(element.get("type"), element.get("id"))] = element
 
 
 def _answer(tag):

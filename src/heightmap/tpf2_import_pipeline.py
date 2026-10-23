@@ -133,6 +133,41 @@ def water_preview_rgb(raw: np.ndarray, s: ImportSettings, step: int = 4) -> np.n
     return np.ascontiguousarray(rgb)
 
 
+# Kraeftige, gut unterscheidbare Farben fuer die Ueberlagerung (Index = Biom)
+BIOME_OVERLAY_RGB = (
+    (255, 220, 60),    # 0 gelb
+    (40, 170, 90),     # 1 gruen
+    (150, 80, 200),    # 2 violett
+    (235, 130, 40),    # 3 orange
+    (200, 60, 60),     # 4 rot
+)
+
+
+def overlay_preview_rgb(
+    raw: np.ndarray,
+    s: ImportSettings,
+    biome_index: np.ndarray,
+    step: int = 4,
+    alpha: float = 0.5,
+) -> np.ndarray:
+    """Relief grau mit halbtransparenter Biom-Faerbung, Wasser bleibt blau.
+
+    `alpha` ist die Deckkraft der Biom-Farben (0 = nur Relief, 1 = nur Biome).
+    """
+    alpha = float(min(max(alpha, 0.0), 1.0))
+    base = water_preview_rgb(raw, s, step=step)
+    index = biome_index[::step, ::step]
+    colors = np.array(BIOME_OVERLAY_RGB, dtype=np.float32)[
+        np.clip(index, 0, len(BIOME_OVERLAY_RGB) - 1)
+    ]
+    mixed = base.astype(np.float32) * (1.0 - alpha) + colors * alpha
+    w_raw = water_raw(s)
+    if w_raw is not None:
+        flooded = raw[::step, ::step] < w_raw
+        mixed[flooded] = base[flooded]
+    return np.ascontiguousarray(np.clip(mixed + 0.5, 0, 255).astype(np.uint8))
+
+
 def default_output_name(source: str | Path, suffix: str) -> str:
     """Vorschlag fuer den Dateinamen, z. B. 'meine_karte_tpf3.png'."""
     return "%s_%s.png" % (Path(source).stem, suffix)

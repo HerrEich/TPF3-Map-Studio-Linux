@@ -11,7 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -55,6 +55,10 @@ _PREVIEW_HEIGHT = 480
 
 
 class BiomeMaskDialog(QDialog):
+
+    # Wird nach jeder berechneten Vorschau gesendet (Biom-Raster, uint8), damit
+    # der Heightmap-Dialog die Biome in der 3D-Vorschau zeigen kann.
+    preview_ready = Signal(object)
 
     def __init__(
         self,
@@ -197,6 +201,35 @@ class BiomeMaskDialog(QDialog):
         close_button.clicked.connect(self.reject)
         row.addWidget(close_button)
 
+        # Nach der ersten Vorschau rechnet jede Aenderung die Vorschau (und damit
+        # die 3D-Ansicht im Heightmap-Dialog) kurz darauf von selbst neu.
+        self._auto_timer = QTimer(self)
+        self._auto_timer.setSingleShot(True)
+        self._auto_timer.setInterval(600)
+        self._auto_timer.timeout.connect(self._auto_preview)
+
+        for box in self.category_boxes.values():
+            box.currentIndexChanged.connect(self._schedule_preview)
+
+        self.resolution_box.currentIndexChanged.connect(self._schedule_preview)
+        self.thin_checkbox.toggled.connect(self._schedule_preview)
+        self.thin_limit_input.valueChanged.connect(self._schedule_preview)
+        self.thin_band_input.valueChanged.connect(self._schedule_preview)
+        self.thin_biome_box.currentIndexChanged.connect(self._schedule_preview)
+
+    def _schedule_preview(self, *_args):
+        """Aenderung nach einer ersten Vorschau: kurz warten, dann neu rechnen."""
+
+        if self._index is not None:
+            self._auto_timer.start()
+
+    def _auto_preview(self):
+
+        if all(value is None for value in self._assignment().values()):
+            return
+
+        self._make_preview()
+
     # ---------------------------------------------------------
 
     def _assignment(self) -> dict[str, int | None]:
@@ -253,6 +286,7 @@ class BiomeMaskDialog(QDialog):
 
         self._index = index
         self._index_summary = self._summary()
+        self.preview_ready.emit(index)
 
         rgb = np.ascontiguousarray(index_to_preview_rgb(index))
 

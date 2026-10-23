@@ -10,9 +10,10 @@ Die **Höhenquelle** bestimmt, wie genau dein Gelände wird. Wähle sie oben im 
 | swissALTI3D Schweiz | Schweiz, Liechtenstein | 2 m | von swisstopo |
 | AHN Niederlande | Niederlande | 2 m | von PDOK |
 | BEV Österreich | Österreich | 1 m | nur Teilabruf, siehe [Österreich](help:oesterreich-bev) |
+| Luxemburg MNT 2024 | Luxemburg | 0,5 m | nur Teilabruf, siehe [Luxemburg](help:luxemburg-mnt) |
 | Eigene TPF2-Heightmap (PNG) | beliebig | wie die PNG | siehe [TPF2 nach TPF3](help:tpf2-nach-tpf3) |
 
-Die Quellen für Deutschland, Schweiz, Niederlande und Österreich erscheinen **nur, wenn der Kartenmittelpunkt in dem Land liegt**. Wo einer Quelle Daten fehlen, ergänzt das Studio aus Copernicus. Ein größerer Anteil aus Copernicus kann an den Nahtstellen kleine Höhenstufen erzeugen, das Studio warnt dann.
+Die Quellen für Deutschland, Schweiz, Niederlande, Österreich und Luxemburg erscheinen **nur, wenn der Kartenmittelpunkt in dem Land liegt**. Wo einer Quelle Daten fehlen, ergänzt das Studio aus Copernicus. Ein größerer Anteil aus Copernicus kann an den Nahtstellen kleine Höhenstufen erzeugen, das Studio warnt dann.
 
 ## Copernicus
 
@@ -36,8 +37,8 @@ Geländemodell von swisstopo mit 2 m Auflösung für die Schweiz und Liechtenste
 
 Geländemodell mit 2 m Auflösung, ohne Gebäude und Bewuchs. Die Kacheln kommen von PDOK. Auf Wasserflächen hat das AHN keine Werte, dort ergänzt das Studio aus Copernicus.
 
-*Bei Amsterdam im Studio geprüft, im Spiel noch nicht getestet.*
+*Bei Amsterdam im Spiel getestet.*
 
 ## Empfohlene Voreinstellung
 
-Für DGM1, swissALTI3D, AHN und BEV (die genauen Modelle) lässt *Empfohlen* das Glätten aus, ebnet mit 10 m ein und nimmt Wasser nach OSM mit 10 m Böschung. Für Copernicus gelten Glätten, Einebnen und Wasser nach OSM mit den Standardwerten.
+Für DGM1, swissALTI3D, AHN, BEV und Luxemburg (die genauen Modelle) lässt *Empfohlen* das Glätten aus, ebnet mit 10 m ein und nimmt Wasser nach OSM mit 10 m Böschung. Für Copernicus gelten Glätten, Einebnen und Wasser nach OSM mit den Standardwerten.

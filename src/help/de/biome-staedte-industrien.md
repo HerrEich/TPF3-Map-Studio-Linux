@@ -6,6 +6,8 @@ Alle vier Funktionen stehen unten im Heightmap-Dialog und brauchen **geladene OS
 
 Die Biome-Maske bestimmt im Spiel die Baumverteilung. *Biome-Maske aus OSM…* erzeugt sie aus der geladenen OSM-Landnutzung. Die Datei muss im Ordner `biomes` von TPF3 liegen, damit der Biome-Reiter sie findet.
 
+Das Biome-Fenster blockiert den Heightmap-Dialog nicht: Du kannst es offen lassen und die Vorschau dahinter ansehen. Nach der ersten *Vorschau* rechnet sich die Vorschau bei jeder Änderung der Zuordnung nach einem kurzen Moment von selbst neu, und die 3D-Ansicht zeigt die Biome auf dem Gelände.
+
 Im Spiel: Karteneditor → *Heightmap importieren* → Reiter **Biome** → bei **Biome** die Maske wählen, **Berge** und **Flüsse** leer lassen → **Anwenden**.
 
 Die Graustufen der Maske sind 77 = Biom 1, 128 = Biom 2, 179 = Biom 3. Fels und Schnee färbt das Spiel selbst nach Höhe und Steilheit.

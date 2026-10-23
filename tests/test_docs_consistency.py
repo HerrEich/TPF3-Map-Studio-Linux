@@ -101,6 +101,7 @@ class HeightmapDialogDocumentedTest(unittest.TestCase):
         "Höhenfenster begrenzen": "Höhenfenster",
         "Trassen und Siedlungen einebnen": "Trassen und Siedlungen einebnen",
         "Gefälle ausgleichen": "Gefälle ausgleichen",
+        "Gelände sanft mitsenken": "Gelände sanft mitsenken",
         "Wasser nur dort": "Wasser nur dort",
         "Terrain sanft": "Terrain sanft",
         "Werte auf Wasserhöhe 0": "Werte auf Wasserhöhe 0",

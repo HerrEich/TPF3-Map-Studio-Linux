@@ -15,7 +15,9 @@ from src.i18n import tr
 
 # Muss zu den Konstanten DEFAULT_*_CACHE_DIR in src/gui/heightmap_dialog.py passen
 # (ein Test prueft das).
-CACHE_KEYS = ("dem_cache", "dgm1_cache", "swissalti3d_cache", "ahn_nl_cache", "osm_cache")
+CACHE_KEYS = (
+    "dem_cache", "dgm1_cache", "swissalti3d_cache", "ahn_nl_cache", "bev_at_cache", "lux_mnt_cache", "osm_cache",
+)
 
 
 class CacheError(Exception):
@@ -46,6 +48,8 @@ def cache_labels() -> dict:
         "osm_cache": tr("OpenStreetMap-Kacheln (Overpass)"),
         "ahn_nl_cache": tr("AHN Niederlande (2 m, über PDOK)"),
         "swissalti3d_cache": tr("swissALTI3D Schweiz (2 m, \u00fcber data.geo.admin.ch)"),
+        "bev_at_cache": tr("BEV Österreich (1 m, über data.bev.gv.at)"),
+        "lux_mnt_cache": tr("Luxemburg MNT 2024 (0,5 m, über data.public.lu)"),
     }
 
 

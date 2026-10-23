@@ -8,6 +8,7 @@
       "children": [
         {"id": "hoehenquellen", "title": "Höhenquellen im Überblick", "file": "hoehenquellen.md"},
         {"id": "oesterreich-bev", "title": "Österreich (BEV)", "file": "oesterreich-bev.md"},
+        {"id": "luxemburg-mnt", "title": "Luxemburg (MNT 2024)", "file": "luxemburg-mnt.md"},
         {"id": "wasser-und-gelaende", "title": "Wasser und Gelände einstellen", "file": "wasser-und-gelaende.md"},
         {"id": "hoehenfenster", "title": "Höhenfenster und Alpen", "file": "hoehenfenster.md"}
       ]

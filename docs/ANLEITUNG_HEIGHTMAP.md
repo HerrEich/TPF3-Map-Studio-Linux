@@ -48,7 +48,7 @@ Empfohlene Reihenfolge. Jede Änderung aktualisiert die Vorschau. Die Zahlen unt
 
 9. **Wasserhöhe** prüfen. Das Studio schlägt einen Wert vor. Tipp: etwas höher als der tiefste Teil des Flusses, aber nicht so hoch, dass der Fluss an der höchsten Stelle mehr als 10 bis 15 m über dem Pegel liegt. Bei Flusstälern mit Gefälle (zum Beispiel Rhein) ist das ein Kompromiss. Der Knopf **"Wasserhöhe aus den OSM-Gewässern vorschlagen"** setzt sie in die Mitte zwischen tiefstem und höchstem Punkt des Hauptflusses und passt die Grenze "Nur Gewässer bis" an (braucht OSM-Daten).
 10. **Gelände glätten** anhaken, Standard 15 m. Das entfernt die Treppenstufen an den Hängen (das Höhenmodell hat nur 30 m pro Pixel, das Spiel 4 m).
-11. **Trassen und Siedlungen einebnen** anhaken, Standard 60 m. Bahnstrecken, größere Straßen und Gebäude werden abgeflacht, damit im Spiel weniger Rampen nötig sind. Braucht OSM-Daten. (Ob es beim Bauen spürbar hilft, ist noch nicht im Spiel geprüft.)
+11. **Trassen und Siedlungen einebnen** anhaken, Standard 60 m. Bahnstrecken, größere Straßen und Gebäude werden abgeflacht, damit im Spiel weniger Rampen nötig sind. Braucht OSM-Daten. (Im Spiel getestet, funktioniert.)
 12. **Wasser nur dort, wo OpenStreetMap Wasser hat** anhaken (empfohlen). Damit verhindert das Studio überflutete Auen und Tümpel. Standardwerte:
     - Böschung 60 m (breiter = flacheres Ufer),
     - Tiefe am Ufer 2 m, Tiefe in der Mitte 8 m (Fahrrinne),
@@ -99,7 +99,7 @@ Empfohlene Reihenfolge. Jede Änderung aktualisiert die Vorschau. Die Zahlen unt
 |---|---|
 | Der Fluss ist ein riesiger See | Das Spiel kennt nur einen Wasserspiegel und flutet die Aue. **"Wasser nur dort, wo OpenStreetMap Wasser hat"** anhaken. |
 | Der Fluss fällt stellenweise trocken | Wasserhöhe im Studio etwas erhöhen. Die Werte für das Spiel neu ablesen. |
-| Der Fluss bleibt im oberen Teil trocken (starkes Gefälle, z. B. Koblenz–Bingen rund 18 m) | Bei "Wasser nur dort, wo OpenStreetMap Wasser hat" die Grenze **"Nur Gewässer bis … m über Wasserspiegel"** auf 25 bis 30 m erhöhen. Zusätzlich die Wasserhöhe in die Mitte zwischen tiefstem und höchstem Flussabschnitt legen (dort etwa 68 m). Im Spiel noch nicht geprüft. |
+| Der Fluss bleibt im oberen Teil trocken (starkes Gefälle, z. B. Koblenz–Bingen rund 18 m) | Bei "Wasser nur dort, wo OpenStreetMap Wasser hat" die Grenze **"Nur Gewässer bis … m über Wasserspiegel"** auf 25 bis 30 m erhöhen. Zusätzlich die Wasserhöhe in die Mitte zwischen tiefstem und höchstem Flussabschnitt legen (dort etwa 68 m). Im Spiel geprüft. |
 | Steile Wand am Ufer | Böschung von 60 auf 100 m erhöhen. Bei Schluchten (Mittelrhein) ist ein Teil natürlich. |
 | Treppenstufen an den Hängen | **Gelände glätten**, 15 m, bei Bedarf 30 m. |
 | Gerade Streifen oder Keile im Wasser | War ein Fehler beim Zusammensetzen der OSM-Uferstücke. Mit der aktuellen Version behoben. |

@@ -12,11 +12,13 @@ from src.heightmap.heightmap_exporter import (
     SOURCE_DGM1_DE,
     SOURCE_DGM1_FOLDER,
     SOURCE_AHN_NL,
+    SOURCE_LUX,
     SOURCE_SWISSALTI3D,
     pixel_size_for_selection,
 )
 from src.heightmap.swissalti3d_dem import ATTRIBUTION as SWISS_ATTRIBUTION
 from src.heightmap.ahn_nl_dem import ATTRIBUTION as AHN_ATTRIBUTION
+from src.heightmap.lux_dem import ATTRIBUTION as LUX_ATTRIBUTION
 from src.gui.map_size_presets import find_by_pixels
 from src.i18n import get_language, translate_to
 
@@ -231,7 +233,9 @@ def collect_rows(
         rows.append((tr("Biome"), biomes, None))
 
     # Hoehenquelle
-    if source == SOURCE_AHN_NL:
+    if source == SOURCE_LUX:
+        source_name = tr("Luxemburg MNT 2024 (4 m aus 0,5 m)")
+    elif source == SOURCE_AHN_NL:
         source_name = tr("AHN Niederlande (2 m)")
     elif source == SOURCE_SWISSALTI3D:
         source_name = tr("swissALTI3D Schweiz (2 m)")
@@ -260,7 +264,14 @@ def collect_rows(
     # Quellenangaben und Lizenzen
     uses_copernicus = source == SOURCE_COPERNICUS or fallback > FALLBACK_MIN_FRACTION
 
-    if source == SOURCE_AHN_NL:
+    if source == SOURCE_LUX:
+        rows.append((tr("Quellenangabe"), LUX_ATTRIBUTION, None))
+        rows.append((
+            tr("Lizenz"),
+            tr("CC0 1.0 (frei nutzbar)"),
+            LICENSE_URLS.get("ahn"),
+        ))
+    elif source == SOURCE_AHN_NL:
         rows.append((tr("Quellenangabe"), AHN_ATTRIBUTION, None))
         rows.append((
             tr("Lizenz"),

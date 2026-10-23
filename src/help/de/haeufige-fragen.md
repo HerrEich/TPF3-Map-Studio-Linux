@@ -6,7 +6,7 @@
 
 **„Es konnten nicht alle Kacheln geladen werden.“** Starte den Download der Höhendaten erneut, er lädt nur das Fehlende nach.
 
-**Die Quelle DGM1, swissALTI3D, AHN oder BEV ist ausgegraut.** Diese Quellen sind nur wählbar, wenn der Kartenmittelpunkt im jeweiligen Land liegt. Siehe [Höhenquellen](help:hoehenquellen).
+**Die Quelle DGM1, swissALTI3D, AHN, BEV oder Luxemburg ist ausgegraut.** Diese Quellen sind nur wählbar, wenn der Kartenmittelpunkt im jeweiligen Land liegt. Siehe [Höhenquellen](help:hoehenquellen).
 
 **Die Meldung „Unable to allocate … MiB for an array“ (zu wenig Arbeitsspeicher).** Verkleinere das Rechteck oder schließe andere Programme. Neuere Versionen laden Copernicus-Kacheln sparsam, aktualisiere also auf die neueste Version.
 

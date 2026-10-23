@@ -50,7 +50,7 @@ Recommended order. Every change updates the preview. The numbers at the bottom o
 
 9. Check the **Wasserhöhe** (water level). The Studio suggests a value. Tip: a little above the lowest part of the river, but not so high that the river is more than 10 to 15 m above the level at its highest point. For river valleys with a gradient (for example the Rhine) this is a compromise. The button **"Wasserhöhe aus den OSM-Gewässern vorschlagen"** (suggest water level from OSM waters) sets it halfway between the lowest and highest point of the main river and adjusts the limit "Nur Gewässer bis" (needs OSM data).
 10. Tick **Gelände glätten** (smooth terrain), default 15 m. This removes the terraces on slopes (the elevation model has only 30 m per pixel, the game 4 m).
-11. Tick **Trassen und Siedlungen einebnen**, default 60 m. Railway lines, larger roads and buildings are flattened so that fewer ramps are needed in the game. Needs OSM data. (Whether it helps noticeably when building has not been tested in the game yet.)
+11. Tick **Trassen und Siedlungen einebnen**, default 60 m. Railway lines, larger roads and buildings are flattened so that fewer ramps are needed in the game. Needs OSM data. (Tested in the game, it works.)
 12. Tick **Wasser nur dort, wo OpenStreetMap Wasser hat** (recommended). This prevents flooded floodplains and ponds. Default values:
     - embankment 60 m (wider = flatter bank),
     - depth at the bank 2 m, depth in the middle 8 m (channel),
@@ -103,7 +103,7 @@ Recommended order. Every change updates the preview. The numbers at the bottom o
 |---|---|
 | The river is a huge lake | The game knows only one water level and floods the floodplain. Tick **"Wasser nur dort, wo OpenStreetMap Wasser hat"**. |
 | The river runs dry in places | Raise the water level in the Studio a little. Read the values for the game again. |
-| The river stays dry in the upper part (steep gradient, e.g. Koblenz–Bingen about 18 m) | With "Wasser nur dort, wo OpenStreetMap Wasser hat" raise the limit **"Nur Gewässer bis … m über Wasserspiegel"** to 25 to 30 m. Also put the water level halfway between the lowest and highest river section (about 68 m there). Not tested in the game yet. |
+| The river stays dry in the upper part (steep gradient, e.g. Koblenz–Bingen about 18 m) | With "Wasser nur dort, wo OpenStreetMap Wasser hat" raise the limit **"Nur Gewässer bis … m über Wasserspiegel"** to 25 to 30 m. Also put the water level halfway between the lowest and highest river section (about 68 m there). Tested in the game. |
 | Steep wall at the bank | Raise the embankment from 60 to 100 m. In gorges (Middle Rhine) part of it is natural. |
 | Terraces on the slopes | **Gelände glätten**, 15 m, 30 m if needed. |
 | Straight stripes or wedges in the water | This was an error when joining the OSM bank pieces. Fixed in the current version. |

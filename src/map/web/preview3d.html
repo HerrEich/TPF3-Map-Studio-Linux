@@ -8,13 +8,32 @@
   #bar { position: absolute; left: 8px; bottom: 8px; color: #dde; font-size: 12px;
          background: rgba(20,24,34,.7); padding: 4px 8px; border-radius: 4px; }
   #bar input { vertical-align: middle; width: 120px; }
+  #bar input[type=checkbox] { width: auto; }
+  .panel { position: absolute; top: 8px; color: #dde; font-size: 12px;
+           background: rgba(20,24,34,.7); padding: 6px 8px; border-radius: 4px; }
+  #legend { left: 8px; max-width: 230px; display: none; }
+  #legend .row { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
+  #legend .sw { width: 12px; height: 12px; border: 1px solid #111; flex: none; }
+  #scale { right: 8px; width: 175px; }
+  #scale .t { font-weight: bold; margin-bottom: 4px; }
+  #sbar { position: relative; height: 260px; margin-left: 4px; margin-bottom: 16px; }
+  #sbar .seg { position: absolute; left: 0; width: 22px; border: 1px solid #111; box-sizing: border-box; }
+  #sbar .tick { position: absolute; left: 22px; width: 10px; height: 0; border-top: 2px solid #eee; }
+  #sbar .lab { position: absolute; left: 36px; white-space: nowrap; transform: translateY(-50%); }
+  #sbar .red { border-top-color: #f03c3c; }
+  #sbar .lab.red { color: #f03c3c; font-weight: bold; }
+  #swarn { margin-top: 6px; color: #f03c3c; font-weight: bold; }
 </style>
 <script type="importmap">
 { "imports": { "three": "./vendor/three.module.min.js" } }
 </script>
 </head>
 <body>
-<div id="bar">Überhöhung <input id="exag" type="range" min="1" max="5" step="0.5" value="2"> <span id="exagv">2×</span></div>
+<div id="legend" class="panel"></div>
+<div id="scale" class="panel"><div class="t">Höhe über Wasser</div><div id="sbar"></div><div id="swarn"></div></div>
+<div id="bar">Überhöhung <input id="exag" type="range" min="1" max="5" step="0.5" value="2"> <span id="exagv">2×</span>
+  <label id="biomewrap" style="display:none; margin-left:10px;"><input id="biomecb" type="checkbox" checked> Biome zeigen</label>
+  <label id="waterwrap" style="display:none; margin-left:10px;"><input id="watercb" type="checkbox" checked> Wasser zeigen</label></div>
 <script type="module">
 import * as THREE from "three";
 import { OrbitControls } from "./vendor/OrbitControls.js";
@@ -34,6 +53,130 @@ scene.add(sun);
 
 let terrain = null, water = null, wall = null, floor = null;
 let geoKey = "", exag = 2, baseHeights = null, minBase = 0, dim = 1, edges = [];
+let zoneCol = null, biomeCol = null, showBiomes = true;
+let waterMask = null, showWater = true;
+const WATER_RGB = [47 / 255, 125 / 255, 230 / 255];
+
+function setColors() {
+  if (!terrain) return;
+  const src = (biomeCol && showBiomes) ? biomeCol : zoneCol;
+  const attr = terrain.geometry.attributes.color;
+  for (let i = 0; i < src.length; i++) attr.array[i] = src[i];
+  if (waterMask && showWater) {
+    for (let v = 0; v < waterMask.length; v++) {
+      if (waterMask[v]) {
+        attr.array[v * 3] = WATER_RGB[0];
+        attr.array[v * 3 + 1] = WATER_RGB[1];
+        attr.array[v * 3 + 2] = WATER_RGB[2];
+      }
+    }
+  }
+  attr.needsUpdate = true;
+}
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function fmt(v) { return (Math.abs(v) >= 100 ? Math.round(v) : Math.round(v * 10) / 10) + " m"; }
+
+function buildLegend(p) {
+  const box = document.getElementById("legend");
+  box.textContent = "";
+  const list = p.biomes || [];
+  if (!list.length) { box.style.display = "none"; return; }
+  box.style.display = "block";
+  box.appendChild(el("div", "", "Gewählte Biome")).style.fontWeight = "bold";
+  for (const b of list) {
+    const row = el("div", "row");
+    const sw = el("span", "sw");
+    sw.style.background = "rgb(" + b.rgb.join(",") + ")";
+    row.appendChild(sw);
+    row.appendChild(el("span", "", b.name + " (" + Math.round(b.pct) + " %)"));
+    box.appendChild(row);
+  }
+}
+
+// Hoehenskala: Meter ueber Wasser. Fels/Schnee-Striche werden rot, sobald das
+// Gelaende sie erreicht; rote Enden, wenn es aus dem Editor-Fenster faellt.
+function buildScale(p) {
+  const bar = document.getElementById("sbar");
+  bar.textContent = "";
+  const H = 260, PAD = 30;                       // Hauptbereich und Verlaengerungen oben/unten
+  const water = p.water_level_m;
+  const loLim = p.editor_min_m - water;          // Editor-Grenzen in Metern ueber Wasser
+  const hiLim = p.editor_max_m - water;
+  const lo = Math.min(p.min_above_m, 0);
+  const hi = Math.max(p.max_above_m, p.snow_above_m * 1.05, 1);
+  const extTop = hiLim > hi, extBottom = loLim < lo;   // Grenze weit weg: gestreiftes Stueck
+  const top0 = extTop ? PAD : 0;
+  const total = top0 + H + (extBottom ? PAD : 0);
+  bar.style.height = total + "px";
+  const y = (v) => top0 + H - (v - lo) / (hi - lo) * H;
+  const seg = (a, b, color) => {
+    if (b <= a) return;
+    const s = el("div", "seg");
+    s.style.top = y(b) + "px"; s.style.height = Math.max(1, y(a) - y(b)) + "px";
+    s.style.background = color;
+    bar.appendChild(s);
+  };
+  // Abschnitte kommen fertig aus Python (Wasser, Biome nach Hoehe, Fels, Schnee)
+  for (const s of (p.scale_segments || [])) seg(s.a, s.b, "rgb(" + s.rgb.join(",") + ")");
+
+  // Verlaengerungen bis zu den Editor-Grenzen (gestreift = Bereich unterbrochen)
+  const stripes = (c) => "repeating-linear-gradient(45deg," + c + " 0 4px,transparent 4px 8px)";
+  if (extTop) {
+    const d = el("div", "seg"); d.style.top = "0px"; d.style.height = PAD + "px";
+    d.style.background = stripes("#8899bb"); bar.appendChild(d);
+  }
+  if (extBottom) {
+    const d = el("div", "seg"); d.style.top = (top0 + H) + "px"; d.style.height = PAD + "px";
+    d.style.background = stripes("#3d6ad0"); bar.appendChild(d);
+  }
+  // Gelaende ueber/unter der Editor-Grenze: rot hinterlegt
+  const overlay = (a, b) => {
+    const d = el("div", "seg"); d.style.top = y(b) + "px"; d.style.height = Math.max(1, y(a) - y(b)) + "px";
+    d.style.background = "rgba(240,60,60,.65)"; bar.appendChild(d);
+  };
+  if (!extTop && hiLim < hi) overlay(hiLim, hi);
+  if (!extBottom && loLim > lo) overlay(lo, loLim);
+
+  const labels = [];
+  const tick = (yy, text, red) => {
+    const t = el("div", "tick" + (red ? " red" : ""));
+    t.style.top = yy + "px";
+    bar.appendChild(t);
+    const l = el("div", "lab" + (red ? " red" : ""), text);
+    bar.appendChild(l);
+    labels.push({ y: yy, el: l });
+  };
+  tick(y(0), "0 m Wasser", false);
+  tick(y(p.rock_above_m), fmt(p.rock_above_m) + " Fels", p.max_above_m >= p.rock_above_m);
+  tick(y(p.snow_above_m), fmt(p.snow_above_m) + " Schnee", p.max_above_m >= p.snow_above_m);
+  tick(y(p.max_above_m), fmt(p.max_above_m) + " Gelände", false);
+  if (p.min_above_m < 0) tick(y(p.min_above_m), fmt(p.min_above_m), false);
+  // Editor-Grenzen (absolute Hoehe) immer in rot
+  tick(extTop ? 0 : y(hiLim), fmt(p.editor_max_m) + " Editor-Grenze", true);
+  tick(extBottom ? total : y(loLim), fmt(p.editor_min_m) + " Editor-Grenze", true);
+
+  // Beschriftungen von oben nach unten, mindestens 14 px Abstand (die Striche
+  // bleiben an der echten Hoehe).
+  labels.sort((a, b) => a.y - b.y);
+  let last = -Infinity;
+  for (const item of labels) {
+    const pos = Math.max(item.y, last + 14);
+    item.el.style.top = pos + "px";
+    last = pos;
+  }
+
+  const warn = [];
+  if (p.abs_max_m > p.editor_max_m) warn.push("über " + fmt(p.editor_max_m) + " (Editor)");
+  if (p.abs_min_m < p.editor_min_m) warn.push("unter " + fmt(p.editor_min_m) + " (Editor)");
+  document.getElementById("swarn").textContent = warn.length ? "Außerhalb: " + warn.join(", ") : "";
+}
 
 function b64(s, Type) {
   const bin = atob(s), buf = new Uint8Array(bin.length);
@@ -88,6 +231,8 @@ window.setMesh = function (p) {
   minBase = Infinity;
   for (let i = 0; i < baseHeights.length; i++) if (baseHeights[i] < minBase) minBase = baseHeights[i];
   const col8 = b64(p.colors_b64, Uint8Array);
+  const bio8 = p.biome_colors_b64 ? b64(p.biome_colors_b64, Uint8Array) : null;
+  waterMask = p.water_b64 ? b64(p.water_b64, Uint8Array) : null;
   const key = rows + "x" + cols + "@" + cell;
   const first = !terrain;
   removeAll();
@@ -105,6 +250,12 @@ window.setMesh = function (p) {
   for (let r = 0; r < rows - 1; r++) for (let c = 0; c < cols - 1; c++) {
     const a = r * cols + c, b = a + 1, d = a + cols, e = d + 1;
     idx[k++] = a; idx[k++] = d; idx[k++] = b; idx[k++] = b; idx[k++] = d; idx[k++] = e;
+  }
+  zoneCol = new Float32Array(col);
+  biomeCol = null;
+  if (bio8) {
+    biomeCol = new Float32Array(rows * cols * 3);
+    for (let i = 0; i < biomeCol.length; i++) biomeCol[i] = bio8[i] / 255;
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
@@ -151,6 +302,11 @@ window.setMesh = function (p) {
   water.renderOrder = 1;
   scene.add(water);
 
+  document.getElementById("biomewrap").style.display = biomeCol ? "inline" : "none";
+  document.getElementById("waterwrap").style.display = waterMask ? "inline" : "none";
+  setColors();
+  buildLegend(p);
+  buildScale(p);
   applyHeights();
   if (first || key !== geoKey) {
     camera.position.set(0, dim * 0.7, dim * 0.9);
@@ -160,6 +316,16 @@ window.setMesh = function (p) {
   }
   geoKey = key;
 };
+
+document.getElementById("biomecb").addEventListener("change", (e) => {
+  showBiomes = e.target.checked;
+  setColors();
+});
+
+document.getElementById("watercb").addEventListener("change", (e) => {
+  showWater = e.target.checked;
+  setColors();
+});
 
 document.getElementById("exag").addEventListener("input", (e) => {
   exag = parseFloat(e.target.value);

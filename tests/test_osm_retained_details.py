@@ -26,7 +26,15 @@ class RetainedDetailsTest(unittest.TestCase):
     def setUp(self):
         folder=tempfile.TemporaryDirectory();self.addCleanup(folder.cleanup)
         self.client=oc.OverpassClient();self.client.tile_cache=TileCache(folder.name)
-        self.client.parser=types.SimpleNamespace(parse=lambda data:types.SimpleNamespace(elements=data['elements']))
+        class _Data:
+            node_count=relation_count=way_count=0
+            data_timestamp=''
+            def __init__(self): self._m={}
+            @property
+            def elements(self): return list(self._m.values())
+        def _into(osm,data):
+            for e in data['elements']: osm._m[(e.get('type'),e.get('id'))]=e
+        self.client.parser=types.SimpleNamespace(new_data=_Data,parse_into=_into)
         self.tile=Selection.from_center(50.5,9,3000,3000)
         self.calls=[]
         self.client._post=lambda server,query:(self.calls.append(query) or Response([3]))

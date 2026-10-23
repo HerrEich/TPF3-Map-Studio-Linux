@@ -7,6 +7,7 @@ from src.heightmap.tpf2_import_pipeline import (
     ImportSettings,
     ImportSettingsError,
     default_output_name,
+    overlay_preview_rgb,
     run_import,
     validate_settings,
     water_preview_rgb,
@@ -34,8 +35,9 @@ class ValidateTest(unittest.TestCase):
 
     def test_tpf3_grenzen(self):
         with self.assertRaises(ImportSettingsError) as ctx:
-            validate_settings(ImportSettings(-50, 100, 0))
+            validate_settings(ImportSettings(-150, 100, 0))
         self.assertEqual(ctx.exception.code, "limits")
+        validate_settings(ImportSettings(-99, 100, 0))
         with self.assertRaises(ImportSettingsError):
             validate_settings(ImportSettings(0, 4000, 10))
 
@@ -98,6 +100,40 @@ class NameTest(unittest.TestCase):
         from pathlib import Path
         self.assertEqual(default_output_name(Path("ordner") / "meine_karte.png", "tpf3"),
                          "meine_karte_tpf3.png")
+
+
+class OverlayPreviewTest(unittest.TestCase):
+    def setUp(self):
+        self.raw = _karte()
+        self.s = ImportSettings(0, 100, 50)
+        self.index = np.zeros(self.raw.shape, dtype=np.uint8)
+        self.index[:, 40:] = 1
+
+    def test_form_und_typ(self):
+        rgb = overlay_preview_rgb(self.raw, self.s, self.index, step=4)
+        self.assertEqual(rgb.shape, (20, 20, 3))
+        self.assertEqual(rgb.dtype, np.uint8)
+
+    def test_alpha_null_ist_relief(self):
+        rgb = overlay_preview_rgb(self.raw, self.s, self.index, step=4, alpha=0.0)
+        np.testing.assert_array_equal(rgb, water_preview_rgb(self.raw, self.s, step=4))
+
+    def test_alpha_eins_zeigt_biomfarbe_ausser_wasser(self):
+        rgb = overlay_preview_rgb(self.raw, self.s, self.index, step=4, alpha=1.0)
+        # Land im rechten Teil (Zeile 0, Spalte 19) hat die Farbe von Biom 1
+        self.assertEqual(tuple(rgb[0, 19]), (40, 170, 90))
+        # See bleibt blau (Mitte des Sees, Pixel 35/35 -> 8/8)
+        self.assertEqual(tuple(rgb[8, 8]), (40, 110, 220))
+
+    def test_alpha_wird_begrenzt(self):
+        a = overlay_preview_rgb(self.raw, self.s, self.index, step=4, alpha=7.0)
+        b = overlay_preview_rgb(self.raw, self.s, self.index, step=4, alpha=1.0)
+        np.testing.assert_array_equal(a, b)
+
+    def test_ohne_wasser(self):
+        s = ImportSettings(0, 100, 0)
+        rgb = overlay_preview_rgb(self.raw, s, self.index, step=4, alpha=1.0)
+        self.assertEqual(tuple(rgb[8, 8]), (255, 220, 60))
 
 
 if __name__ == "__main__":
