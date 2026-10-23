@@ -64,7 +64,7 @@ Copernicus. Die Voreinstellung „Empfohlen“ behandelt swissALTI3D wie DGM1.
 Die Kacheln kommen von PDOK, ein Fenster zeigt den Fortschritt und lässt sich abbrechen, geladene
 Kacheln liegen im Zwischenspeicher. Auf Wasserflächen hat das AHN keine Werte, dort ergänzt das
 Studio aus Copernicus. Die Voreinstellung „Empfohlen“ behandelt AHN wie DGM1.
-<i>AHN ist bei Amsterdam im Studio geprüft, im Spiel noch nicht getestet.</i></li>
+<i>AHN ist bei Amsterdam im Spiel getestet.</i></li>
 </ol>
 
 <h4>Einstellungen</h4>
@@ -87,7 +87,7 @@ an (braucht OSM-Daten).</li>
 nötig, das Modell ist schon genau, die Voreinstellung „Empfohlen“ lässt es dort aus.</li>
 <li><b>Trassen und Siedlungen einebnen</b> anhaken, Standard 60 m (bei „Empfohlen“ mit DGM1: 10 m). Bahnstrecken, größere
 Straßen und Gebäude werden abgeflacht, damit im Spiel weniger Rampen nötig sind. Braucht
-OSM-Daten. <i>Ob es beim Bauen spürbar hilft, ist noch nicht im Spiel geprüft.</i></li>
+OSM-Daten. <i>Im Spiel getestet, funktioniert.</i></li>
 <li><b>Wasser nur dort, wo OpenStreetMap Wasser hat</b> anhaken (empfohlen). Verhindert
 überflutete Auen und Tümpel. Standardwerte: Böschung 60 m (bei „Empfohlen“ mit DGM1: 10 m; breiter = flacheres Ufer), Tiefe
 am Ufer 2 m, Tiefe in der Mitte 8 m (Fahrrinne), Ufer über Wasser 2 m, nur Gewässer bis
@@ -204,7 +204,7 @@ mit rund 18 m)</td><td>Zuerst <b>Gefälle ausgleichen</b> anhaken (Schritt 11), 
 bei „Wasser nur dort, wo OpenStreetMap Wasser hat“ die Grenze
 <b>„Nur Gewässer bis … m über Wasserspiegel“</b> auf 25 bis 30 m erhöhen. Zusätzlich die
 Wasserhöhe in die Mitte zwischen tiefstem und höchstem Flussabschnitt legen (dort etwa
-68 m), dann werden beide Enden um etwa gleich viel korrigiert. <i>Im Spiel noch nicht
+68 m), dann werden beide Enden um etwa gleich viel korrigiert. <i>Im Spiel
 geprüft.</i></td></tr>
 <tr><td>Steile Wand am Ufer</td><td>Böschung von 60 auf 100 m erhöhen. Bei Schluchten
 (Mittelrhein) ist ein Teil natürlich.</td></tr>

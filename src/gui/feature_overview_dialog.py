@@ -266,6 +266,14 @@ FEATURE_GROUPS = (
                 "Bezug.",
             ),
             (
+                "Gelände sanft mitsenken",
+                "Seen, die höher als der Wasserspiegel liegen (zum Beispiel "
+                "der Schliersee neben dem Tegernsee), werden auf den "
+                "Wasserspiegel gesenkt. Das Gelände drumherum geht sanft mit "
+                "und läuft über den eingestellten Auslauf aus, so entsteht "
+                "keine Steilküste um den See. Braucht geladene OSM-Daten.",
+            ),
+            (
                 "Wasser nur dort, wo OpenStreetMap Wasser hat",
                 "Gewässer bekommen ein festes Bett mit Böschung und Tiefe, "
                 "alles andere Land liegt knapp über dem Wasserspiegel: keine "

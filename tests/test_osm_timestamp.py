@@ -33,7 +33,7 @@ def _client():
     atexit.register(shutil.rmtree, cache_dir, ignore_errors=True)
     client.tile_cache = TileCache(cache_dir)
     client.parser = mock.Mock()
-    client.parser.parse.return_value = OSMData()
+    client.parser.new_data.return_value = OSMData()
     return client
 
 

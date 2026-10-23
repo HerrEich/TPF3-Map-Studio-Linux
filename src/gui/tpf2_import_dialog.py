@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QScrollArea,
+    QSlider,
     QVBoxLayout,
     QWidget,
 )
@@ -48,6 +49,7 @@ from src.heightmap.tpf2_import_pipeline import (
     default_output_name,
     run_import,
     validate_settings,
+    overlay_preview_rgb,
     water_preview_rgb,
 )
 from src.heightmap.tpf2_water_cleanup import save_heightmap
@@ -197,8 +199,21 @@ class Tpf2ImportDialog(QDialog):
         self.mode_box = QComboBox()
         self.mode_box.addItem(tr("Wasser (blau)"), "water")
         self.mode_box.addItem(tr("Biome"), "biome")
+        self.mode_box.addItem(tr("Höhe + Biome"), "overlay")
         self.mode_box.currentIndexChanged.connect(self._show_preview)
         mode_row.addWidget(self.mode_box, 1)
+
+        alpha_row = QHBoxLayout()
+        preview_panel.addLayout(alpha_row)
+        alpha_row.addWidget(QLabel(tr("Deckkraft der Biome:")))
+        self.alpha_slider = QSlider(Qt.Horizontal)
+        self.alpha_slider.setRange(10, 90)
+        self.alpha_slider.setValue(50)
+        self.alpha_slider.setToolTip(
+            tr("Wie stark die Biom-Farben das Relief überdecken (nur bei Vorschau \"Höhe + Biome\").")
+        )
+        self.alpha_slider.valueChanged.connect(self._show_preview)
+        alpha_row.addWidget(self.alpha_slider, 1)
 
         self.preview_label = QLabel(tr("Noch keine Vorschau."))
         self.preview_label.setAlignment(Qt.AlignCenter)
@@ -404,6 +419,11 @@ class Tpf2ImportDialog(QDialog):
         if self.mode_box.currentData() == "biome":
             index = result.biome_index[::_PREVIEW_STEP, ::_PREVIEW_STEP]
             rgb = np.ascontiguousarray(index_to_preview_rgb(index))
+        elif self.mode_box.currentData() == "overlay":
+            rgb = overlay_preview_rgb(
+                result.raw, result.settings, result.biome_index,
+                step=_PREVIEW_STEP, alpha=self.alpha_slider.value() / 100.0,
+            )
         else:
             rgb = water_preview_rgb(result.raw, result.settings, step=_PREVIEW_STEP)
 

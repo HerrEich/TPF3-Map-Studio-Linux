@@ -15,14 +15,32 @@ from src.osm.overpass_query_builder import (
 from src.osm.tile_cache import TileCache
 
 
+class _Data:
+    """Test-Container: sammelt Elemente ohne Doppelte (Typ, ID)."""
+
+    node_count = 0
+    relation_count = 0
+    data_timestamp = ""
+
+    def __init__(self):
+        self._m = {}
+
+    @property
+    def elements(self):
+        return list(self._m.values())
+
+    @property
+    def way_count(self):
+        return len(self._m)
+
+
 class _Parser:
-    def parse(self, data):
-        return types.SimpleNamespace(
-            elements=data["elements"],
-            node_count=0,
-            way_count=len(data["elements"]),
-            relation_count=0,
-        )
+    def new_data(self):
+        return _Data()
+
+    def parse_into(self, osm, data):
+        for element in data["elements"]:
+            osm._m[(element.get("type"), element.get("id"))] = element
 
 
 class _Response:

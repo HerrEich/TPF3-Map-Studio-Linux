@@ -17,6 +17,7 @@ Das TPF3 Map Studio macht aus einem Ausschnitt der echten Welt Dateien für den 
 |---|---|
 | eine Karte nach einem echten Vorbild bauen | die Schritte oben, dann [Höhenquellen](help:hoehenquellen) |
 | eine Karte in Österreich bauen | [Österreich (BEV)](help:oesterreich-bev) |
+| eine Karte in Luxemburg bauen | [Luxemburg (MNT 2024)](help:luxemburg-mnt) |
 | eine alte TPF2-Karte nach TPF3 mitnehmen | [TPF2-Karte nach TPF3](help:tpf2-nach-tpf3) |
 | Bäume, Städte und Industrien aus OSM | [Biome, Städte und Industrien](help:biome-staedte-industrien) |
 | etwas funktioniert nicht | [Häufige Fragen und Fehler](help:haeufige-fragen) |

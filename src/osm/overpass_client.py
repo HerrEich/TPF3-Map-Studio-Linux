@@ -420,13 +420,22 @@ class OverpassClient:
 
         print(f"Kachel-Download: {total} Kacheln")
 
-        merged = {}
         stamps = []
+
+        # Die Kacheln werden sofort in OSMData eingelesen und danach
+        # freigegeben, statt alle Roh-Antworten gleichzeitig im Speicher zu
+        # halten (bei sehr grossen Karten ging dabei der Arbeitsspeicher aus).
+        osm = self.parser.new_data()
+
+        def absorb(data):
+            stamp = self._timestamp_of(data)
+            if stamp:
+                stamps.append(stamp)
+            self.parser.parse_into(osm, data)
 
         queries = [build_query(tile, config) for tile in tiles]
         fetch_queries = list(queries)
         plans = [None] * total
-        results = [None] * total
         pending = []
         done = 0
         partial = 0
@@ -439,7 +448,8 @@ class OverpassClient:
             cached, plan = self._cached_tile(tiles[index], config, query)
 
             if cached is not None:
-                results[index] = cached
+                absorb(cached)
+                cached = None
                 self.last_cache_hits += 1
                 done += 1
             else:
@@ -493,10 +503,11 @@ class OverpassClient:
                         failed += 1
                         continue
 
-                    results[index] = self._complete_tile(
+                    absorb(self._complete_tile(
                         tiles[index], config, queries[index],
                         plans[index], fresh,
-                    )
+                    ))
+                    fresh = None
                     done += 1
                     cache_status["done"] = done
                     cache_status["partial" if plans[index] is not None else "new"] -= 1
@@ -520,19 +531,14 @@ class OverpassClient:
                     retryable=True,
                 )
 
-        for data in results:
-
-            stamp = self._timestamp_of(data)
-
-            if stamp:
-                stamps.append(stamp)
-
-            for element in data.get("elements", []):
-                merged[(element.get("type"), element.get("id"))] = element
-
-        print(f"Zusammengefuehrt: {len(merged)} Elemente")
-
-        osm = self.parser.parse({"elements": list(merged.values())})
+        print(
+            "Zusammengefuehrt: "
+            f"{osm.node_count + osm.way_count + osm.relation_count} Elemente"
+        )
+        print("OSM Parser:")
+        print(f"  Nodes     : {osm.node_count}")
+        print(f"  Ways      : {osm.way_count}")
+        print(f"  Relations : {osm.relation_count}")
 
         # Aeltester Stand aller Kacheln: die sichere Aussage ("Daten bis hoechstens ...")
         osm.data_timestamp = min(stamps) if stamps else ""

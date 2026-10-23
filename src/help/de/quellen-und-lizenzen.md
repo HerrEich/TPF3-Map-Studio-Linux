@@ -10,6 +10,7 @@ Das Studio nutzt öffentlich verfügbare Daten. Wer eine Karte veröffentlicht, 
 | Höhen Schweiz | swisstopo, swissALTI3D | Quelle „swissALTI3D“ |
 | Höhen Niederlande | AHN über PDOK | Quelle „AHN“ |
 | Höhen Österreich | BEV, ALS DTM Höhenraster 1 m (CC BY 4.0) | Quelle „BEV Österreich“, siehe [Österreich](help:oesterreich-bev) |
+| Höhen Luxemburg | ACT, Lidar 2024, MNT (CC0 1.0) | Quelle „Luxemburg MNT 2024“, siehe [Luxemburg](help:luxemburg-mnt) |
 | Schattenrelief | AWS Terrain Tiles | Karte + Relief |
 
 ## Angabe bei einer Veröffentlichung

@@ -18,11 +18,11 @@ Der Knopf **Wasserhöhe aus den OSM-Gewässern vorschlagen** liest die Höhen de
 
 ## Gelände glätten
 
-Entfernt Treppenstufen an den Hängen, Standard 15 m. Nötig bei Copernicus (nur 30 m pro Pixel). Bei den genauen Modellen (DGM1, swissALTI3D, AHN, BEV) meist nicht, die Voreinstellung *Empfohlen* lässt es dort aus.
+Entfernt Treppenstufen an den Hängen, Standard 15 m. Nötig bei Copernicus (nur 30 m pro Pixel). Bei den genauen Modellen (DGM1, swissALTI3D, AHN, BEV, Luxemburg) meist nicht, die Voreinstellung *Empfohlen* lässt es dort aus.
 
 ## Trassen und Siedlungen einebnen
 
-Bahnstrecken, größere Straßen und Gebäude aus OSM werden abgeflacht, damit im Spiel weniger Rampen nötig sind. Standard 60 m, bei *Empfohlen* mit genauen Modellen 10 m. Braucht OSM-Daten. *Ob es beim Bauen spürbar hilft, ist noch nicht im Spiel geprüft.*
+Bahnstrecken, größere Straßen und Gebäude aus OSM werden abgeflacht, damit im Spiel weniger Rampen nötig sind. Standard 60 m, bei *Empfohlen* mit genauen Modellen 10 m. Braucht OSM-Daten. *Im Spiel getestet, funktioniert.*
 
 ## Wasser nur dort, wo OpenStreetMap Wasser hat (empfohlen)
 
@@ -31,6 +31,10 @@ Gewässer bekommen ein festes Bett mit Böschung und Tiefe, alles andere Land li
 ## Gefälle ausgleichen
 
 Für lange Flüsse mit starkem Gefälle. Das Studio legt Flüsse und Seen auf eine gemeinsame Ebene und zieht das Gelände relativ dazu mit. Das Relief über dem jeweiligen Wasserspiegel bleibt erhalten, die **absoluten Höhen über NN stimmen danach nicht mehr**. Standard: Stärke 100 %, Glättung 400 m, Bezug: Gewässer bis 30 m über dem Wasserspiegel.
+
+## Gelände sanft mitsenken
+
+Das Spiel kennt nur einen Wasserspiegel. Liegt ein See höher (zum Beispiel der Schliersee neben dem Tegernsee), entsteht um ihn sonst eine Steilküste. Mit diesem Haken wird jeder solche See auf den Wasserspiegel gesenkt und das Gelände drumherum sanft mitgenommen. Der *Auslauf* (Standard 1500 m) bestimmt, wie weit vom Ufer die Absenkung ausläuft: größer = sanfter, aber mehr Umgebung ändert sich. Berge weit weg vom See bleiben unverändert. Braucht OSM-Daten. *Im Spiel noch nicht geprüft.*
 
 ## Höhen stauchen
 

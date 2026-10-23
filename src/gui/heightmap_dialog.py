@@ -58,6 +58,7 @@ from src.heightmap.heightmap_exporter import (
     export_heightmap_png,
     SOURCE_TPF2_PNG,
     SOURCE_BEV_AT,
+    SOURCE_LUX,
     pixel_size_for_selection,
 )
 from src.heightmap.height_hints import height_hint
@@ -77,6 +78,8 @@ from src.heightmap.height_clipping import (
 from src.heightmap.lv95 import SWISS_BOUNDS
 from src.heightmap.swissalti3d_dem import SwissFetchJob
 from src.heightmap.bev_dem import AT_BOUNDS, BevFetchJob
+from src.heightmap.lux_dem import LuxFetchJob
+from src.heightmap.lux2169 import LU_BOUNDS
 from src.heightmap.ahn_nl_dem import NL_BOUNDS, AhnFetchJob
 from src.heightmap.tpf3_paths import find_tpf3_heightmaps_folder
 from src.heightmap.infrastructure_flatten import (
@@ -91,6 +94,7 @@ from src.heightmap.terrain_smoothing import (
 from src.heightmap.water_level import suggest_water_level, render_preview
 from src.gui.preview3d_widget import Preview3DWidget
 from src.heightmap.mesh3d import build_mesh_payload
+from src.heightmap.biome_mask import BIOME_NAMES, BIOME_PREVIEW_RGB
 from src.heightmap.water_terrain_blend import (
     build_water_mask,
     blend_terrain_to_water,
@@ -99,6 +103,11 @@ from src.heightmap.water_terrain_blend import (
 from src.heightmap.water_slope_compensation import (
     compensate_water_slope,
     DEFAULT_SMOOTHING_M,
+)
+
+from src.heightmap.water_lake_lowering import (
+    lower_terrain_around_lakes,
+    DEFAULT_FALLOFF_M,
 )
 
 from src.app_paths import APP_DIR  # noqa: E402
@@ -112,6 +121,7 @@ DEFAULT_DGM1_CACHE_DIR = APP_DIR / "dgm1_cache"
 DEFAULT_SWISS_CACHE_DIR = APP_DIR / "swissalti3d_cache"
 DEFAULT_AHN_CACHE_DIR = APP_DIR / "ahn_nl_cache"
 DEFAULT_BEV_CACHE_DIR = APP_DIR / "bev_at_cache"
+DEFAULT_LUX_CACHE_DIR = APP_DIR / "lux_mnt_cache"
 # OSM-Kacheln: der Ordner wird von src/osm/tile_cache.py benutzt (gleicher Name,
 # damit die Cache-Verwaltung ihn findet).
 DEFAULT_OSM_CACHE_DIR = APP_DIR / "osm_cache"
@@ -206,6 +216,7 @@ class HeightmapDialog(QDialog):
         self.suggestion = None
         self._water_mask = None
         self._reference_mask = None
+        self._lake_mask = None
         self._flatten_mask = None
         self._processed_key = None
         self._processed_array = None
@@ -213,6 +224,9 @@ class HeightmapDialog(QDialog):
         self._downloaded_once = False
         # Zuordnung der zuletzt exportierten Biome-Maske (Beschreibung zum Teilen)
         self._biome_summary = None
+        self._biome_dialog = None
+        self._biome_index = None     # letztes Biom-Raster fuer die 3D-Vorschau
+        self._last_3d_array = None
         self._applying_preset = False
         # Hoehenfenster: Bericht der letzten Rechnung und Zwischenspeicher
         self._clip_report = None
@@ -259,6 +273,7 @@ class HeightmapDialog(QDialog):
             tr("AHN Niederlande (2 m, über PDOK)"),
             tr("Eigene TPF2-Heightmap (PNG)"),
             tr("BEV Österreich (1 m, über data.bev.gv.at)"),
+            tr("Luxemburg MNT 2024 (0,5 m, über data.public.lu)"),
         ])
         self.source_combo.setToolTip(
             tr("Copernicus: weltweit, aber nur 30 m fein und mit Baumkronen. "
@@ -278,6 +293,14 @@ class HeightmapDialog(QDialog):
             "(1 m, ohne Gebäude und Bewuchs). Geladen werden nur die Ausschnitte, die dein "
             "Rechteck braucht, nicht die ganzen Dateien von rund 8 GB. Nur bei Karten in "
             "Österreich wählbar. Quellenangabe: BEV, CC BY 4.0."),
+            3,  # 3 = Qt.ToolTipRole
+        )
+        self.source_combo.setItemData(
+            7,
+            tr("Luxemburg MNT 2024: Geländemodell der Administration du cadastre et de la topographie "
+            "aus der Befliegung 2024 (0,5 m, ohne Gebäude und Bewuchs). Die Datei hat rund 40 GB, "
+            "geladen werden nur die Ausschnitte, die dein Rechteck braucht (bei 4 m pro Pixel "
+            "etwa 0,3 MB je Quadratkilometer). Nur bei Karten in Luxemburg wählbar. CC0 1.0."),
             3,  # 3 = Qt.ToolTipRole
         )
         self.source_combo.currentIndexChanged.connect(
@@ -603,6 +626,37 @@ class HeightmapDialog(QDialog):
         self.slope_note_label = QLabel("")
         self.slope_note_label.setWordWrap(True)
         layout.addWidget(self.slope_note_label)
+
+        self.lake_checkbox = QCheckBox(tr("Gelände sanft mitsenken"))
+        self.lake_checkbox.setToolTip(
+            tr("Seen, die höher als der Wasserspiegel liegen (z. B. "
+            "Schliersee neben dem Tegernsee), werden auf den Wasserspiegel "
+            "abgesenkt. Das Gelände drumherum wird mitgesenkt und läuft "
+            "mit dem eingestellten Auslauf sanft aus - so entsteht keine "
+            "Steilküste um den See.")
+        )
+        self.lake_checkbox.setEnabled(False)
+        self.lake_checkbox.toggled.connect(self._on_lake_toggled)
+        layout.addWidget(self.lake_checkbox)
+
+        lake_row = QHBoxLayout()
+        lake_row.addWidget(QLabel(tr("Auslauf:")))
+        self.lake_falloff_input = QDoubleSpinBox()
+        self.lake_falloff_input.setMinimumWidth(110)
+        self.lake_falloff_input.setRange(200.0, 10000.0)
+        self.lake_falloff_input.setDecimals(0)
+        self.lake_falloff_input.setSuffix(" m")
+        self.lake_falloff_input.setValue(DEFAULT_FALLOFF_M)
+        self.lake_falloff_input.setEnabled(False)
+        self.lake_falloff_input.setKeyboardTracking(False)
+        self.lake_falloff_input.setToolTip(
+            tr("Entfernung vom Ufer, in der die Absenkung auf null ausläuft. "
+            "Größer = sanfter, aber mehr Umgebung wird verändert.")
+        )
+        self.lake_falloff_input.valueChanged.connect(self._update_preview)
+        lake_row.addWidget(self.lake_falloff_input)
+        lake_row.addStretch(1)
+        layout.addLayout(lake_row)
 
         # -------------------------------------------------
         # Terrain ans Wasserniveau anpassen (Idee eines
@@ -997,7 +1051,37 @@ class HeightmapDialog(QDialog):
 
         HeightmapGuideDialog(self).exec()
 
+    def _current_biome_summary(self):
+        """Zusammenfassung der exportierten Biome-Maske (auch bei noch offenem Fenster)."""
+
+        dialog = self._biome_dialog
+
+        if dialog is not None and dialog.exported_summary:
+            self._biome_summary = dialog.exported_summary
+
+        return self._biome_summary
+
+    def _on_biome_preview(self, index):
+        """Neue Biome-Vorschau: in der 3D-Vorschau auf das Gelaende legen."""
+
+        self._biome_index = index
+
+        if self._last_3d_array is not None:
+            self._update_preview_3d(self._last_3d_array)
+
+    def _on_biome_dialog_finished(self, *_args):
+
+        self._current_biome_summary()
+        self._biome_dialog = None
+
     def _open_biome_dialog(self):
+
+        # Ist das Fenster schon offen, nur nach vorne holen.
+        if self._biome_dialog is not None:
+            self._biome_dialog.show()
+            self._biome_dialog.raise_()
+            self._biome_dialog.activateWindow()
+            return
 
         has_osm_data = (
             self.osm is not None
@@ -1030,10 +1114,16 @@ class HeightmapDialog(QDialog):
             water_level_m=self.water_level_input.value(),
             default_limit_m=self.rock_input.value(),
         )
-        dialog.exec()
-
-        if dialog.exported_summary:
-            self._biome_summary = dialog.exported_summary
+        # Nicht modal: Das Heightmap-Fenster bleibt bedienbar, solange das
+        # Biome-Fenster offen ist. Die Hoehen sind eine Momentaufnahme vom
+        # Oeffnen des Fensters (Fenster neu oeffnen, um Aenderungen zu sehen).
+        dialog.setModal(False)
+        dialog.setAttribute(Qt.WA_DeleteOnClose, True)
+        dialog.finished.connect(self._on_biome_dialog_finished)
+        dialog.preview_ready.connect(self._on_biome_preview)
+        self.finished.connect(dialog.close)
+        self._biome_dialog = dialog
+        dialog.show()
 
     def _open_share_dialog(self):
 
@@ -1095,7 +1185,7 @@ class HeightmapDialog(QDialog):
             compress_percent=self.compress_input.value(),
             edit_params=edit_params,
             osm_timestamp=getattr(self.osm, "data_timestamp", "") if self.osm is not None else "",
-            biomes=self._biome_summary,
+            biomes=self._current_biome_summary(),
         )
 
         ShareDescriptionDialog(
@@ -1206,6 +1296,7 @@ class HeightmapDialog(QDialog):
             SOURCE_AHN_NL,
             SOURCE_TPF2_PNG,
             SOURCE_BEV_AT,
+            SOURCE_LUX,
         )[self.source_combo.currentIndex()]
 
     def _update_source_availability(self):
@@ -1248,6 +1339,19 @@ class HeightmapDialog(QDialog):
             bev_item.setEnabled(in_austria)
 
         if not in_austria and self.source_combo.currentIndex() == 6:
+            self.source_combo.setCurrentIndex(0)
+
+        # Luxemburg nur bei Karten in Luxemburg
+        l_lat_min, l_lat_max, l_lon_min, l_lon_max = LU_BOUNDS
+
+        in_luxembourg = l_lat_min <= lat <= l_lat_max and l_lon_min <= lon <= l_lon_max
+
+        lux_item = self.source_combo.model().item(7)
+
+        if lux_item is not None:
+            lux_item.setEnabled(in_luxembourg)
+
+        if not in_luxembourg and self.source_combo.currentIndex() == 7:
             self.source_combo.setCurrentIndex(0)
 
         # AHN nur bei Karten in den Niederlanden
@@ -1527,6 +1631,31 @@ class HeightmapDialog(QDialog):
             self.status_label.setText(tr("Berechne Höhenraster..."))
             self.repaint()
 
+        elif source == SOURCE_LUX:
+
+            fetch_dialog = Dgm1FetchDialog(
+                self,
+                self.selection,
+                DEFAULT_LUX_CACHE_DIR,
+                job=LuxFetchJob(self.selection, DEFAULT_LUX_CACHE_DIR),
+                title=tr("Luxemburg-Kacheln laden"),
+                note=(
+                    tr("Die Kacheln kommen von data.public.lu (Administration du cadastre et de la "
+                    "topographie, Lidar 2024). Geladen werden nur die Ausschnitte, die dein Rechteck "
+                    "braucht (etwa 0,3 MB je Quadratkilometer). Bereits geladene Kacheln werden "
+                    "übersprungen. Du kannst jederzeit abbrechen und später weitermachen.")
+                ),
+                seconds_per_tile=0.5,
+            )
+
+            if not fetch_dialog.run():
+                raise RuntimeError(
+                    fetch_dialog.error or tr("Abgebrochen.")
+                )
+
+            self.status_label.setText(tr("Berechne Höhenraster..."))
+            self.repaint()
+
         elif source == SOURCE_COPERNICUS:
 
             if missing_tiles(self.selection, DEFAULT_CACHE_DIR):
@@ -1562,6 +1691,7 @@ class HeightmapDialog(QDialog):
             swiss_cache_dir=DEFAULT_SWISS_CACHE_DIR,
             ahn_cache_dir=DEFAULT_AHN_CACHE_DIR,
             bev_cache_dir=DEFAULT_BEV_CACHE_DIR,
+            lux_cache_dir=DEFAULT_LUX_CACHE_DIR,
             tpf2_png=getattr(self, "_tpf2_png", None),
             tpf2_low_m=getattr(self, "_tpf2_low_m", 0.0),
             tpf2_high_m=getattr(self, "_tpf2_high_m", 0.0),
@@ -1602,6 +1732,8 @@ class HeightmapDialog(QDialog):
             name = "AHN"
         elif info.source == SOURCE_BEV_AT:
             name = "BEV"
+        elif info.source == SOURCE_LUX:
+            name = "MNT Luxemburg"
         else:
             name = "DGM1"
 
@@ -1647,7 +1779,7 @@ class HeightmapDialog(QDialog):
                     "(dort Copernicus)."
                 ).format(
                     count=info.missing_tiles,
-                    source="swissALTI3D" if swiss else ("AHN" if info.source == SOURCE_AHN_NL else ("BEV" if info.source == SOURCE_BEV_AT else "DGM1")),
+                    source="swissALTI3D" if swiss else ("AHN" if info.source == SOURCE_AHN_NL else ("BEV" if info.source == SOURCE_BEV_AT else ("MNT Luxemburg" if info.source == SOURCE_LUX else "DGM1"))),
                 )
             )
 
@@ -1689,6 +1821,7 @@ class HeightmapDialog(QDialog):
 
         self._water_mask = None  # neuer Download -> alte Maske verwerfen
         self._reference_mask = None
+        self._lake_mask = None
         self._flatten_mask = None
         self._reset_processed_cache()
 
@@ -1706,10 +1839,15 @@ class HeightmapDialog(QDialog):
 
         self.water_blend_checkbox.setEnabled(has_water_data)
         self.slope_checkbox.setEnabled(has_water_data)
+        self.lake_checkbox.blockSignals(True)
+        self.lake_checkbox.setEnabled(has_water_data)
 
         if not has_water_data:
             self.water_blend_checkbox.setChecked(False)
             self.slope_checkbox.setChecked(False)
+            self.lake_checkbox.setChecked(False)
+
+        self.lake_checkbox.blockSignals(False)
 
         self.water_blend_checkbox.blockSignals(False)
         self.slope_checkbox.blockSignals(False)
@@ -1770,6 +1908,7 @@ class HeightmapDialog(QDialog):
         self.slope_strength_input.setEnabled(slope_on)
         self.slope_smoothing_input.setEnabled(slope_on)
         self.slope_max_ref_input.setEnabled(slope_on)
+        self.lake_falloff_input.setEnabled(self.lake_checkbox.isChecked())
 
         if not has_water_data:
             self.water_blend_note_label.setText(
@@ -2012,6 +2151,28 @@ class HeightmapDialog(QDialog):
 
         self._update_preview()
 
+    def _on_lake_toggled(self, checked: bool):
+
+        self.lake_falloff_input.setEnabled(checked)
+        self._update_preview()
+
+    def _get_lake_mask(self):
+        """Nur Seen/Wasserflaechen (keine Wasserwege) - gecacht."""
+
+        if self._lake_mask is None:
+
+            h_px, w_px = self.heightmap_array.shape
+
+            self._lake_mask = build_water_mask(
+                self.osm,
+                self.selection,
+                w_px,
+                h_px,
+                waterway_types=frozenset(),
+            )
+
+        return self._lake_mask
+
     def _get_reference_mask(self):
         """
         Wassermaske nur aus Bezugsgewaessern (Seen/Wasserflaechen, Fluesse,
@@ -2147,7 +2308,7 @@ class HeightmapDialog(QDialog):
         # geaendert worden sein kann)
         info = getattr(self, "_build_info", None)
         source = info.source if info is not None else self._current_source()
-        dgm1 = source in (SOURCE_DGM1_DE, SOURCE_DGM1_FOLDER, SOURCE_SWISSALTI3D, SOURCE_AHN_NL, SOURCE_TPF2_PNG, SOURCE_BEV_AT)
+        dgm1 = source in (SOURCE_DGM1_DE, SOURCE_DGM1_FOLDER, SOURCE_SWISSALTI3D, SOURCE_AHN_NL, SOURCE_TPF2_PNG, SOURCE_BEV_AT, SOURCE_LUX)
 
         wanted_on = {
             1: (),
@@ -2448,6 +2609,8 @@ class HeightmapDialog(QDialog):
             self.slope_strength_input.value(),
             self.slope_smoothing_input.value(),
             self.slope_max_ref_input.value(),
+            self.lake_checkbox.isChecked(),
+            self.lake_falloff_input.value(),
             self.water_blend_checkbox.isChecked(),
             self.transition_input.value(),
             self.blend_max_rise_input.value(),
@@ -2484,6 +2647,8 @@ class HeightmapDialog(QDialog):
             names.append(tr("Trassen und Siedlungen einebnen"))
         if p["slope_on"]:
             names.append(tr("Gefälle ausgleichen"))
+        if p["lake_on"]:
+            names.append(tr("Gelände sanft mitsenken"))
         if p["enforce_on"]:
             names.append(tr("Wasser nach OSM einsetzen"))
         elif p["blend_on"]:
@@ -2551,6 +2716,18 @@ class HeightmapDialog(QDialog):
                 max_reference_height_above_water_m=p["slope_max_ref"],
             )
 
+        if p["lake_on"]:
+
+            begin(tr("Gelände sanft mitsenken"))
+
+            array = lower_terrain_around_lakes(
+                array,
+                self._get_lake_mask(),
+                water_level_m=water_level,
+                pixel_size_m=pixel_size,
+                falloff_m=p["lake_falloff"],
+            )
+
         if p["enforce_on"]:
 
             begin(tr("Wasser nach OSM einsetzen"))
@@ -2614,6 +2791,7 @@ class HeightmapDialog(QDialog):
         """
 
         slope_on = self.slope_checkbox.isChecked()
+        lake_on = self.lake_checkbox.isChecked()
         blend_on = self.water_blend_checkbox.isChecked()
         enforce_on = self.enforce_checkbox.isChecked()
         smooth_on = self.smooth_checkbox.isChecked()
@@ -2622,6 +2800,7 @@ class HeightmapDialog(QDialog):
 
         if (
             not slope_on
+            and not lake_on
             and not blend_on
             and not enforce_on
             and not smooth_on
@@ -2646,6 +2825,8 @@ class HeightmapDialog(QDialog):
             slope_strength=self.slope_strength_input.value(),
             slope_smoothing=self.slope_smoothing_input.value(),
             slope_max_ref=self.slope_max_ref_input.value(),
+            lake_on=lake_on,
+            lake_falloff=self.lake_falloff_input.value(),
             enforce_on=enforce_on,
             enforce_transition=self.enforce_transition_input.value(),
             enforce_depth=self.enforce_depth_input.value(),
@@ -3195,6 +3376,7 @@ class HeightmapDialog(QDialog):
             ("smooth", self.smooth_checkbox),
             ("flatten", self.flatten_checkbox),
             ("slope", self.slope_checkbox),
+            ("lake", self.lake_checkbox),
             ("enforce", self.enforce_checkbox),
             ("water_blend", self.water_blend_checkbox),
             ("clip", self.clip_checkbox),
@@ -3211,6 +3393,7 @@ class HeightmapDialog(QDialog):
             ("slope_strength", self.slope_strength_input),
             ("slope_smoothing", self.slope_smoothing_input),
             ("slope_max_ref", self.slope_max_ref_input),
+            ("lake_falloff", self.lake_falloff_input),
             ("enforce_transition", self.enforce_transition_input),
             ("enforce_edge", self.enforce_edge_input),
             ("enforce_depth", self.enforce_depth_input),
@@ -3386,7 +3569,24 @@ class HeightmapDialog(QDialog):
         if checked:
             self._update_preview()
 
+    def _water_mask_for_3d(self, array):
+        """OSM-Gewaesser fuer die 3D-Vorschau (None ohne OSM-Daten)."""
+
+        if self.osm is None or not (self.osm.node_count or self.osm.way_count):
+            return None
+
+        try:
+            mask = self._get_water_mask()
+        except Exception:
+            return None
+
+        if mask is None or mask.shape != array.shape:
+            return None
+
+        return mask
+
     def _update_preview_3d(self, array):
+        self._last_3d_array = array
         if self.preview3d is None or not self.preview3d_checkbox.isChecked():
             return
         try:
@@ -3400,6 +3600,10 @@ class HeightmapDialog(QDialog):
                 snow,
                 self._pixel_size_m(),
                 show_zones=self.zones_checkbox.isChecked(),
+                biome_index=self._biome_index,
+                biome_palette=BIOME_PREVIEW_RGB,
+                biome_names=BIOME_NAMES,
+                water_mask=self._water_mask_for_3d(array),
             )
             self.preview3d.set_mesh(payload)
         except Exception as exc:
