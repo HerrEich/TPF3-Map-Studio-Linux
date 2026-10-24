@@ -35,7 +35,12 @@ from src.gui.toolbar import MainToolbar
 from src.gui.rectangle_dialog import RectangleToolDialog
 from src.gui.heightmap_dialog import HeightmapDialog
 from src.gui.cache_dialog import CacheDialog
-from src.gui.osm_download_status import OsmDownloadStatus, format_download_event
+from src.gui.osm_download_status import (
+    COLOR_ERROR,
+    COLOR_WARN,
+    OsmDownloadStatus,
+    format_download_event,
+)
 from src.core.update_check import (
     decide_action,
     default_settings_path,
@@ -273,6 +278,8 @@ class MainWindow(QMainWindow):
         self._build_docks()
         self._build_menu()
         self._build_toolbar()
+        self._build_sidebar_toggle()
+        self._build_properties_toggle()
 
         # ---------------------------------------------------------
         # Statusleiste
@@ -344,6 +351,10 @@ class MainWindow(QMainWindow):
 
         self.map_widget.controller.measurement_changed.connect(
             self.measure_status.setText
+        )
+
+        self.map_widget.controller.layers_limited.connect(
+            self._on_layers_limited
         )
 
         # ---------------------------------------------------------
@@ -418,6 +429,12 @@ class MainWindow(QMainWindow):
         self._update_undo_actions()
 
         self._update_window_title()
+
+    def _on_layers_limited(self, text):
+        self.statusBar().showMessage(
+            tr("Sehr viele Objekte: Ebenen auf die ersten Objekte begrenzt: {text}. Fuer die volle Anzeige ein kleineres Rechteck waehlen.").format(text=text),
+            20000,
+        )
 
     # ---------------------------------------------------------
     # Fenstertitel
@@ -1596,6 +1613,120 @@ class MainWindow(QMainWindow):
     # Toolbar
     # ---------------------------------------------------------
 
+    def _build_sidebar_toggle(self):
+        """
+        Schmale Leiste am linken Rand mit einem Pfeil: klappt Projekt- und
+        Layer-Dock nach links weg und wieder heraus. Die Karte bekommt
+        dann die ganze Breite.
+        """
+
+        self._sidebar_docks = (self.project_dock, self.layer_dock)
+        self._sidebar_was_open = []
+
+        bar = QToolBar(tr("Seitenleiste"), self)
+        bar.setObjectName("SidebarToggleBar")
+        bar.setMovable(False)
+        bar.setFloatable(False)
+        bar.setAllowedAreas(Qt.LeftToolBarArea)
+        bar.setToolButtonStyle(Qt.ToolButtonIconOnly)
+
+        self.sidebar_action = QAction(self)
+        self.sidebar_action.setCheckable(True)
+        self.sidebar_action.setChecked(True)
+        self.sidebar_action.setShortcut(QKeySequence("Ctrl+B"))
+        self.sidebar_action.setToolTip(
+            tr("Seitenleiste (Projekt und Layer) ein- oder ausklappen (Strg+B)")
+        )
+        self.sidebar_action.toggled.connect(self._set_sidebar_open)
+
+        bar.addAction(self.sidebar_action)
+
+        button = bar.widgetForAction(self.sidebar_action)
+        button.setArrowType(Qt.LeftArrow)
+
+        self._sidebar_button = button
+
+        self.addToolBar(Qt.LeftToolBarArea, bar)
+
+        self.view_menu.addSeparator()
+        self.view_menu.addAction(self.sidebar_action)
+
+    def _build_properties_toggle(self):
+        """
+        Schmale Leiste am rechten Rand: klappt das Eigenschaften-Dock nach
+        rechts weg und wieder heraus (Strg+Umschalt+B).
+        """
+
+        self._properties_was_open = False
+
+        bar = QToolBar(tr("Eigenschaften-Leiste"), self)
+        bar.setObjectName("PropertiesToggleBar")
+        bar.setMovable(False)
+        bar.setFloatable(False)
+        bar.setAllowedAreas(Qt.RightToolBarArea)
+        bar.setToolButtonStyle(Qt.ToolButtonIconOnly)
+
+        self.properties_action = QAction(self)
+        self.properties_action.setCheckable(True)
+        self.properties_action.setChecked(True)
+        self.properties_action.setShortcut(QKeySequence("Ctrl+Shift+B"))
+        self.properties_action.setToolTip(
+            tr("Eigenschaften-Panel ein- oder ausklappen (Strg+Umschalt+B)")
+        )
+        self.properties_action.toggled.connect(self._set_properties_open)
+
+        bar.addAction(self.properties_action)
+
+        button = bar.widgetForAction(self.properties_action)
+        button.setArrowType(Qt.RightArrow)
+
+        self._properties_button = button
+
+        self.addToolBar(Qt.RightToolBarArea, bar)
+
+        self.view_menu.addAction(self.properties_action)
+
+    def _set_properties_open(self, open_):
+        """Zeigt oder versteckt das rechte Eigenschaften-Dock."""
+
+        if open_:
+            if self._properties_was_open:
+                self.properties_dock.show()
+            self._properties_was_open = False
+        else:
+            self._properties_was_open = self.properties_dock.isVisible()
+            self.properties_dock.hide()
+
+        self._properties_button.setArrowType(
+            Qt.RightArrow if open_ else Qt.LeftArrow
+        )
+
+        self.properties_action.setText(
+            tr("Eigenschaften einklappen") if open_ else tr("Eigenschaften ausklappen")
+        )
+
+    def _set_sidebar_open(self, open_):
+        """Zeigt oder versteckt die linken Docks und merkt sich, welche offen waren."""
+
+        if open_:
+            for dock in self._sidebar_was_open:
+                dock.show()
+            self._sidebar_was_open = []
+        else:
+            self._sidebar_was_open = [
+                dock for dock in self._sidebar_docks if dock.isVisible()
+            ]
+            for dock in self._sidebar_docks:
+                dock.hide()
+
+        self._sidebar_button.setArrowType(
+            Qt.LeftArrow if open_ else Qt.RightArrow
+        )
+
+        self.sidebar_action.setText(
+            tr("Seitenleiste einklappen") if open_ else tr("Seitenleiste ausklappen")
+        )
+
     def _build_toolbar(self):
 
         self.addToolBar(
@@ -1799,7 +1930,7 @@ class MainWindow(QMainWindow):
 
     def _on_osm_failed(self, message: str):
         if hasattr(self, "_osm_download_panel"):
-            self._osm_download_panel.finish(tr("Download fehlgeschlagen: {error}").format(error=message))
+            self._osm_download_panel.finish(tr("Download fehlgeschlagen: {error}").format(error=message), COLOR_ERROR)
 
 
         self.statusBar().showMessage(
@@ -1838,7 +1969,7 @@ class MainWindow(QMainWindow):
 
     def _on_osm_cancelled(self):
         if hasattr(self, "_osm_download_panel"):
-            self._osm_download_panel.finish(tr("Download abgebrochen."))
+            self._osm_download_panel.finish(tr("Download abgebrochen."), COLOR_WARN)
 
 
         self.statusBar().showMessage(

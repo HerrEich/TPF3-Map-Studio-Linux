@@ -136,6 +136,8 @@ class LayerRowWidget(QWidget):
 
         self.label.setMinimumWidth(120)
 
+        self._update_label_contrast(manager.is_visible(layer))
+
         # ---------------------------------------------------------
         # Opacity
         # ---------------------------------------------------------
@@ -160,6 +162,23 @@ class LayerRowWidget(QWidget):
         self.slider.valueChanged.connect(
             self._opacity_changed
         )
+
+        # Zahlenwert neben dem Regler (Deckkraft in Prozent)
+        self.value_label = QLabel()
+
+        self.value_label.setFixedWidth(40)
+
+        self.value_label.setAlignment(
+            Qt.AlignRight | Qt.AlignVCenter
+        )
+
+        self.value_label.setToolTip(tr("Deckkraft der Ebene in Prozent"))
+
+        self.slider.valueChanged.connect(
+            self._update_value_label
+        )
+
+        self._update_value_label(self.slider.value())
 
         # ---------------------------------------------------------
         # Reihenfolge
@@ -203,8 +222,21 @@ class LayerRowWidget(QWidget):
         layout.addWidget(self.label)
         layout.addStretch()
         layout.addWidget(self.slider)
+        layout.addWidget(self.value_label)
         layout.addWidget(self.up_button)
         layout.addWidget(self.down_button)
+
+    def _update_value_label(self, value):
+        """Zeigt die Deckkraft als Zahl."""
+
+        self.value_label.setText(f"{value} %")
+
+    def _update_label_contrast(self, visible):
+        """Ausgeblendete Ebenen bleiben lesbar, sind aber etwas dunkler."""
+
+        self.label.setStyleSheet(
+            "" if visible else "color: #a3b3bf;"
+        )
 
     def _update_lock_icon(self, locked):
         """Zeigt das geschlossene oder offene Schloss."""
@@ -235,6 +267,8 @@ class LayerRowWidget(QWidget):
 
         self.visible.setChecked(manager.is_visible(self.layer))
 
+        self._update_label_contrast(self.visible.isChecked())
+
         self.lock.setChecked(locked)
 
         self._update_lock_icon(locked)
@@ -242,6 +276,8 @@ class LayerRowWidget(QWidget):
         self.slider.setValue(
             int(round(manager.opacity(self.layer) * 100))
         )
+
+        self._update_value_label(self.slider.value())
 
         for widget in widgets:
             widget.blockSignals(False)
@@ -251,6 +287,8 @@ class LayerRowWidget(QWidget):
     # ---------------------------------------------------------
 
     def _visibility_changed(self, checked):
+
+        self._update_label_contrast(checked)
 
         self.controller.set_layer_visible(self.layer, checked)
 

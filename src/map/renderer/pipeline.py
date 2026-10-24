@@ -21,11 +21,15 @@ class RenderPipeline:
         self,
         osm,
         zoom: int | None = None,
+        limit: int | None = None,
     ) -> list[RenderItem]:
 
         items: list[RenderItem] = []
 
         for obj in self.selector(osm):
+
+            if limit is not None and len(items) >= limit:
+                break
 
             geometry = osm.get_geometry(obj.id)
 

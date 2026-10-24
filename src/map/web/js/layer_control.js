@@ -16,6 +16,7 @@ class LayerControl {
 
     init() {
 
+        this.initCollapse();
 
         document
             .querySelectorAll('#layer-control input[type="checkbox"]')
@@ -89,6 +90,51 @@ class LayerControl {
                 }
             );
 
+
+    }
+
+
+    // Klappt das ganze Fenster ein oder aus (Zustand wird gemerkt).
+    initCollapse() {
+
+        const panel = document.getElementById("layer-control");
+        const button = document.getElementById("layer-collapse");
+
+        if (!panel || !button) {
+            return;
+        }
+
+        const apply = (collapsed) => {
+
+            panel.classList.toggle("collapsed", collapsed);
+
+            button.setAttribute("aria-expanded", String(!collapsed));
+
+        };
+
+        let collapsed = false;
+
+        try {
+            collapsed = localStorage.getItem("layerControlCollapsed") === "1";
+        } catch (e) {
+            collapsed = false;
+        }
+
+        apply(collapsed);
+
+        button.addEventListener("click", () => {
+
+            collapsed = !collapsed;
+
+            apply(collapsed);
+
+            try {
+                localStorage.setItem("layerControlCollapsed", collapsed ? "1" : "0");
+            } catch (e) {
+                // Speichern ist nur eine Bequemlichkeit.
+            }
+
+        });
 
     }
 

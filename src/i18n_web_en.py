@@ -11,6 +11,8 @@ uebersetzt wird.
 WEB_CATALOG = {
     'Layer':
         'Layers',
+    'Fenster ein- oder ausklappen':
+        'Collapse or expand the window',
     'Alle Ebenen im Panel einschalten':
         'Switch on all layers in the panel',
     'Alle':
