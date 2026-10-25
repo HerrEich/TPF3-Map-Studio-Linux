@@ -6,6 +6,21 @@ from src.map.renderer.pipeline import RenderPipeline
 from src.map.renderer.render_cache import RenderCache
 from src.map.layer import GeometryType, Layer
 
+# Obergrenze pro Ebene. Millionen Objekte lassen die Kartenansicht
+# (Chromium) einfrieren; die Ebene zeigt dann nur die ersten Objekte.
+MAX_ITEMS_PER_LAYER = 300_000
+
+# Objekte pro JavaScript-Aufruf (kein riesiger Einzelaufruf).
+BATCH_CHUNK_SIZE = 5_000
+
+
+def chunked(seq, size=BATCH_CHUNK_SIZE):
+    """Zerlegt eine Liste in Stuecke mit hoechstens size Eintraegen."""
+
+    for start in range(0, len(seq), size):
+        yield seq[start:start + size]
+
+
 class BaseRenderer(ABC):
 
     def __init__(self, api, layer_manager, style_resolver):
@@ -14,6 +29,8 @@ class BaseRenderer(ABC):
 
         self.pipeline = self.create_pipeline(style_resolver)
         self.cache = RenderCache()
+        self.limit = MAX_ITEMS_PER_LAYER
+        self.truncated = False
 
     @property
     @abstractmethod
@@ -60,9 +77,17 @@ class BaseRenderer(ABC):
         # sichtbar sind, entscheidet allein die Karte (set_layer_visible).
         # So erscheinen die Daten sofort, sobald man den Haken setzt.
 
-        items = self.pipeline.build(osm)
+        items = self.pipeline.build(osm, limit=self.limit + 1)
 
-        print(f"{self.layer}: items={len(items)}")
+        self.truncated = len(items) > self.limit
+
+        if self.truncated:
+            items = items[:self.limit]
+
+        print(
+            f"{self.layer}: items={len(items)}"
+            + (f" (auf {self.limit} begrenzt)" if self.truncated else "")
+        )
 
         diff = DiffBuilder.build(
             items,
@@ -84,22 +109,18 @@ class BaseRenderer(ABC):
 
         if diff.updated:
 
-            batch = BatchBuilder.build(
-                diff.updated,
-            )
+            for part in chunked(diff.updated):
 
-            self.api.update_batch(
-                self.layer,
-                batch,
-            )
+                self.api.update_batch(
+                    self.layer,
+                    BatchBuilder.build(part),
+                )
 
         if diff.added:
 
-            batch = BatchBuilder.build(
-                diff.added,
-            )
+            for part in chunked(diff.added):
 
-            self.api.add_batch(
-                self.layer,
-                batch,
-            )
+                self.api.add_batch(
+                    self.layer,
+                    BatchBuilder.build(part),
+                )

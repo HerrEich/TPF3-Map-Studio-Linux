@@ -21,8 +21,8 @@ PALETTE = {
     "strong": "#0a81c2",    # Auswahl und aktive Knoepfe
     "pressed": "#086aa3",   # gedrueckter Knopf
     "text": "#d5dee5",
-    "dim": "#8ea1af",
-    "off": "#55656f",       # deaktiviert
+    "dim": "#a3b3bf",
+    "off": "#7d8f9b",       # deaktiviert
     "onacc": "#ffffff",     # Schrift auf Akzentflaechen
 }
 
@@ -89,9 +89,9 @@ QToolBar {
     padding: 4px;
 }
 QToolBar::separator {
-    background-color: $border;
-    width: 1px;
-    margin: 4px 6px;
+    background-color: #4a6272;
+    width: 2px;
+    margin: 4px 10px;
 }
 QToolButton {
     background-color: transparent;

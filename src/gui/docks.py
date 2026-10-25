@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QTextBrowser,
+    QToolButton,
     QVBoxLayout,
 )
 from src.i18n import tr
@@ -168,13 +169,40 @@ def create_properties_dock(parent):
     guide.setOpenLinks(False)
     guide.setHtml(tr(GUIDE_HTML))
 
+    # Groessere Schrift, damit die Anleitung gut lesbar ist.
+    guide_font = guide.font()
+    guide_font.setPointSize(max(guide_font.pointSize(), 10) + 2)
+    guide.setFont(guide_font)
+
+    # Standardmaessig eingeklappt: ein Knopf klappt die Anleitung auf.
+    guide_toggle = QToolButton()
+    guide_toggle.setCheckable(True)
+    guide_toggle.setChecked(False)
+    guide_toggle.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+    guide_toggle.setArrowType(Qt.RightArrow)
+    guide_toggle.setText(tr("Anleitung anzeigen"))
+    guide.setVisible(False)
+
+    def _toggle_guide(open_):
+        guide.setVisible(open_)
+        guide_toggle.setArrowType(
+            Qt.DownArrow if open_ else Qt.RightArrow
+        )
+        guide_toggle.setText(
+            tr("Anleitung ausblenden") if open_ else tr("Anleitung anzeigen")
+        )
+
+    guide_toggle.toggled.connect(_toggle_guide)
+
     container = QWidget()
 
     container_layout = QVBoxLayout(container)
     container_layout.setContentsMargins(0, 0, 0, 0)
 
     container_layout.addWidget(form)
+    container_layout.addWidget(guide_toggle)
     container_layout.addWidget(guide, 1)
+    container_layout.addStretch(0)
 
     dock.setMinimumWidth(280)
 

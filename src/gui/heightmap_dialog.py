@@ -46,6 +46,8 @@ from src.gui.zoom_preview_label import ZoomPreviewLabel
 from src.gui.map_size_presets import find_by_pixels
 from src.gui.dgm1_fetch_dialog import Dgm1FetchDialog
 from src.gui.share_description_dialog import ShareDescriptionDialog
+from src.gui.collapsible_section import CollapsibleSection
+from src.gui.message_label import MessageLabel
 from src.heightmap.heightmap_exporter import (
     SOURCE_COPERNICUS,
     SOURCE_DGM1_DE,
@@ -256,7 +258,7 @@ class HeightmapDialog(QDialog):
         # Download
         # -------------------------------------------------
 
-        self.status_label = QLabel(
+        self.status_label = MessageLabel(
             tr("Noch nicht geladen.")
         )
         layout.addWidget(self.status_label)
@@ -444,7 +446,7 @@ class HeightmapDialog(QDialog):
         )
         layout.addWidget(self.suggest_water_button)
 
-        self.water_hint_label = QLabel("")
+        self.water_hint_label = MessageLabel("", "info")
         self.water_hint_label.setWordWrap(True)
         layout.addWidget(self.water_hint_label)
 
@@ -453,6 +455,12 @@ class HeightmapDialog(QDialog):
         # Karte "vertikal gerade richten", statt nur die Hoehe ue. NN
         # zu uebernehmen - siehe water_slope_compensation.py).
         # -------------------------------------------------
+
+        _outer_layout = layout
+        terrain_section = CollapsibleSection(
+            tr("Gelände"), collapsed=True
+        )
+        layout = terrain_section.body_layout
 
         self.smooth_checkbox = QCheckBox(tr("Gelände glätten"))
         self.smooth_checkbox.setToolTip(
@@ -524,6 +532,15 @@ class HeightmapDialog(QDialog):
         layout.addWidget(self.compress_slider)
 
         self._build_zone_controls(layout)
+
+        layout = _outer_layout
+        layout.addWidget(terrain_section)
+
+        _outer_layout = layout
+        routes_section = CollapsibleSection(
+            tr("Trassen und Siedlungen"), collapsed=True
+        )
+        layout = routes_section.body_layout
 
         self.flatten_checkbox = QCheckBox(tr("Trassen und Siedlungen einebnen"))
         self.flatten_checkbox.setToolTip(
@@ -623,9 +640,18 @@ class HeightmapDialog(QDialog):
 
         layout.addLayout(slope_row)
 
-        self.slope_note_label = QLabel("")
+        self.slope_note_label = MessageLabel("", "info")
         self.slope_note_label.setWordWrap(True)
         layout.addWidget(self.slope_note_label)
+
+        layout = _outer_layout
+        layout.addWidget(routes_section)
+
+        _outer_layout = layout
+        water_section = CollapsibleSection(
+            tr("Wasser und Ufer"), collapsed=True
+        )
+        layout = water_section.body_layout
 
         self.lake_checkbox = QCheckBox(tr("Gelände sanft mitsenken"))
         self.lake_checkbox.setToolTip(
@@ -787,13 +813,24 @@ class HeightmapDialog(QDialog):
 
         layout.addLayout(transition_row)
 
-        self.water_blend_note_label = QLabel("")
+        self.water_blend_note_label = MessageLabel("", "info")
         self.water_blend_note_label.setWordWrap(True)
         layout.addWidget(self.water_blend_note_label)
+
+        layout = _outer_layout
+        layout.addWidget(water_section)
 
         # -------------------------------------------------
         # Höhenfenster (Grenzen des Karteneditors)
         # -------------------------------------------------
+
+        # Einklappbare Gruppe (standardmaessig zu): der Block unten schreibt
+        # weiter in "layout", das hier kurz auf die Gruppe umgelenkt wird.
+        _outer_layout = layout
+        clip_section = CollapsibleSection(
+            tr("Höhenfenster (Experte)"), collapsed=True
+        )
+        layout = clip_section.body_layout
 
         self.clip_checkbox = QCheckBox(
             tr(
@@ -868,9 +905,12 @@ class HeightmapDialog(QDialog):
         clip_slider_row.addWidget(self.clip_slider, 1)
         layout.addLayout(clip_slider_row)
 
-        self.clip_report_label = QLabel("")
+        self.clip_report_label = MessageLabel("", "info")
         self.clip_report_label.setWordWrap(True)
         layout.addWidget(self.clip_report_label)
+
+        layout = _outer_layout
+        layout.addWidget(clip_section)
 
         # -------------------------------------------------
         # Werte fuer den TPF3-Import (immer passend zum Export)

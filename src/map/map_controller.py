@@ -86,6 +86,7 @@ class MapController(QObject):
     markers_changed = Signal()
     measurement_changed = Signal(str)
     layer_state_changed = Signal()
+    layers_limited = Signal(str)
 
     def __init__(self, api):
         super().__init__()
@@ -226,8 +227,16 @@ class MapController(QObject):
 
         osm = self.project.osm
 
+        limited = []
+
         for renderer in self.renderers:
             renderer.draw(osm)
+
+            if renderer.truncated:
+                limited.append(f"{renderer.layer.name.lower()} ({renderer.limit})")
+
+        if limited:
+            self.layers_limited.emit(", ".join(limited))
 
     # ---------------------------------------------------------
     # Intern

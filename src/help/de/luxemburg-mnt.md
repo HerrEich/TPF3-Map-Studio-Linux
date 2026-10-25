@@ -31,4 +31,4 @@ Die Daten stehen unter **CC0 1.0** (frei nutzbar). Das Studio führt die Quellen
 - Wo dem Modell Daten fehlen (zum Beispiel jenseits der Landesgrenze), ergänzt das Studio aus Copernicus.
 - Auf Wasserflächen hat ein Laser-Geländemodell oft keine oder unruhige Werte. Dafür gibt es die Wasser-Einstellungen im Heightmap-Dialog.
 - Es gibt auch ein Oberflächenmodell (MNS, mit Gebäuden und Bäumen). Das Studio nutzt nur das Geländemodell.
-- Neu in Version 0.7.0. Der Test mit einem echten Rechteck steht noch aus.
+- Neu in Version 0.7.0, im Spiel getestet.

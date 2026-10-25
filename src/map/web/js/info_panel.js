@@ -32,6 +32,16 @@ class InfoPanel {
 
         this.panel = panel;
 
+        // Ohne gewaehltes Objekt bleibt das Fenster ausgeblendet.
+        this.setPanelVisible(false);
+
+    }
+
+    setPanelVisible(visible) {
+
+        this.panel.style.display =
+            visible ? "" : "none";
+
     }
 
     getPanelHtml() {
@@ -118,9 +128,13 @@ class InfoPanel {
             this.content.innerHTML =
                 t("Kein Objekt ausgewählt");
 
+            this.setPanelVisible(false);
+
             return;
 
         }
+
+        this.setPanelVisible(true);
 
         this.ensureProperties();
 
@@ -439,6 +453,8 @@ class InfoPanel {
 
         this.content.innerHTML =
             t("Kein Objekt ausgewählt");
+
+        this.setPanelVisible(false);
 
 }
 

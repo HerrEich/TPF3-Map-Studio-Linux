@@ -13,7 +13,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -36,7 +36,12 @@ from PySide6.QtWidgets import (
 )
 
 from src.file_names import ascii_safe_path
-from src.heightmap.biome_mask import BIOME_NAMES, index_to_preview_rgb
+from src.heightmap.biome_mask import (
+    BIOME_NAMES,
+    BIOME_PREVIEW_RGB,
+    index_to_preview_rgb,
+)
+from src.heightmap.tpf2_import_pipeline import BIOME_OVERLAY_RGB
 from src.heightmap.tpf2_heightmap_import import (
     Tpf2HeightmapError,
     load_tpf2_heightmap,
@@ -173,24 +178,24 @@ class Tpf2ImportDialog(QDialog):
         layout.addLayout(biome_form)
 
         self.low_biome = self._biome_box(0)
-        biome_form.addRow(tr("Unten:"), self.low_biome)
+        biome_form.addRow(self._biome_row_label(tr("Unten:"), self.low_biome), self.low_biome)
 
         self.limit1_input = self._small_box(30.0, 1.0, 98.0, " %")
         self.limit1_input.setDecimals(0)
-        biome_form.addRow(tr("Grenze unten/Mitte:"), self.limit1_input)
+        biome_form.addRow(self._biome_row_label(tr("Grenze unten/Mitte:")), self.limit1_input)
 
         self.mid_biome = self._biome_box(1)
-        biome_form.addRow(tr("Mitte:"), self.mid_biome)
+        biome_form.addRow(self._biome_row_label(tr("Mitte:"), self.mid_biome), self.mid_biome)
 
         self.limit2_input = self._small_box(70.0, 2.0, 99.0, " %")
         self.limit2_input.setDecimals(0)
-        biome_form.addRow(tr("Grenze Mitte/oben:"), self.limit2_input)
+        biome_form.addRow(self._biome_row_label(tr("Grenze Mitte/oben:")), self.limit2_input)
 
         self.high_biome = self._biome_box(2)
-        biome_form.addRow(tr("Oben:"), self.high_biome)
+        biome_form.addRow(self._biome_row_label(tr("Oben:"), self.high_biome), self.high_biome)
 
         self.water_biome = self._biome_box(0)
-        biome_form.addRow(tr("Unter Wasser:"), self.water_biome)
+        biome_form.addRow(self._biome_row_label(tr("Unter Wasser:"), self.water_biome, hidden_in_overlay=True), self.water_biome)
 
         # --- Vorschau -----------------------------------------------
         mode_row = QHBoxLayout()
@@ -201,6 +206,7 @@ class Tpf2ImportDialog(QDialog):
         self.mode_box.addItem(tr("Biome"), "biome")
         self.mode_box.addItem(tr("Höhe + Biome"), "overlay")
         self.mode_box.currentIndexChanged.connect(self._show_preview)
+        self.mode_box.currentIndexChanged.connect(self._update_swatches)
         mode_row.addWidget(self.mode_box, 1)
 
         alpha_row = QHBoxLayout()
@@ -212,7 +218,15 @@ class Tpf2ImportDialog(QDialog):
         self.alpha_slider.setToolTip(
             tr("Wie stark die Biom-Farben das Relief überdecken (nur bei Vorschau \"Höhe + Biome\").")
         )
-        self.alpha_slider.valueChanged.connect(self._show_preview)
+        # Vorschau erst neu rechnen, wenn der Regler kurz stillsteht
+        # (jede Berechnung betrifft die ganze Karte und ruckelt sonst).
+        self._alpha_timer = QTimer(self)
+        self._alpha_timer.setSingleShot(True)
+        self._alpha_timer.setInterval(120)
+        self._alpha_timer.timeout.connect(self._show_preview)
+        self.alpha_slider.valueChanged.connect(
+            lambda _value: self._alpha_timer.start()
+        )
         alpha_row.addWidget(self.alpha_slider, 1)
 
         self.preview_label = QLabel(tr("Noch keine Vorschau."))
@@ -275,6 +289,64 @@ class Tpf2ImportDialog(QDialog):
             box.addItem(name, number)
         box.setCurrentIndex(default)
         return box
+
+    def _biome_row_label(self, text, combo=None, hidden_in_overlay=False):
+        """Beschriftung mit Farbfeld links (Legende zur Vorschau)."""
+
+        row = QWidget()
+        row_layout = QHBoxLayout(row)
+        row_layout.setContentsMargins(0, 0, 0, 0)
+        row_layout.setSpacing(8)
+
+        swatch = QLabel()
+        swatch.setFixedSize(16, 16)
+        row_layout.addWidget(swatch)
+        row_layout.addWidget(QLabel(text), 1)
+
+        if combo is not None:
+            if not hasattr(self, "_biome_swatches"):
+                self._biome_swatches = []
+            self._biome_swatches.append((swatch, combo, hidden_in_overlay))
+            combo.currentIndexChanged.connect(self._update_swatches)
+            self._update_swatches()
+
+        return row
+
+    def _update_swatches(self, *_):
+        """Farbfelder passend zum Vorschau-Modus und zum gewaehlten Biom.
+
+        Zeigt genau die Farben der Vorschau: Modus "Biome" und "Höhe + Biome"
+        haben je eine eigene Palette, bei "Wasser (blau)" gibt es keine
+        Biom-Farben (leeres Feld).
+        """
+
+        mode_box = getattr(self, "mode_box", None)
+        mode = mode_box.currentData() if mode_box is not None else "water"
+
+        for swatch, combo, hidden_in_overlay in getattr(
+            self, "_biome_swatches", []
+        ):
+            palette = None
+            if mode == "biome":
+                palette = BIOME_PREVIEW_RGB
+            elif mode == "overlay" and not hidden_in_overlay:
+                palette = BIOME_OVERLAY_RGB
+
+            index = combo.currentData()
+            if palette is None or index is None:
+                swatch.setStyleSheet(
+                    "QLabel { border: 1px solid #5a6f82; border-radius: 3px; }"
+                )
+                continue
+
+            red, green, blue = palette[
+                min(max(int(index), 0), len(palette) - 1)
+            ]
+            swatch.setStyleSheet(
+                "QLabel { background-color: rgb(%d, %d, %d); "
+                "border: 1px solid #5a6f82; border-radius: 3px; }"
+                % (red, green, blue)
+            )
 
     # ---------------------------------------------------------
     # Datei

@@ -57,6 +57,42 @@ body {
     margin-top: 0;
 }
 
+.layer-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.layer-head .layer-title {
+    margin: 0;
+}
+
+#layer-control #layer-collapse {
+    padding: 0 8px;
+    min-width: 26px;
+    height: 24px;
+    line-height: 1;
+    font-size: 14px;
+}
+
+#layer-control #layer-collapse::before {
+    content: "\25BE";
+}
+
+#layer-control.collapsed #layer-collapse::before {
+    content: "\25B8";
+}
+
+#layer-control.collapsed {
+    min-width: 0;
+    padding-bottom: 10px;
+}
+
+#layer-control.collapsed #layer-body {
+    display: none;
+}
+
 .layer-buttons {
     display: flex;
     flex-wrap: wrap;

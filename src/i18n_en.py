@@ -59,6 +59,20 @@ CATALOG = {
         'Exit',
     'Bereich auswählen':
         'Select area',
+    'Sehr viele Objekte: Ebenen auf die ersten Objekte begrenzt: {text}. Fuer die volle Anzeige ein kleineres Rechteck waehlen.':
+        'Very many objects: layers limited to the first objects: {text}. Choose a smaller rectangle to show everything.',
+    'Deckkraft der Ebene in Prozent': 'Layer opacity in percent',
+    'Anleitung anzeigen': 'Show guide',
+    'Anleitung ausblenden': 'Hide guide',
+    'Verlauf ein- oder ausklappen': 'Expand or collapse the history',
+    'Seitenleiste': 'Sidebar',
+    'Seitenleiste (Projekt und Layer) ein- oder ausklappen (Strg+B)': 'Collapse or expand the sidebar (project and layers) (Ctrl+B)',
+    'Seitenleiste einklappen': 'Collapse sidebar',
+    'Seitenleiste ausklappen': 'Expand sidebar',
+    'Eigenschaften-Leiste': 'Properties bar',
+    'Eigenschaften-Panel ein- oder ausklappen (Strg+Umschalt+B)': 'Collapse or expand the properties panel (Ctrl+Shift+B)',
+    'Eigenschaften einklappen': 'Collapse properties',
+    'Eigenschaften ausklappen': 'Expand properties',
     'Gedrehtes Kartenband anlegen (Mittelpunkt, Größe, Drehwinkel)':
         'Create a rotated map area (centre, size, rotation angle)',
     'Koordinaten-Messwerkzeug':
@@ -507,6 +521,14 @@ guide of the heightmap dialog (F1).</p>
         'Reads the elevations of the main river (from OpenStreetMap) and sets the water level halfway between its lowest and highest point. This way the river is corrected by about the same amount at both ends. Needs loaded OSM data.',
     'Gelände glätten':
         'Smooth terrain',
+    'Gelände':
+        'Terrain',
+    'Trassen und Siedlungen':
+        'Routes and settlements',
+    'Wasser und Ufer':
+        'Water and shores',
+    'Höhenfenster (Experte)':
+        'Height window (expert)',
     'Gegen Treppenstufen und Kristallflächen an Hängen: das Höhenmodell hat nur etwa 30 m pro Pixel, das Spiel 4 m.':
         'Against stair steps and crystal-like facets on slopes: the elevation model has only about 30 m per pixel, the game 4 m.',
     'Breite der Glättung. 15 m entfernt die gröbsten Stufen, 30 m glättet stärker, flacht aber Gipfel und Kämme leicht ab.':
