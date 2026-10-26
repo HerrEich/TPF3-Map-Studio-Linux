@@ -59,8 +59,8 @@ CATALOG = {
         'Exit',
     'Bereich auswählen':
         'Select area',
-    'Sehr viele Objekte: Ebenen auf die ersten Objekte begrenzt: {text}. Fuer die volle Anzeige ein kleineres Rechteck waehlen.':
-        'Very many objects: layers limited to the first objects: {text}. Choose a smaller rectangle to show everything.',
+    'Sehr viele Objekte: Die Karte zeigt je Ebene nur die wichtigsten (bei Fluessen und Strassen die groessten zuerst): {text}. Export und Berechnung nutzen weiterhin alle Daten. Fuer die volle Anzeige ein kleineres Rechteck waehlen.':
+        'Very many objects: the map shows only the most important ones per layer (largest rivers and roads first): {text}. Export and calculations still use all data. Choose a smaller rectangle to show everything.',
     'Deckkraft der Ebene in Prozent': 'Layer opacity in percent',
     'Anleitung anzeigen': 'Show guide',
     'Anleitung ausblenden': 'Hide guide',
@@ -2190,3 +2190,69 @@ guide of the heightmap dialog (F1).</p>
 
 
 CATALOG.update({'Anleitungen': 'Guides', 'Anleitungen...': 'Guides...', 'Suchen...': 'Search...'})
+
+
+CATALOG.update({
+    "1 Pixel der Höhenkarte = 4 m im Spiel = {real:.0f} m echtes Gelände. Flüsse und Kanäle werden immer {river:.0f} m breit gezeichnet (nicht mitgestaucht); Bäche und Gräben werden nicht als Wasser gezeichnet. {ex_real:.0f} m echte Höhe werden zu {ex_game:.0f} m.":
+        "1 pixel of the height map = 4 m in the game = {real:.0f} m of real terrain. Rivers and canals are always drawn {river:.0f} m wide (not compressed with the map); streams and ditches are not drawn as water. {ex_real:.0f} m of real height become {ex_game:.0f} m.",
+    "Wasser-Check: {share:.0f} % der Gewässerfläche liegt höher als {rise:.0f} m über dem Wasserspiegel und bleibt unverändert (dort entsteht kein Wasser). Die übrigen Gewässer werden im Mittel um {mean:.0f} m abgesenkt, höchstens um etwa {p95:.0f} m.":
+        "Water check: {share:.0f} % of the water area lies more than {rise:.0f} m above the water level and stays unchanged (no water will appear there). The remaining waters are lowered by {mean:.0f} m on average, by about {p95:.0f} m at most.",
+    "Über die Hälfte liegt zu hoch: Die Grenze „Nur Gewässer bis“ erhöhen oder den Wasserspiegel prüfen.":
+        "More than half lies too high: raise the \"Only waters up to\" limit or check the water level.",
+})
+
+CATALOG.update({
+    "Flussbreite:": "River width:",
+    " Pixel": " pixels",
+    "= {m:.0f} m im Spiel": "= {m:.0f} m in game",
+    "Breite, mit der Flüsse und Kanäle aus OpenStreetMap gezeichnet werden (1 Pixel = 4 m im Spiel). Sie wird nicht mit dem Stauchfaktor kleiner. Breiter = besser befahrbar für Schiffe, aber auch breiteres Wasser.":
+        "Width used to draw rivers and canals from OpenStreetMap (1 pixel = 4 m in game). It does not shrink with the compression factor. Wider = easier for ships, but also wider water.",
+})
+
+CATALOG.update({
+    "Steigung in der Vorschau zeigen (gelb ab 4 %, orange ab 10 %, rot ab 24 %)":
+        "Show slope in the preview (yellow from 4 %, orange from 10 %, red from 24 %)",
+    "Zeigt, wie steil das Gelände im Spiel ist. Rot (ab etwa 24 %) wird im Spiel ungefähr zum Gebirge. Nur Vorschau, kein Export.":
+        "Shows how steep the terrain is in the game. Red (from about 24 %) roughly becomes mountains in the game. Preview only, not exported.",
+    "Steigung: unter 4 % {flat:.1f} %, 4–10 % {mild:.1f} %, 10–24 % {medium:.1f} %, über 24 % {steep:.1f} % (Maximum {max:.0f} %)":
+        "Slope: under 4 % {flat:.1f} %, 4–10 % {mild:.1f} %, 10–24 % {medium:.1f} %, over 24 % {steep:.1f} % (maximum {max:.0f} %)",
+})
+
+CATALOG.update({
+    "Steigung in der Vorschau":
+        "Slope in the preview",
+    "Färbt die Vorschau nach der Steilheit des Geländes im Spiel: gelb ab 4 %, orange ab 10 %, rot ab 24 %. Rot wird im Spiel ungefähr zum Gebirge. Darunter stehen die Flächenanteile. Nur Vorschau, nicht für den Export.":
+        "Colours the preview by how steep the terrain is in the game: yellow from 4 %, orange from 10 %, red from 24 %. Red roughly becomes mountains in the game. The area shares are shown below. Preview only, not for export.",
+})
+
+CATALOG.update({
+    "Natur-Details-Plan...": "Nature details plan...",
+    "Natur-Details-Plan": "Nature details plan",
+    "Natur-Details-Plan speichern": "Save nature details plan",
+    "Liest Weinberge, Obstwiesen, Mauern und Hecken aus den geladenen OSM-Daten und speichert sie als .csv und .json mit Lage in Metern ab Kartenmitte, als Vorlage zum Nachbauen mit dem Zaunbaukasten. Mauern und Hecken werden nur geladen, wenn beim OSM-Laden 'Natur-Details' angehakt ist. Im Spiel wird nichts gebaut.":
+        "Reads vineyards, orchards, walls and hedges from the loaded OSM data and saves them as .csv and .json with positions in metres from the map centre, as a template for rebuilding with the fence builder. Walls and hedges are only loaded if 'Natur-Details' is ticked when loading OSM. Nothing is built in the game.",
+    "Keine Weinberge, Obstwiesen, Mauern oder Hecken gefunden. Mauern und Hecken gibt es nur, wenn beim OSM-Laden 'Natur-Details' angehakt war.":
+        "No vineyards, orchards, walls or hedges found. Walls and hedges only exist if 'Natur-Details' was ticked when loading OSM.",
+    "Gespeichert: {csv} und {json}\n\nWeinberge: {v} ({vha:.1f} ha), Obstwiesen: {o} ({oha:.1f} ha)\nMauern: {w} ({wl:.0f} m), Hecken: {h} ({hl:.0f} m)":
+        "Saved: {csv} and {json}\n\nVineyards: {v} ({vha:.1f} ha), orchards: {o} ({oha:.1f} ha)\nWalls: {w} ({wl:.0f} m), hedges: {h} ({hl:.0f} m)",
+    "Liest Weinberge, Obstwiesen, Mauern und Hecken aus den geladenen OSM-Daten und speichert sie als .csv und .json mit Lage in Metern ab Kartenmitte (Flächen mit Reihenrichtung und geschätzter Reihenzahl, Mauern und Hecken mit Länge). Mauern und Hecken gibt es nur, wenn beim OSM-Laden 'Natur-Details' angehakt war. Im Spiel wird nichts gebaut, die Dateien sind eine Vorlage zum Nachbauen mit dem Zaunbaukasten.":
+        "Reads vineyards, orchards, walls and hedges from the loaded OSM data and saves them as .csv and .json with positions in metres from the map centre (areas with row direction and estimated row count, walls and hedges with length). Walls and hedges only exist if 'Natur-Details' was ticked when loading OSM. Nothing is built in the game; the files are a template for rebuilding with the fence builder.",
+})
+
+CATALOG.update({
+    "Mindestfläche für Weinberge und Obstwiesen (m²). Kleinere Flächen (Reste, Zeichenfehler) werden weggelassen:":
+        "Minimum area for vineyards and orchards (m²). Smaller areas (leftovers, drawing errors) are left out:",
+})
+
+CATALOG.update({
+    "Berg-, See- und Sumpf-Masken...": "Mountain, lake and swamp masks...",
+    "Berg-, See- und Sumpf-Masken": "Mountain, lake and swamp masks",
+    "Zuerst Höhendaten laden.": "Load elevation data first.",
+    "Masken speichern (Name ohne Endung wird ergänzt)": "Save masks (name without extension, suffixes are added)",
+    "Schlägt aus der Höhenkarte Masken für Berge, Seen und Sümpfe vor und speichert sie als drei PNG-Dateien für den Biome-Tab. Das ist eine Annäherung zum Nachmalen, besonders Seen und Sümpfe treffen die Masken des Spiels nur grob.":
+        "Suggests masks for mountains, lakes and swamps from the height map and saves them as three PNG files for the biome tab. This is an approximation to paint over; lakes and swamps in particular only roughly match the game's masks.",
+    "Gespeichert: {a}, {b}, {c}\n\nAnteil an der Karte: Berge {m:.1f} %, Seen {l:.1f} %, Sümpfe {s:.1f} %\n\nDas sind Vorschläge zum Nachmalen. Seen und Sümpfe treffen die Masken des Spiels nur grob.":
+        "Saved: {a}, {b}, {c}\n\nShare of the map: mountains {m:.1f} %, lakes {l:.1f} %, swamps {s:.1f} %\n\nThese are suggestions to paint over. Lakes and swamps only roughly match the game's masks.",
+    "Schlägt aus der Höhenkarte Masken für Berge, Seen und Sümpfe vor und speichert sie als drei PNG-Dateien (0/255) für den Biome-Tab. Berge: die höchsten etwa 35 % der geglätteten Höhe. Seen: flaches Wasser kurz unter dem Wasserspiegel. Sümpfe: flaches Land direkt am Wasserspiegel. Die Regeln sind an Testkarten abgestimmt und eine Annäherung zum Nachmalen, besonders Seen und Sümpfe treffen die Masken des Spiels nur grob.":
+        "Suggests masks for mountains, lakes and swamps from the height map and saves them as three PNG files (0/255) for the biome tab. Mountains: the highest ~35 % of the smoothed height. Lakes: shallow water just below the water level. Swamps: flat land right at the water level. The rules are tuned on test maps and are an approximation to paint over; lakes and swamps in particular only roughly match the game's masks.",
+})

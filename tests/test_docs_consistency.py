@@ -97,6 +97,7 @@ class HeightmapDialogDocumentedTest(unittest.TestCase):
         "Wasserhöhe aus den OSM-Gewässern vorschlagen": "Wasserhöhe aus den OSM-Gewässern vorschlagen",
         "Gelände glätten": "Gelände glätten",
         "Höhenzonen": "Höhenzonen",
+        "Steigung in der Vorschau": "Steigung in der Vorschau",
         "3D-Vorschau": "3D-Vorschau",
         "Höhenfenster begrenzen": "Höhenfenster",
         "Trassen und Siedlungen einebnen": "Trassen und Siedlungen einebnen",
@@ -110,6 +111,8 @@ class HeightmapDialogDocumentedTest(unittest.TestCase):
         "Städte aus OSM": "Städte aus OSM",
         "Industrien aus OSM": "Industrien aus OSM",
         "Bahnhofsplan zum Nachbauen": "Bahnhofsplan zum Nachbauen",
+        "Natur-Details-Plan": "Natur-Details-Plan",
+        "Berg-, See- und Sumpf-Masken": "Berg-, See- und Sumpf-Masken",
         "Beschreibung zum Teilen": "Beschreibung zum Teilen",
     }
     IGNORED = ("Anleitung (F1)", "Schließen", "Straßen und Gleise")

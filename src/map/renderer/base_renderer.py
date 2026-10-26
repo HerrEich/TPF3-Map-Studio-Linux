@@ -5,9 +5,11 @@ from src.map.renderer.diff_builder import DiffBuilder
 from src.map.renderer.pipeline import RenderPipeline
 from src.map.renderer.render_cache import RenderCache
 from src.map.layer import GeometryType, Layer
+from src.map.renderer.layer_limits import limit_for, rank_for
 
-# Obergrenze pro Ebene. Millionen Objekte lassen die Kartenansicht
-# (Chromium) einfrieren; die Ebene zeigt dann nur die ersten Objekte.
+# Allgemeine Obergrenze (Hoechstwert). Millionen Objekte lassen die
+# Kartenansicht (Chromium) einfrieren; je Ebene gelten kleinere Grenzen
+# (siehe layer_limits.py), und es bleiben die wichtigsten Objekte.
 MAX_ITEMS_PER_LAYER = 300_000
 
 # Objekte pro JavaScript-Aufruf (kein riesiger Einzelaufruf).
@@ -29,7 +31,7 @@ class BaseRenderer(ABC):
 
         self.pipeline = self.create_pipeline(style_resolver)
         self.cache = RenderCache()
-        self.limit = MAX_ITEMS_PER_LAYER
+        self.limit = min(MAX_ITEMS_PER_LAYER, limit_for(self.layer))
         self.truncated = False
 
     @property
@@ -77,7 +79,11 @@ class BaseRenderer(ABC):
         # sichtbar sind, entscheidet allein die Karte (set_layer_visible).
         # So erscheinen die Daten sofort, sobald man den Haken setzt.
 
-        items = self.pipeline.build(osm, limit=self.limit + 1)
+        items = self.pipeline.build(
+            osm,
+            limit=self.limit + 1,
+            rank=rank_for(self.layer),
+        )
 
         self.truncated = len(items) > self.limit
 

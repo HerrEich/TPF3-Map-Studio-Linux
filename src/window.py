@@ -432,7 +432,7 @@ class MainWindow(QMainWindow):
 
     def _on_layers_limited(self, text):
         self.statusBar().showMessage(
-            tr("Sehr viele Objekte: Ebenen auf die ersten Objekte begrenzt: {text}. Fuer die volle Anzeige ein kleineres Rechteck waehlen.").format(text=text),
+            tr("Sehr viele Objekte: Die Karte zeigt je Ebene nur die wichtigsten (bei Fluessen und Strassen die groessten zuerst): {text}. Export und Berechnung nutzen weiterhin alle Daten. Fuer die volle Anzeige ein kleineres Rechteck waehlen.").format(text=text),
             20000,
         )
 

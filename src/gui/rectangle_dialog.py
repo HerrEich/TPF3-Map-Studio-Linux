@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 
 from src.gui.map_size_presets import ALL_MAP_SIZES, get_by_label
 from src.i18n import tr
+from src.heightmap.scale_info import scale_info
 
 
 class RectangleToolDialog(QDialog):
@@ -189,6 +190,7 @@ class RectangleToolDialog(QDialog):
         form.addRow(tr("H\u00f6hen-Faktor:"), self.height_scale_input)
 
         self.real_label = QLabel()
+        self.real_label.setWordWrap(True)
         form.addRow("", self.real_label)
 
         self.scale_input.valueChanged.connect(self._on_scale_changed)
@@ -312,6 +314,20 @@ class RectangleToolDialog(QDialog):
             w=size.width_m * factor / 1000.0,
             h=size.height_m * factor / 1000.0,
             f=self.height_scale_input.value(),
+        )
+
+        info = scale_info(factor, self.height_scale_input.value())
+
+        text += "\n" + tr(
+            "1 Pixel der H\u00f6henkarte = 4 m im Spiel = {real:.0f} m echtes "
+            "Gel\u00e4nde. Fl\u00fcsse und Kan\u00e4le werden immer {river:.0f} m breit "
+            "gezeichnet (nicht mitgestaucht); B\u00e4che und Gr\u00e4ben werden nicht "
+            "als Wasser gezeichnet. {ex_real:.0f} m echte H\u00f6he werden zu {ex_game:.0f} m."
+        ).format(
+            real=info.real_m_per_pixel,
+            river=info.river_width_game_m,
+            ex_real=info.height_example_real_m,
+            ex_game=info.height_example_game_m,
         )
 
         self.real_label.setText(text)

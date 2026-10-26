@@ -24,6 +24,8 @@ SHA-256: `38caa2f10ca401717b2d2c4b6b7a6334df580287e7825f8e6f4b8f62879fd9fa`
 
 Hinweis: inoffizielles Werkzeug, keine Verbindung zu Urban Games.
 
+„Kaffeekasse – Freiwillig & von Herzen! ❤️“ https://paypal.me/PEttelt?locale.x=de_DE&country.x=DE
+
 ## English
 
 New
@@ -45,3 +47,6 @@ Install: download `TPF3-Map-Studio-v0.7.1-win64.zip`, extract the whole ZIP, run
 SHA-256: `38caa2f10ca401717b2d2c4b6b7a6334df580287e7825f8e6f4b8f62879fd9fa`
 
 Note: unofficial tool, not affiliated with Urban Games.
+
+“Coffee fund – Voluntary & from the heart! ❤️” https://paypal.me/PEttelt?locale.x=de_DE&country.x=DE
+
