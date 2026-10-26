@@ -1,4 +1,4 @@
-# TPF3 Map Studio v0.7.2
+﻿# TPF3 Map Studio v0.7.2
 
 Behebt das Einfrieren beim Einschalten der Flüsse-Ebene und bringt neue Hilfen für Höhenkarten, Wasser, Biome und Natur-Details. / Fixes the freeze when switching on the rivers layer and adds new helpers for height maps, water, biomes and nature details.
 
@@ -17,7 +17,7 @@ Neu
 
 Installation: `TPF3-Map-Studio-v0.7.2-win64.zip` herunterladen, die ganze ZIP entpacken, `TPF3-Map-Studio.exe` starten. Windows warnt beim ersten Start eventuell („Weitere Informationen“ -> „Trotzdem ausführen“), bei PyInstaller-Programmen sind Virenscanner-Fehlalarme bekannt.
 
-SHA-256: `HIER_PRUEFSUMME_EINTRAGEN`
+SHA-256: `12cbd37c089f3970bbf6b2a5225216253b670b40ec9b170bc3c809c2e14670e6`
 
 Hinweis: inoffizielles Werkzeug, keine Verbindung zu Urban Games.
 
@@ -38,7 +38,7 @@ New
 
 Install: download `TPF3-Map-Studio-v0.7.2-win64.zip`, extract the whole ZIP, run `TPF3-Map-Studio.exe`. Windows may warn on first start ("More info" -> "Run anyway"); antivirus false positives are known for PyInstaller programs.
 
-SHA-256: `INSERT_CHECKSUM_HERE`
+SHA-256: `12cbd37c089f3970bbf6b2a5225216253b670b40ec9b170bc3c809c2e14670e6`
 
 Note: unofficial tool, not affiliated with Urban Games.
 
