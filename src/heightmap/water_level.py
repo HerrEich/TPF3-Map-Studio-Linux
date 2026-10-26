@@ -186,6 +186,8 @@ def render_preview(
     pixel_size_m: float | None = None,
     original_heightmap: np.ndarray | None = None,
     zone_limits: tuple | None = None,
+    show_slope: bool = False,
+    slope_pixel_size_m: float | None = None,
 ):
     """Vorschau wie im TPF2-Importfenster: graues Gelaende-Relief,
     Wasserflaeche blau eingefaerbt, mit Min/Max und Wasserhoehe als
@@ -231,6 +233,19 @@ def render_preview(
         )
         land = ~water_mask
         rgb[land] = zone_mix[land].astype(np.uint8)
+
+    slope_px = slope_pixel_size_m or pixel_size_m
+    if show_slope and slope_px:
+        from src.heightmap.slope_overlay import slope_overlay_rgba
+
+        slope_rgba = slope_overlay_rgba(small, slope_px * step)
+        s_alpha = slope_rgba[..., 3:4].astype(np.float32) / 255.0
+        s_mix = (
+            rgb.astype(np.float32) * (1.0 - s_alpha)
+            + slope_rgba[..., :3].astype(np.float32) * s_alpha
+        )
+        land = ~water_mask
+        rgb[land] = s_mix[land].astype(np.uint8)
 
     if original_heightmap is not None:
         original_small = original_heightmap[::step, ::step]

@@ -22,11 +22,22 @@ class RenderPipeline:
         osm,
         zoom: int | None = None,
         limit: int | None = None,
+        rank: Callable | None = None,
     ) -> list[RenderItem]:
+        """Baut RenderItems. Mit limit und rank bleiben bei zu vielen
+        Objekten die wichtigsten (kleinster rank) erhalten."""
 
         items: list[RenderItem] = []
 
-        for obj in self.selector(osm):
+        objects = self.selector(osm)
+
+        if limit is not None and rank is not None:
+            objects = list(objects)
+            if len(objects) > limit:
+                # sorted ist stabil: gleiche Wichtigkeit behaelt OSM-Reihenfolge
+                objects = sorted(objects, key=rank)
+
+        for obj in objects:
 
             if limit is not None and len(items) >= limit:
                 break

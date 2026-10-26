@@ -214,6 +214,13 @@ FEATURE_GROUPS = (
                 "ragen (weiße Flächen). Die Hänge werden dabei flacher.",
             ),
             (
+                "Steigung in der Vorschau",
+                "Färbt die Vorschau nach der Steilheit des Geländes im Spiel: "
+                "gelb ab 4 %, orange ab 10 %, rot ab 24 %. Rot wird im Spiel "
+                "ungefähr zum Gebirge. Darunter stehen die Flächenanteile. "
+                "Nur Vorschau, nicht für den Export.",
+            ),
+            (
                 "Höhenzonen in der Vorschau",
                 "Zeigt in der Vorschau grün, Fels und Schnee nach der Höhe "
                 "über dem Wasserspiegel. Felsgrenze und Schneegrenze stellst "
@@ -323,6 +330,27 @@ FEATURE_GROUPS = (
                 "Sägewerke, ...) eine Industrien-Datei für den Ordner "
                 "towns_industries. Dabei werden Hang, Wasser und Kartenrand "
                 "geprüft.",
+            ),
+            (
+                "Berg-, See- und Sumpf-Masken...",
+                "Schlägt aus der Höhenkarte Masken für Berge, Seen und "
+                "Sümpfe vor und speichert sie als drei PNG-Dateien (0/255) "
+                "für den Biome-Tab. Berge: die höchsten etwa 35 % der "
+                "geglätteten Höhe. Seen: flaches Wasser kurz unter dem "
+                "Wasserspiegel. Sümpfe: flaches Land direkt am Wasserspiegel. "
+                "Die Regeln sind an Testkarten abgestimmt und eine "
+                "Annäherung zum Nachmalen, besonders Seen und Sümpfe "
+                "treffen die Masken des Spiels nur grob.",
+            ),
+            (
+                "Natur-Details-Plan...",
+                "Liest Weinberge, Obstwiesen, Mauern und Hecken aus den "
+                "geladenen OSM-Daten und speichert sie als .csv und .json "
+                "mit Lage in Metern ab Kartenmitte (Flächen mit Reihenrichtung "
+                "und geschätzter Reihenzahl, Mauern und Hecken mit Länge). "
+                "Mauern und Hecken gibt es nur, wenn beim OSM-Laden 'Natur-Details' "
+                "angehakt war. Im Spiel wird nichts gebaut, die Dateien sind eine Vorlage zum "
+                "Nachbauen mit dem Zaunbaukasten.",
             ),
             (
                 "Bahnhofsplan zum Nachbauen...",

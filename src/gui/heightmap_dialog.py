@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QFormLayout,
     QDoubleSpinBox,
+    QSpinBox,
     QLabel,
     QPushButton,
     QFileDialog,
@@ -25,6 +26,9 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QKeySequence, QPixmap, QShortcut
 from PySide6.QtCore import QEvent, QObject, Qt
+from src.heightmap.slope_overlay import slope_shares
+from src.heightmap.terrain_masks import mask_shares, suggest_masks, write_masks
+from src.heightmap.nature_plan import collect_features, summarize, write_csv, write_json
 from src.heightmap.height_zones import (
     DEFAULT_ROCK_M,
     DEFAULT_SNOW_M,
@@ -97,6 +101,7 @@ from src.heightmap.water_level import suggest_water_level, render_preview
 from src.gui.preview3d_widget import Preview3DWidget
 from src.heightmap.mesh3d import build_mesh_payload
 from src.heightmap.biome_mask import BIOME_NAMES, BIOME_PREVIEW_RGB
+from src.heightmap.water_check import check_water
 from src.heightmap.water_terrain_blend import (
     build_water_mask,
     blend_terrain_to_water,
@@ -174,6 +179,9 @@ DEFAULT_ENFORCE_DEPTH_M = 8.0     # Tiefe in der Flussmitte (Fahrrinne)
 DEFAULT_ENFORCE_EDGE_M = 2.0      # Tiefe direkt am Ufer
 DEFAULT_ENFORCE_BANK_M = 2.0
 DEFAULT_ENFORCE_MAX_RISE_M = 15.0
+DEFAULT_NATURE_MIN_AREA_M2 = 500   # Natur-Details-Plan: kleinere Flaechen weglassen
+DEFAULT_RIVER_WIDTH_PX = 3        # gezeichnete Breite von Fluessen/Kanaelen (Pixel)
+RIVER_WIDTH_RANGE_PX = (1, 12)
 
 # Als Bezug fuer den Gefaelle-Ausgleich zaehlen Seen/Wasserflaechen sowie
 # diese Wasserwege - Baeche und Graeben bewusst nicht: sie liegen oft weit
@@ -758,11 +766,42 @@ class HeightmapDialog(QDialog):
             min_width=250,
         )
 
+        self.enforce_max_rise_input.valueChanged.connect(
+            lambda _v: self._update_water_check_note()
+        )
+        self.water_level_input.valueChanged.connect(
+            lambda _v: self._update_water_check_note()
+        )
+
         enforce_row.addStretch(1)
         enforce_row2.addStretch(1)
 
         layout.addLayout(enforce_row)
         layout.addLayout(enforce_row2)
+
+        # Breite der gezeichneten Fluesse und Kanaele (wird nicht mit dem
+        # Stauchfaktor kleiner). Breiter = besser befahrbar fuer Schiffe.
+        river_row = QHBoxLayout()
+        river_row.addWidget(QLabel(tr("Flussbreite:")))
+        self.river_width_input = QSpinBox()
+        self.river_width_input.setRange(*RIVER_WIDTH_RANGE_PX)
+        self.river_width_input.setValue(DEFAULT_RIVER_WIDTH_PX)
+        self.river_width_input.setSuffix(tr(" Pixel"))
+        self.river_width_input.setMinimumWidth(110)
+        self.river_width_input.setKeyboardTracking(False)
+        self.river_width_input.setToolTip(
+            tr("Breite, mit der Flüsse und Kanäle aus OpenStreetMap gezeichnet "
+            "werden (1 Pixel = 4 m im Spiel). Sie wird nicht mit dem "
+            "Stauchfaktor kleiner. Breiter = besser befahrbar für Schiffe, "
+            "aber auch breiteres Wasser.")
+        )
+        self.river_width_input.valueChanged.connect(self._on_river_width_changed)
+        river_row.addWidget(self.river_width_input)
+        self.river_width_meters_label = QLabel()
+        river_row.addWidget(self.river_width_meters_label)
+        river_row.addStretch(1)
+        layout.addLayout(river_row)
+        self._update_river_width_label()
 
         self.water_blend_checkbox = QCheckBox(
             tr("Terrain sanft ans Wasserniveau anpassen")
@@ -1005,6 +1044,30 @@ class HeightmapDialog(QDialog):
         )
         self.stations_button.clicked.connect(self._open_stations_dialog)
         button_row.addWidget(self.stations_button)
+
+        # Weinberge, Obstwiesen, Mauern, Hecken aus OSM als Platzierungshilfe
+        # fuer den Natur-Details-Mod: schreibt .csv und .json.
+        self.nature_plan_button = QPushButton(tr("Natur-Details-Plan..."))
+        self.nature_plan_button.setToolTip(
+            tr("Liest Weinberge, Obstwiesen, Mauern und Hecken aus den "
+            "geladenen OSM-Daten und speichert sie als .csv und .json mit "
+            "Lage in Metern ab Kartenmitte, als Vorlage zum Nachbauen mit dem "
+            "Zaunbaukasten. Mauern und Hecken werden nur geladen, wenn beim "
+            "OSM-Laden 'Natur-Details' angehakt ist. Im Spiel wird nichts gebaut.")
+        )
+        self.nature_plan_button.clicked.connect(self._open_nature_plan)
+        button_row.addWidget(self.nature_plan_button)
+
+        # Masken Berge/Seen/Saempfe als Vorschlag aus der Hoehenkarte.
+        self.terrain_masks_button = QPushButton(tr("Berg-, See- und Sumpf-Masken..."))
+        self.terrain_masks_button.setToolTip(
+            tr("Schlägt aus der Höhenkarte Masken für Berge, Seen und Sümpfe "
+            "vor und speichert sie als drei PNG-Dateien für den Biome-Tab. "
+            "Das ist eine Annäherung zum Nachmalen, besonders Seen und "
+            "Sümpfe treffen die Masken des Spiels nur grob.")
+        )
+        self.terrain_masks_button.clicked.connect(self._save_terrain_masks)
+        button_row.addWidget(self.terrain_masks_button)
 
         # Strassen und Gleise fuer den Spiel-Mod (eigener Dialog, schreibt
         # den Mod in den Ordner mods). Vorerst ausgeblendet.
@@ -1267,6 +1330,130 @@ class HeightmapDialog(QDialog):
             return
 
         save_stations_dialog(self, self.selection, self.osm)
+
+    def _save_terrain_masks(self):
+
+        if self.heightmap_array is None:
+            QMessageBox.information(
+                self,
+                tr("Berg-, See- und Sumpf-Masken"),
+                tr("Zuerst Höhendaten laden."),
+            )
+            return
+
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            tr("Masken speichern (Name ohne Endung wird ergänzt)"),
+            "masken.png",
+            "PNG (*.png)",
+        )
+
+        if not path:
+            return
+
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+
+        try:
+            masks = suggest_masks(
+                self._effective_heightmap(), self.water_level_input.value()
+            )
+            paths = write_masks(masks, path)
+        finally:
+            QApplication.restoreOverrideCursor()
+
+        share = mask_shares(masks)
+
+        QMessageBox.information(
+            self,
+            tr("Berg-, See- und Sumpf-Masken"),
+            tr(
+                "Gespeichert: {a}, {b}, {c}\n\n"
+                "Anteil an der Karte: Berge {m:.1f} %, Seen {l:.1f} %, "
+                "Sümpfe {s:.1f} %\n\n"
+                "Das sind Vorschläge zum Nachmalen. Seen und Sümpfe treffen "
+                "die Masken des Spiels nur grob."
+            ).format(
+                a=paths[0].name, b=paths[1].name, c=paths[2].name,
+                m=share["mountains"], l=share["lakes"], s=share["swamps"],
+            ),
+        )
+
+    def _open_nature_plan(self):
+
+        has_osm_data = (
+            self.osm is not None
+            and (self.osm.node_count > 0 or self.osm.way_count > 0)
+        )
+
+        if not has_osm_data:
+            QMessageBox.information(
+                self,
+                tr("Natur-Details-Plan"),
+                tr("Keine OSM-Daten geladen. Zuerst Werkzeuge → OSM laden "
+                "ausführen."),
+            )
+            return
+
+        min_area, ok = QInputDialog.getInt(
+            self,
+            tr("Natur-Details-Plan"),
+            tr("Mindestfläche für Weinberge und Obstwiesen (m²). Kleinere "
+            "Flächen (Reste, Zeichenfehler) werden weggelassen:"),
+            DEFAULT_NATURE_MIN_AREA_M2,
+            0,
+            1_000_000,
+            100,
+        )
+
+        if not ok:
+            return
+
+        features = collect_features(
+            self.osm, self.selection, min_area_m2=float(min_area)
+        )
+
+        if not features:
+            QMessageBox.information(
+                self,
+                tr("Natur-Details-Plan"),
+                tr("Keine Weinberge, Obstwiesen, Mauern oder Hecken gefunden. "
+                "Mauern und Hecken gibt es nur, wenn beim OSM-Laden "
+                "'Natur-Details' angehakt war."),
+            )
+            return
+
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            tr("Natur-Details-Plan speichern"),
+            "natur_details_plan.csv",
+            "CSV (*.csv)",
+        )
+
+        if not path:
+            return
+
+        base = Path(path).with_suffix("")
+        write_csv(features, base.with_suffix(".csv"))
+        write_json(features, base.with_suffix(".json"))
+
+        info = summarize(features)
+
+        QMessageBox.information(
+            self,
+            tr("Natur-Details-Plan"),
+            tr(
+                "Gespeichert: {csv} und {json}\n\n"
+                "Weinberge: {v} ({vha:.1f} ha), Obstwiesen: {o} ({oha:.1f} ha)\n"
+                "Mauern: {w} ({wl:.0f} m), Hecken: {h} ({hl:.0f} m)"
+            ).format(
+                csv=base.with_suffix(".csv").name,
+                json=base.with_suffix(".json").name,
+                v=info["vineyard"]["count"], vha=info["vineyard"]["area_ha"],
+                o=info["orchard"]["count"], oha=info["orchard"]["area_ha"],
+                w=info["wall"]["count"], wl=info["wall"]["length_m"],
+                h=info["hedge"]["count"], hl=info["hedge"]["length_m"],
+            ),
+        )
 
     def _open_network_dialog(self):
 
@@ -1910,6 +2097,7 @@ class HeightmapDialog(QDialog):
         self.compress_input.setEnabled(True)
         self.compress_slider.setEnabled(True)
         self.zones_checkbox.setEnabled(True)
+        self.slope_overlay_checkbox.setEnabled(True)
         for zone_widget in (
             self.rock_input,
             self.rock_slider,
@@ -2237,6 +2425,7 @@ class HeightmapDialog(QDialog):
                     self.selection,
                     w_px,
                     h_px,
+                    waterway_width_px=self.river_width_input.value(),
                     waterway_types=REFERENCE_WATERWAY_TYPES,
                 )
 
@@ -2580,7 +2769,58 @@ class HeightmapDialog(QDialog):
                     "Wirkung. Zuerst OSM-Daten laden (Werkzeuge → OSM laden)."),
                 )
 
+        self._update_water_check_note()
+
         self._update_preview()
+
+    def _update_water_check_note(self):
+        """
+        Wasser-Check unter dem Block "Wasser nur dort, wo OSM Wasser hat":
+        wie viel vom OSM-Wasser liegt zu hoch (bleibt trocken) und wie tief
+        werden die uebrigen Gewaesser abgesenkt. Darf den Dialog nie stoeren.
+        """
+
+        if not self.enforce_checkbox.isChecked():
+            return
+
+        try:
+
+            if self.heightmap_array is None:
+                return
+
+            result = check_water(
+                self.heightmap_array,
+                self._get_water_mask(),
+                self.water_level_input.value(),
+                self.enforce_max_rise_input.value(),
+            )
+
+            if result is None:
+                return
+
+            text = tr(
+                "Wasser-Check: {share:.0f} % der Gewässerfläche liegt höher "
+                "als {rise:.0f} m über dem Wasserspiegel und bleibt "
+                "unverändert (dort entsteht kein Wasser). Die übrigen "
+                "Gewässer werden im Mittel um {mean:.0f} m abgesenkt, "
+                "höchstens um etwa {p95:.0f} m."
+            ).format(
+                share=result.high_share * 100.0,
+                rise=self.enforce_max_rise_input.value(),
+                mean=result.mean_cut_m,
+                p95=result.p95_cut_m,
+            )
+
+            if result.high_share > 0.5:
+                text += " " + tr(
+                    "Über die Hälfte liegt zu hoch: Die Grenze „Nur Gewässer "
+                    "bis“ erhöhen oder den Wasserspiegel prüfen."
+                )
+
+            self.water_blend_note_label.setText(text)
+
+        except Exception:
+            pass
 
     def _on_water_blend_toggled(self, checked: bool):
 
@@ -2628,6 +2868,14 @@ class HeightmapDialog(QDialog):
 
         return self._water_mask
 
+    def _slope_pixel_size_m(self) -> float:
+        """Pixelabstand fuer die Steigungsanzeige, umgerechnet auf das Spiel:
+        Spiel-Steigung = echte Steigung * Hoehenskalierung / Stauchfaktor."""
+
+        sf = float(getattr(self.selection, "scale_factor", 1.0) or 1.0)
+        hs = float(getattr(self.selection, "height_scale", 1.0) or 1.0)
+        return self._pixel_size_m() * sf / max(hs, 1e-6)
+
     def _pixel_size_m(self) -> float:
 
         return self.selection.width_m / (self.heightmap_array.shape[1] - 1)
@@ -2661,6 +2909,29 @@ class HeightmapDialog(QDialog):
             self.enforce_bank_input.value(),
             self.enforce_max_rise_input.value(),
             self.water_level_input.value(),
+            self.river_width_input.value(),
+        )
+
+    def _on_river_width_changed(self, _value: int):
+        """Neue Flussbreite: Wassermasken neu bauen und Vorschau aktualisieren."""
+
+        self._update_river_width_label()
+
+        self._water_mask = None
+        self._reference_mask = None
+
+        self._reset_processed_cache()
+
+        self._update_water_check_note()
+
+        self._update_preview()
+
+    def _update_river_width_label(self):
+
+        self.river_width_meters_label.setText(
+            tr("= {m:.0f} m im Spiel").format(
+                m=self.river_width_input.value() * 4.0
+            )
         )
 
     def _reset_processed_cache(self):
@@ -3297,6 +3568,22 @@ class HeightmapDialog(QDialog):
         self.zones_checkbox.toggled.connect(self._update_preview)
         layout.addWidget(self.zones_checkbox)
 
+        self.slope_overlay_checkbox = QCheckBox(
+            tr("Steigung in der Vorschau zeigen (gelb ab 4 %, orange ab 10 %, rot ab 24 %)")
+        )
+        self.slope_overlay_checkbox.setEnabled(False)
+        self.slope_overlay_checkbox.setToolTip(
+            tr("Zeigt, wie steil das Gelände im Spiel ist. Rot (ab etwa 24 %) "
+               "wird im Spiel ungefähr zum Gebirge. Nur Vorschau, "
+               "kein Export.")
+        )
+        self.slope_overlay_checkbox.toggled.connect(self._update_preview)
+        layout.addWidget(self.slope_overlay_checkbox)
+
+        self.slope_overlay_label = QLabel("")
+        self.slope_overlay_label.setWordWrap(True)
+        layout.addWidget(self.slope_overlay_label)
+
         self.rock_input, self.rock_slider = self._zone_row(
             layout, tr("Felsgrenze:"), DEFAULT_ROCK_M
         )
@@ -3579,6 +3866,21 @@ class HeightmapDialog(QDialog):
         else:
             self.zone_info_label.setText("")
 
+        if self.slope_overlay_checkbox.isChecked():
+            sh = slope_shares(array[::2, ::2], self._slope_pixel_size_m() * 2)
+            self.slope_overlay_label.setText(
+                tr(
+                    "Steigung: unter 4 % {flat:.1f} %, 4–10 % {mild:.1f} %, "
+                    "10–24 % {medium:.1f} %, über 24 % {steep:.1f} % "
+                    "(Maximum {max:.0f} %)"
+                ).format(
+                    flat=sh["flat"], mild=sh["mild"],
+                    medium=sh["medium"], steep=sh["steep"], max=sh["max"],
+                )
+            )
+        else:
+            self.slope_overlay_label.setText("")
+
         image = render_preview(
             array,
             zone_limits=zone_limits,
@@ -3586,6 +3888,8 @@ class HeightmapDialog(QDialog):
             range_min_m=range_min,
             range_max_m=range_max,
             pixel_size_m=self._pixel_size_m(),
+            show_slope=self.slope_overlay_checkbox.isChecked(),
+            slope_pixel_size_m=self._slope_pixel_size_m(),
             original_heightmap=(
                 self._unclipped_heightmap()
                 if self._clip_report is not None
