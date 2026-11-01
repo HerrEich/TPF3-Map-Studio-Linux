@@ -7,7 +7,7 @@ IMPORT_SCRIPT_TEMPLATE = r"""-- Map Studio: Import von Strassen und Gleisen (erz
 --        info_res, info_bruecke, info_enum, info_tunnel, info_werte, zaehlen
 
 local TAG = "OSMBAU "
-local VERSION = "mapstudio v21 (Gleisbett abgesenkt, kurze Strassenbruecken heben sich ueber Gleise)"
+local VERSION = "mapstudio v24 (GUI-Sonde)"
 
 -- v13 (Experiment): Meldet die Pruefung nur NICHT KRITISCHE Meldungen (critical = false), wird trotzdem
 -- gebaut (ignoreErrors = true). Bisher galt jede Meldung als Fehler. false = Verhalten wie v10.
@@ -50,6 +50,8 @@ local DIAGNOSE_PAARE = true
 local STUMM = false
 local letzte = {}
 local IMPORT = nil -- v11: vorab angelegt, damit auch die Diagnose weiter oben darauf zugreift
+local NATUR_IMPORT = nil -- v40: wird im Natur-Block gesetzt (Mods duerfen keine globalen Variablen anlegen)
+local LETZTER = nil -- v23: Ergebnis des letzten Imports (fuer die Aufgabenliste)
 
 local function text(...)
 	local t = {}
@@ -485,8 +487,11 @@ end
 -- v11: Diagnose der schon vorhandenen Knoten, an die der Weg anschliesst (Ausnahme beim Bauen, Pruefung gescheitert)
 local diagZaehler = 0
 local diagPruef = 0
+local diagPruef2 = 0
+local diagFehl = 0
+local letzteInfos = "" -- Infos des Spiels zum letzten fehlgeschlagenen Bau (z.B. "An Land platzieren")
 local function diagnoseAnschluss(opts, punkte, endung, anlass)
-	if diagZaehler >= 120 then return end
+	if diagZaehler >= 250 then return end
 	diagZaehler = diagZaehler + 1
 	local nr = (IMPORT and IMPORT.i) or "?"
 	local vorlage = tostring(endung):match("([^/]+)%.street_template$") or tostring(endung)
@@ -589,12 +594,20 @@ local function baueDann(punkte, art, endung, opts, danach)
 	end
 	if kritisch then
 		log("nicht gebaut: die Pruefung meldet Fehler")
-		if IMPORT and opts and opts.vorhanden and next(opts.vorhanden) and diagPruef < 25 then
+		if IMPORT and opts and opts.vorhanden and next(opts.vorhanden) and diagPruef < 80 then
 			diagPruef = diagPruef + 1
 			-- v19: auch die Zeilen DAVOR mitschreiben (Pruefung: critical, messages = der Text des Spiels, warnings)
 			local zl = {}
 			for zi = math.max(1, #letzte - 4), #letzte do zl[#zl + 1] = tostring(letzte[zi]) end
 			diagnoseAnschluss(opts, punkte, endung, "Pruefung: " .. table.concat(zl, " // "))
+		elseif IMPORT and diagPruef2 < 60 then
+			-- v28: auch Wege ohne vorhandenen Anschlussknoten (nv=0) mit Grund und Ort
+			diagPruef2 = diagPruef2 + 1
+			local zl = {}
+			for zi = math.max(1, #letzte - 4), #letzte do zl[#zl + 1] = tostring(letzte[zi]) end
+			logw("DIAG Weg", IMPORT.i or "?", "Pruefung ohne Anschluss:", table.concat(zl, " // "),
+				"| Punkte", #punkte, "| von", string.format("%.0f/%.0f", punkte[1][1], punkte[1][2]),
+				"bis", string.format("%.0f/%.0f", punkte[#punkte][1], punkte[#punkte][2]))
 		end
 		return false
 	end
@@ -618,6 +631,32 @@ local function baueDann(punkte, art, endung, opts, danach)
 						end
 					end
 				end)
+			end
+			letzteInfos = ""
+			if not success then
+				pcall(function()
+					local t = {}
+					for _, m in ipairs(d.resultProposalData.errorState.infos) do t[#t + 1] = tostring(m) end
+					letzteInfos = table.concat(t, " + ")
+				end)
+			end
+			if not success and IMPORT and diagFehl < 60 then
+				diagFehl = diagFehl + 1
+				local function s(f) local ok, r = pcall(f) return ok and tostring(r) or "?" end
+				local es = nil
+				pcall(function() es = d.resultProposalData.errorState end)
+				local msgs, warns = {}, {}
+				pcall(function() for _, m in ipairs(es.messages) do msgs[#msgs + 1] = tostring(m) end end)
+				pcall(function() for _, m in ipairs(es.warnings) do warns[#warns + 1] = tostring(m) end end)
+				logw("DIAG Weg", IMPORT.i or "?", "success=false | critical", s(function() return es.critical end),
+					"| messages", #msgs, table.concat(msgs, " + "), "| warnings", #warns, table.concat(warns, " + "),
+					"| Punkte", #punkte, "| von", string.format("%.0f/%.0f", punkte[1][1], punkte[1][2]),
+					"bis", string.format("%.0f/%.0f", punkte[#punkte][1], punkte[#punkte][2]))
+				-- v29: Grund und Kollisionspartner, falls das Spiel sie liefert
+				logw("DIAG Weg", IMPORT.i or "?", "success=false Detail | reason", s(function() return d.reason end),
+					"| Kollision", s(function() return kollisionsInfo(d.resultProposalData) end),
+					"| infos", s(function() local t = {} for _, m in ipairs(es.infos) do t[#t + 1] = tostring(m) end return table.concat(t, " + ") end),
+					"| Entities", s(function() return #entities end))
 			end
 			if danach then danach(success, entities) end
 		end
@@ -695,7 +734,7 @@ local function parseFormat2(d)
 end
 
 local function ladeDaten(datei)
-	local ok, res = pcall(function() return ug_require("__MOD_ID__::/" .. datei) end)
+	local ok, res = pcall(function() return ug_require("map_studio_osm_import_1::/" .. datei) end)
 	if ok and type(res) == "table" then
 		if res.format == 2 or res.format == 3 then
 			local ok2, r2 = pcall(parseFormat2, res)
@@ -777,6 +816,7 @@ local function importEnde(abgebrochen)
 	STUMM = false
 	IMPORT = nil
 	if not Z then return end
+	LETZTER = Z
 	logw(abgebrochen and "Import ABGEBROCHEN:" or "Import fertig:", "gebaut", Z.gebaut,
 		"Fehler/uebersprungen", Z.fehler, "von", #Z.wege, "Wegen", string.format("(%.1f s)", jetzt() - (Z.start or jetzt())))
 	local liste = {}
@@ -804,6 +844,8 @@ local function importEnde(abgebrochen)
 		return string.format("n=%d Mittel %.1f Grad Max %.1f Grad", n, summe / n, max)
 	end
 	logw("  Anschluss-Abweichung am Endknoten: gebaut", abwText(Z.abwOk), "| Fehler", abwText(Z.abwFehler))
+	logw("  Wasser: Wege am Wasser halbiert", Z.halbiert or 0, "| Bruecken ueber nasse Abschnitte", Z.nassBruecken or 0)
+	logw("  Wasser: Wege geteilt", Z.geteilt or 0, "in", Z.geteiltTeile or 0, "Teile, nasse Knoten ausgelassen", Z.geteiltNass or 0)
 	logw("  Cleanup im Spiel:", Z.cleanup and "an" or "aus")
 	logw("  Ausnahmen mit fertigem Bau (als gebaut gezaehlt):", Z.ausnahmeGebaut or 0)
 	logw("  Trotz nicht kritischer Meldung gebaut (Versuche):", Z.trotzMeldung or 0, "| davon success:", Z.trotzOk or 0, "| Schalter TROTZ_MELDUNGEN:", tostring(TROTZ_MELDUNGEN))
@@ -1006,10 +1048,15 @@ local function wasserPruefung(w, punkte)
 		local ok, r = pcall(T.isOnWater, api.type.Vec2f.new(x, y))
 		return ok and r == true
 	end
+	local nasseKnoten, anzNass = {}, 0
 	for k = 1, n do
 		if (t == 0 or k == 1 or k == n) and nass(punkte[k][1], punkte[k][2]) then
-			return "Wasser: Knoten im Wasser"
+			nasseKnoten[k] = true
+			anzNass = anzNass + 1
 		end
+	end
+	if anzNass > 0 then
+		return "Wasser: Knoten im Wasser", nasseKnoten
 	end
 	if t == 0 then
 		local nasse, gesamt = 0, 0
@@ -1030,8 +1077,61 @@ local function wasserPruefung(w, punkte)
 	return nil
 end
 
+-- v22: Strassen mittel/gross werden zuerst KLEIN gebaut (sonst Absturz an Kreuzungen) und
+-- spaeter mit dem Ereignis "aufweiten" per replaceSegment auf die Zielvorlage gebracht.
+local function vorlagenName(v)
+	return tostring(v or ""):match("([^/]+)%.street_template$") or tostring(v or "")
+end
+
+local function istBreit(v)
+	if not v then return false end
+	local n = vorlagenName(v)
+	if n:find("highway", 1, true) then return false end
+	return n:find("_medium", 1, true) ~= nil or n:find("_large", 1, true) ~= nil
+end
+
+local function kleinFuer(v)
+	if vorlagenName(v):find("town", 1, true) then return "/town/town_old_small.street_template" end
+	return "/country/country_old_small.street_template"
+end
+
+-- v33: Scheitert ein Weg am Wasser ("An Land platzieren"), wird er halbiert und jede Haelfte einzeln versucht
+-- (die Haelften werden hinten angehaengt). So geht nur das kurze Stueck am Wasser verloren, nicht der ganze Weg.
+-- Brueckenbau gibt es hier nicht mehr (Teiche am Wegende). true: halbiert, der Fehler zaehlt dann nicht.
+local function teileAmWasser(Z, w, nr)
+	if (w.t or 0) ~= 0 then return false end
+	if not tostring(letzteInfos):find("An Land platzieren", 1, true) then return false end
+	local n = #w.n
+	if n < 3 then return false end
+	if (Z.halbiert or 0) >= 600 then return false end
+	local m = math.ceil((n + 1) / 2)
+	local function haelfte(von, bis)
+		local b = {}
+		for key, wert in pairs(w) do
+			if type(key) ~= "string" or key:sub(1, 1) ~= "_" then b[key] = wert end
+		end
+		b.n = {}
+		for k = von, bis do b.n[#b.n + 1] = w.n[k] end
+		b._teil = true
+		return b
+	end
+	Z.wege[#Z.wege + 1] = haelfte(1, m)
+	Z.wege[#Z.wege + 1] = haelfte(m, n)
+	Z.halbiert = (Z.halbiert or 0) + 1
+	Z.ergebnis[nr] = "am Wasser halbiert"
+	if Z.halbiert <= 15 then
+		logw(string.format("Weg %d [osm %s] am Wasser gescheitert, halbiert (%d Knoten, %.0f m)", nr, tostring(w.osm), n, w._len or 0))
+	end
+	return true
+end
+
 -- true: Baubefehl gesendet
 local function wegStarten(Z, w, nr)
+	if w._nassKette then
+		Z.ergebnis[nr] = "in Bruecke ueber nasse Kette aufgegangen"
+		Z.wartet = false
+		return true
+	end
 	local punkte, vorhanden = {}, {}
 	for k, id in ipairs(w.n) do
 		local p = Z.knoten[id]
@@ -1062,7 +1162,73 @@ local function wegStarten(Z, w, nr)
 		end
 	end
 	w._abw = nil
-	local wasser = wasserPruefung(w, punkte)
+	local wasser, nasseKnoten = wasserPruefung(w, punkte)
+	-- v27: Ein nasser Knoten verwirft nicht mehr den ganzen Weg. Die trockenen Abschnitte (mindestens
+	-- 2 Knoten) werden als eigene Wege hinten angehaengt; nur die nassen Knoten fehlen dann.
+	if nasseKnoten and not w._teil and (w.t or 0) == 0 and #w.n >= 3 then
+		local teile, trocken, i = 0, 0, 1
+		local nN = #w.n
+		while i <= nN do
+			if nasseKnoten[i] then
+				i = i + 1
+			else
+				local j = i
+				while j < nN and not nasseKnoten[j + 1] do j = j + 1 end
+				if j - i + 1 >= 2 then
+					local teil = { _teil = true, n = {} }
+					for key, wert in pairs(w) do
+						if type(key) ~= "string" or key:sub(1, 1) ~= "_" then teil[key] = wert end
+					end
+					teil._teil = true
+					teil.n = {}
+					for k = i, j do teil.n[#teil.n + 1] = w.n[k] end
+					Z.wege[#Z.wege + 1] = teil
+					teile = teile + 1
+					trocken = trocken + (j - i + 1)
+				end
+				i = j + 1
+			end
+		end
+		-- v33: nasse Knoten ZWISCHEN zwei trockenen (ein Fluss quert den Weg) werden mit einer Bruecke von
+		-- trockenem Knoten zu trockenem Knoten ueberbrueckt. Am Wegende (Teich, Ufer) gibt es keine Bruecke.
+		local bruecken, i2 = 0, 1
+		while i2 <= nN do
+			if nasseKnoten[i2] then
+				local j2 = i2
+				while j2 < nN and nasseKnoten[j2 + 1] do j2 = j2 + 1 end
+				if i2 > 1 and j2 < nN then
+					local pa, pb = Z.knoten[w.n[i2 - 1]], Z.knoten[w.n[j2 + 1]]
+					local l = (pa and pb) and math.sqrt((pb[1] - pa[1]) ^ 2 + (pb[2] - pa[2]) ^ 2) or 0
+					local key = tostring(w.n[i2 - 1]) .. "-" .. tostring(w.n[j2 + 1])
+					if l >= 15 and l <= 300 and not (Z.brKey and Z.brKey[key]) then
+						local br = { _teil = true, n = { w.n[i2 - 1], w.n[j2 + 1] } }
+						for key, wert in pairs(w) do
+							if (type(key) ~= "string" or key:sub(1, 1) ~= "_") and key ~= "n" then br[key] = wert end
+						end
+						br.n = { w.n[i2 - 1], w.n[j2 + 1] }
+						br.t = 1
+						br.tp = (l > 120) and "/steel.bridge" or "/trestle.bridge"
+						Z.wege[#Z.wege + 1] = br
+						bruecken = bruecken + 1
+					end
+				end
+				i2 = j2 + 1
+			else
+				i2 = i2 + 1
+			end
+		end
+		Z.nassBruecken = (Z.nassBruecken or 0) + bruecken
+		teile = teile + bruecken
+		if teile > 0 then
+			Z.geteilt = (Z.geteilt or 0) + 1
+			Z.geteiltTeile = (Z.geteiltTeile or 0) + teile
+			Z.geteiltNass = (Z.geteiltNass or 0) + (nN - trocken)
+			Z.ergebnis[nr] = string.format("geteilt: %d Teile, %d nasse Knoten ausgelassen", teile, nN - trocken)
+			logw(string.format("Weg %d [osm %s] geteilt: %d Teile, %d von %d Knoten nass, %.0f m", nr, tostring(w.osm), teile, nN - trocken, nN, w._len or 0))
+			Z.wartet = false
+			return true
+		end
+	end
 	if wasser then
 		Z.wasser = (Z.wasser or 0) + 1
 		return false, wasser
@@ -1084,7 +1250,9 @@ local function wegStarten(Z, w, nr)
 		opts.endungTyp = w.tp or (((w.art or 0) == 1) and "/tunnel_a.tunnel" or "/tunnel_a_car.tunnel")
 		opts.linear = true
 	end
-	return baueDann(punkte, w.art or 0, w.v, opts, function(success, ents)
+	local vBau = w.v
+	if t == 0 and (w.art or 0) == 0 and istBreit(w.v) then vBau = kleinFuer(w.v) end
+	return baueDann(punkte, w.art or 0, vBau, opts, function(success, ents)
 		if success then
 			Z.gebaut = Z.gebaut + 1
 			statistik(Z, w, 1)
@@ -1096,12 +1264,105 @@ local function wegStarten(Z, w, nr)
 			end
 			Z.indexAlt = true
 			for _, id in ipairs(w.n) do Z.gebautId[id] = true end
-		else
+		elseif not teileAmWasser(Z, w, nr) then
 			Z.fehler = Z.fehler + 1
 			merkeFehler(Z, nr, nil, w)
 		end
 		Z.wartet = false
 	end)
+end
+
+-- v34: Ketten aus Wegen, deren Knoten ALLE im Wasser liegen (Strasse quert einen breiten Fluss), werden
+-- durch EINE Bruecke vom trockenen Knoten davor zum trockenen Knoten dahinter ersetzt.
+local function nassKetten(Z)
+	local T = api.engine.terrain
+	local nassC = {}
+	local function nass(id)
+		local c = nassC[id]
+		if c == nil then
+			local p = Z.knoten[id]
+			local ok, r = false, false
+			if p then ok, r = pcall(T.isOnWater, api.type.Vec2f.new(p[1], p[2])) end
+			c = (ok and r == true) or false
+			nassC[id] = c
+		end
+		return c
+	end
+	local nW = #Z.wege
+	local eltern = {}
+	local function wurzel(a)
+		while eltern[a] and eltern[a] ~= a do a = eltern[a] end
+		return a
+	end
+	local ganzNass = {}
+	for wi = 1, nW do
+		local w = Z.wege[wi]
+		if (w.t or 0) == 0 and (w.art or 0) == 0 and #w.n >= 2 then
+			local alle = true
+			for k, id in ipairs(w.n) do
+				if not nass(id) then alle = false end
+				if nass(id) and k > 1 and nass(w.n[k - 1]) then
+					local a, b = wurzel(w.n[k - 1]), wurzel(id)
+					eltern[a] = eltern[a] or a
+					eltern[b] = eltern[b] or b
+					eltern[wurzel(a)] = wurzel(b)
+				end
+			end
+			if alle then ganzNass[#ganzNass + 1] = wi end
+		end
+	end
+	local komp = {}
+	for _, wi in ipairs(ganzNass) do
+		local r = wurzel(Z.wege[wi].n[1])
+		komp[r] = komp[r] or { ways = {}, rand = {}, nRand = 0 }
+		table.insert(komp[r].ways, wi)
+	end
+	for wi = 1, nW do
+		local w = Z.wege[wi]
+		if (w.t or 0) == 0 and (w.art or 0) == 0 then
+			for k = 1, #w.n - 1 do
+				for _, paar in ipairs({ { w.n[k], w.n[k + 1] }, { w.n[k + 1], w.n[k] } }) do
+					local a, b = paar[1], paar[2]
+					if nass(a) and not nass(b) and eltern[a] then
+						local c = komp[wurzel(a)]
+						if c and not c.rand[b] then
+							c.rand[b] = true
+							c.nRand = c.nRand + 1
+						end
+					end
+				end
+			end
+		end
+	end
+	Z.brKey = Z.brKey or {}
+	local nBr, nKomp = 0, 0
+	for _, c in pairs(komp) do
+		nKomp = nKomp + 1
+		if c.nRand == 2 then
+			local ids = {}
+			for id in pairs(c.rand) do ids[#ids + 1] = id end
+			local pa, pb = Z.knoten[ids[1]], Z.knoten[ids[2]]
+			local l = math.sqrt((pb[1] - pa[1]) ^ 2 + (pb[2] - pa[2]) ^ 2)
+			if l >= 15 and l <= 300 then
+				local vorlage = Z.wege[c.ways[1]]
+				local br = { _teil = true, n = { ids[1], ids[2] } }
+				for key, wert in pairs(vorlage) do
+					if (type(key) ~= "string" or key:sub(1, 1) ~= "_") and key ~= "n" then br[key] = wert end
+				end
+				br.n = { ids[1], ids[2] }
+				br.t = 1
+				br.tp = (l > 120) and "/steel.bridge" or "/trestle.bridge"
+				Z.wege[#Z.wege + 1] = br
+				Z.brKey[ids[1] .. "-" .. ids[2]] = true
+				Z.brKey[ids[2] .. "-" .. ids[1]] = true
+				for _, wi in ipairs(c.ways) do Z.wege[wi]._nassKette = true end
+				nBr = nBr + 1
+				logw(string.format("Nasse Kette: %d Wege -> 1 Bruecke, %.0f m, von %.0f/%.0f bis %.0f/%.0f", #c.ways, l, pa[1], pa[2], pb[1], pb[2]))
+			end
+		end
+	end
+	Z.nassBruecken = (Z.nassBruecken or 0) + nBr
+	logw("Nasse Ketten:", nKomp, "gefunden,", nBr, "Bruecken geplant")
 end
 
 -- wird aus update() aufgerufen: einige Wege pro Aufruf (Zeitbudget), keine Verschachtelung
@@ -1607,6 +1868,52 @@ local function vorlagenBreite(endung)
 	return summe, n, table.concat(teile, " ")
 end
 
+-- v31: alle Strassenvorlagen des Spiels mit Gesamtbreite und Fahrspuren ins Log (Ereignis "vorlagen")
+local function vorlagenListe()
+	local ok, alle = pcall(api.res.streetTemplateRep.getAll, false)
+	if not ok then
+		logw("FEHLER streetTemplateRep.getAll:", tostring(alle))
+		return
+	end
+	local namen = {}
+	for _, name in pairs(alle) do
+		if type(name) == "string" then namen[#namen + 1] = name end
+	end
+	table.sort(namen)
+	logw("VORLAGEN:", #namen)
+	for _, name in ipairs(namen) do
+		local b, n, teile = vorlagenBreite(name)
+		logw("VORLAGE", name, b and string.format("W=%.1f", b) or "W=?", n or 0, teile or "")
+	end
+	logw("VORLAGEN fertig")
+end
+
+-- v32: Mustertafel. Je Kandidat eine gerade Teststrasse (x -120..120), Abstand 30 m ab y = 400.
+-- Zum Vergleichen im Spiel: welche Vorlage sieht wie eine schlichte Nebenstrasse aus?
+local MUSTER = {
+	"/country/country_new_small.street_template",
+	"/country/country_old_small.street_template",
+	"/country/ind_country_new_small.street_template",
+	"/town/town_new_xsmall.street_template",
+	"/town/town_new_small.street_template",
+	"/town/town_old_small.street_template",
+	"/town/town_old_xsmall.street_template",
+	"/town/town_new_small_trees.street_template",
+	"/country/country_new_small_barriers.street_template",
+}
+
+local function vorlagenMuster()
+	for i, endung in ipairs(MUSTER) do
+		local y = 400 + 30 * (i - 1)
+		local punkte = { { -120, y }, { 0, y }, { 120, y } }
+		local ok, err = pcall(baueDann, punkte, 0, endung, nil, function(erfolg)
+			logw("MUSTER", i, "y =", y, erfolg and "gebaut" or "NICHT gebaut", endung)
+		end)
+		if not ok then logw("MUSTER", i, "y =", y, "Fehler", tostring(err), endung) end
+	end
+	logw("MUSTER fertig: Strassen bei x -120..120, y 400 bis", 400 + 30 * (#MUSTER - 1), "(vom Kartenmittelpunkt in m)")
+end
+
 local function kreuzungsAnalyse(Z)
 	local ZELLE, RAND = 40, 35
 	local breite = {}
@@ -1749,6 +2056,8 @@ local function importiere(daten, cleanup)
 		IMPORT.kreuzW, IMPORT.nahW = {}, {}
 		IMPORT.kk = { mit = { 0, 0 }, ohne = { 0, 0 } }
 	end
+	local okN, errN = pcall(nassKetten, IMPORT)
+	if not okN then logw("Nasse Ketten gescheitert:", errN) end
 	importVoran()
 end
 
@@ -1874,6 +2183,148 @@ local function zaehleKanten()
 	logw("Kanten gesamt:", gesamt, "|", table.concat(a, ", "), "|", table.concat(b, ", "), "| Knoten mit 3+ Kanten:", dreier)
 end
 
+-- v22: Nachbearbeitung. Liest osmdata.lua erneut, sucht zu jedem breiten Strassenweg die gebauten
+-- Segmente (ueber die Knotenpositionen) und ersetzt sie einzeln per replaceSegment.
+-- Die Engine erzeugt dabei die Knotenkonfiguration (Spuranschluesse) selbst.
+local function gemeinsamesSegment(na, nb)
+	local karte = api.engine.system.streetSystem.getNode2SegmentMap()
+	local sb = {}
+	for _, s in pairs(karte[nb] or {}) do sb[s] = true end
+	for _, s in pairs(karte[na] or {}) do
+		if sb[s] then return s end
+	end
+	return nil
+end
+
+local function aufweiten()
+	local daten = ladeDaten("osmdata.lua")
+	if not daten then return end
+	local Z = { knoten = daten.nodes, wege = daten.ways, bekannt = {}, gebautId = {}, indexAlt = false }
+	local idx = baueIndex(Z)
+	if not idx then logw("aufweiten: kein Knotenindex") return end
+	local liste, gesehen, nichtGefunden, schon = {}, {}, 0, 0
+	for _, w in ipairs(daten.ways) do
+		if (w.art or 0) == 0 and (w.t or 0) == 0 and istBreit(w.v) then
+			local ziel = findeVorlage(w.v)
+			if ziel then
+				for k = 1, #w.n - 1 do
+					local pa, pb = daten.nodes[w.n[k]], daten.nodes[w.n[k + 1]]
+					local ea = pa and sucheImIndex(idx, pa[1], pa[2])
+					local eb = pb and sucheImIndex(idx, pb[1], pb[2])
+					local seg = (ea and eb) and gemeinsamesSegment(ea[1], eb[1]) or nil
+					if not seg then
+						nichtGefunden = nichtGefunden + 1
+					elseif not gesehen[seg] then
+						gesehen[seg] = true
+						local ok, c = pcall(api.engine.getComponent, seg, api.type.ComponentType.BASE_EDGE)
+						if ok and c ~= nil and tostring(c.roadTemplate) == ziel then
+							schon = schon + 1
+						else
+							liste[#liste + 1] = { ea[1], eb[1], ziel,
+								math.sqrt((ea[2] - eb[2]) ^ 2 + (ea[3] - eb[3]) ^ 2), (ea[2] + eb[2]) / 2, (ea[3] + eb[3]) / 2 }
+						end
+					end
+				end
+			end
+		end
+	end
+	logw("aufweiten: zu ersetzen", #liste, "| schon breit", schon, "| Segment nicht gefunden", nichtGefunden)
+	local fertigZahl, fehler = 0, 0
+	for i, e in ipairs(liste) do
+		local seg = gemeinsamesSegment(e[1], e[2])
+		if not seg then
+			fehler = fehler + 1
+		else
+			local okR, prop = pcall(api.engine.util.proposal.replaceSegment, seg, e[3])
+			if not okR or not prop then
+				fehler = fehler + 1
+				logw("aufweiten: replaceSegment gescheitert, Segment", seg, tostring(prop))
+			else
+				local fertig = false
+				local okS, errS = pcall(api.cmd.sendCommand,
+					api.cmd.makeWorldBuildProposalCmd(prop, nil, false, false),
+					function(d, success)
+						fertig = true
+						if success then
+							fertigZahl = fertigZahl + 1
+						else
+							fehler = fehler + 1
+							logw(string.format("aufweiten: Segment %d nicht ersetzt, Laenge %.0f m, bei %.0f/%.0f",
+								seg, e[4] or -1, e[5] or 0, e[6] or 0))
+						end
+					end)
+				if not okS then
+					fehler = fehler + 1
+					logw("aufweiten: sendCommand wirft:", tostring(errS))
+				elseif not fertig then
+					logw("aufweiten: Rueckmeldung nicht synchron, Abbruch bei", i, "von", #liste)
+					break
+				end
+			end
+		end
+		if i % 50 == 0 then logw("aufweiten:", i, "/", #liste, "ersetzt", fertigZahl, "Fehler", fehler) end
+	end
+	logw("aufweiten fertig: ersetzt", fertigZahl, "Fehler", fehler, "von", #liste)
+	return fertigZahl, fehler, #liste
+end
+
+-- v23: Aufgabenliste. Baut nacheinander Strassen, Aufweiten, Gleise und meldet je Aufgabe ✓ oder ✗
+-- in der Konsole (Zeilen mit "AUFGABE"). Naturdetails (Weinberge, Felder, Hecken) folgen spaeter.
+local function nurArt(daten, art)
+	local neu = { format = daten.format, name = daten.name, nodes = daten.nodes, ways = {} }
+	for _, w in ipairs(daten.ways) do
+		if (w.art or 0) == art then neu.ways[#neu.ways + 1] = w end
+	end
+	return neu
+end
+
+local function aufgabeBauen(daten, titel, art)
+	local teil = nurArt(daten, art)
+	if #teil.ways == 0 then
+		logw("AUFGABE - " .. titel .. ": keine Wege in den Daten, uebersprungen")
+		return
+	end
+	LETZTER = nil
+	local ok, err = pcall(importiere, teil, false)
+	if not ok then
+		logw("AUFGABE ✗ " .. titel .. ": FEHLER " .. tostring(err))
+		return
+	end
+	local Z = LETZTER
+	local gut, schlecht = (Z and Z.gebaut) or 0, (Z and Z.fehler) or 0
+	local zeichen = (gut == 0 and "✗") or (schlecht == 0 and "✓") or "✓ teilweise"
+	logw(string.format("AUFGABE %s %s: gebaut %d, Fehler %d von %d Wegen", zeichen, titel, gut, schlecht, #teil.ways))
+end
+
+local function aufgaben(wahl)
+	-- wahl: nil/true = alle Aufgaben, sonst Text wie "1" oder "1,3" (Nummern der Aufgaben)
+	local function gewaehlt(n)
+		if type(wahl) ~= "string" then return true end
+		return ("," .. wahl .. ","):find("," .. n .. ",", 1, true) ~= nil
+	end
+	if IMPORT then logw("Import laeuft schon") return end
+	local daten = ladeDaten("osmdata.lua")
+	if not daten then return end
+	logw("AUFGABEN: 1 Strassen, 2 Strassen aufweiten, 3 Gleise, 4 Weinberge, 5 Felder, 6 Hecken")
+	if gewaehlt(1) then aufgabeBauen(daten, "1 Strassen", 0) end
+	if gewaehlt(2) then
+	local okW, ersetzt, fehler, von = pcall(aufweiten)
+	if not okW then
+		logw("AUFGABE ✗ 2 Strassen aufweiten: FEHLER " .. tostring(ersetzt))
+	elseif ersetzt == nil then
+		logw("AUFGABE ✗ 2 Strassen aufweiten: keine Daten")
+	else
+		local zeichen = (von == 0 and "✓") or (ersetzt == 0 and "✗") or (fehler == 0 and "✓") or "✓ teilweise"
+		logw(string.format("AUFGABE %s 2 Strassen aufweiten: ersetzt %d, Fehler %d von %d", zeichen, ersetzt, fehler, von))
+	end
+	end
+	if gewaehlt(3) then aufgabeBauen(daten, "3 Gleise", 1) end
+	if gewaehlt(4) then if NATUR_IMPORT then NATUR_IMPORT(false) else logw("AUFGABE 4 Natur: Importer fehlt") end end
+	logw("AUFGABE - 5 Felder: noch nicht eingebaut")
+	logw("AUFGABE - 6 Hecken: noch nicht eingebaut")
+	logw("AUFGABEN fertig")
+end
+
 -- Testdefinitionen (Koordinaten ab Kartenmitte)
 local TESTS = {
 	pruefen = { punkte = { { 0, 0 }, { 80, 0 } }, art = 0, endung = STRASSE, bauen = false },
@@ -1960,6 +2411,394 @@ local function diagnose(param)
 	end
 end
 
+-- ===================== v40: Natur-Import (Weinberge, Felder, Mauern) =====================
+-- Baut Reihen (tree_rows.con) und Mauern (fence_line.con) aus naturdata.lua nach MUSTERN, die der
+-- Spieler vorher von Hand auf die Karte gesetzt hat: eine Weinreben-Reihe, beliebige Feld-Reihen
+-- (Mais, Kartoffel ...) und ein Stueck Mauer. Von den Mustern werden alle Angaben uebernommen,
+-- nur Lage, Richtung und Laenge kommen aus OSM. Scheitert ein Stueck, wird es gekuerzt bzw. geteilt
+-- erneut versucht, sonst uebersprungen. Ausloeser: Ereignis "natur" (Muster anzeigen: "natur_muster").
+local NATUR_FELD_MAX_HA = 3.0        -- groessere Felder werden ausgelassen (zu viele Pflanzen)
+local NATUR_MAX_PFLANZEN = 150000    -- Obergrenze aller gesetzten Pflanzen (Leistung)
+local NATUR_MIN_REIHE_M = 4.0        -- kuerzere Reihen werden weggelassen
+local NATUR = nil
+
+local function naturKopie(v)
+	if type(v) ~= "table" then return v end
+	local t = {}
+	for k, x in pairs(v) do t[k] = naturKopie(x) end
+	return t
+end
+
+local function naturMuster()
+	local m = { wein = nil, felder = {}, mauer = nil }
+	local gesehen = {}
+	api.engine.forEachEntity(function(e)
+		local ok, c = pcall(api.engine.getComponent, e, api.type.ComponentType.CONSTRUCTION)
+		if not ok or not c or not c.fileName then return end
+		local f = tostring(c.fileName)
+		local p = c.params
+		if f:find("tree_rows.con", 1, true) and type(p) == "table" and p.modelId then
+			local id = tostring(p.modelId)
+			local eintrag = { fileName = f, params = naturKopie(p), entity = e }
+			if id:find("rebe", 1, true) then
+				if not m.wein then m.wein = eintrag end
+			elseif not gesehen[id] then
+				gesehen[id] = true
+				m.felder[#m.felder + 1] = eintrag
+			end
+		elseif f:find("fence_line.con", 1, true) and type(p) == "table" and not m.mauer then
+			m.mauer = { fileName = f, params = naturKopie(p), entity = e }
+		end
+	end)
+	return m
+end
+
+local function naturMusterZeigen(m)
+	logw("NATUR Muster Weinberg:", m.wein and tostring(m.wein.params.modelId) or "FEHLT (eine Weinreben-Reihe setzen)")
+	logw("NATUR Muster Felder:", #m.felder)
+	for i, f in ipairs(m.felder) do logw("NATUR   Feld", i, tostring(f.params.modelId)) end
+	logw("NATUR Muster Mauer:", m.mauer and ("Stil " .. tostring(m.mauer.params.style)) or "FEHLT (ein Stueck Mauer setzen)")
+end
+
+-- Parallele Reihen im Ring (Lua-Fassung von nature_rows.row_paths). Richtung 0 = Norden, 90 = Osten.
+local function naturReihen(ring, richtung, abstand, minLaenge)
+	local res = {}
+	local n = #ring
+	if abstand <= 0 or n < 3 then return res end
+	local th = math.rad(richtung)
+	local dx, dy = math.sin(th), math.cos(th)
+	local nx, ny = math.cos(th), -math.sin(th)
+	local lo, hi = math.huge, -math.huge
+	for _, p in ipairs(ring) do
+		local o = p[1] * nx + p[2] * ny
+		if o < lo then lo = o end
+		if o > hi then hi = o end
+	end
+	local anz = math.floor((hi - lo) / abstand)
+	if anz < 1 then return res end
+	local start = lo + ((hi - lo) - (anz - 1) * abstand) / 2
+	for i = 0, anz - 1 do
+		local o = start + i * abstand
+		local entlang = {}
+		for k = 1, n do
+			local a, b = ring[k], ring[k % n + 1]
+			local oa, ob = a[1] * nx + a[2] * ny, b[1] * nx + b[2] * ny
+			if (oa <= o and o < ob) or (ob <= o and o < oa) then
+				local t = (o - oa) / (ob - oa)
+				local px, py = a[1] + t * (b[1] - a[1]), a[2] + t * (b[2] - a[2])
+				entlang[#entlang + 1] = px * dx + py * dy
+			end
+		end
+		table.sort(entlang)
+		for j = 1, #entlang - 1, 2 do
+			local s0, s1 = entlang[j], entlang[j + 1]
+			if s1 - s0 >= minLaenge then
+				res[#res + 1] = { s0 * dx + o * nx, s0 * dy + o * ny, s1 * dx + o * nx, s1 * dy + o * ny }
+			end
+		end
+	end
+	return res
+end
+
+local function naturFlaeche(ring)
+	local s = 0
+	for k = 1, #ring do
+		local a, b = ring[k], ring[k % #ring + 1]
+		s = s + a[1] * b[2] - b[1] * a[2]
+	end
+	return math.abs(s) / 2
+end
+
+local function naturHoehe(x, y)
+	local ok, h = pcall(function() return api.engine.terrain.getHeightAt(api.type.Vec2f.new(x, y)) end)
+	if ok and type(h) == "number" then return h end
+	return 0
+end
+
+local function naturNass(x, y)
+	local ok, r = pcall(function() return api.engine.terrain.isOnWater(api.type.Vec2f.new(x, y)) end)
+	return ok and r == true
+end
+
+local function naturTransf(x, y, z)
+	return api.type.Mat4f.new(api.type.Vec4f.new(1, 0, 0, 0), api.type.Vec4f.new(0, 1, 0, 0),
+		api.type.Vec4f.new(0, 0, 1, 0), api.type.Vec4f.new(x, y, z, 1))
+end
+
+local function naturNullen(n)
+	local t = {}
+	for i = 1, n do t[i] = 0 end
+	return t
+end
+
+-- Eine Reihe von (x1, y1) nach (x2, y2) nach dem Muster
+local function naturReiheBau(muster, x1, y1, x2, y2)
+	local p = naturKopie(muster.params)
+	local laenge = math.sqrt((x2 - x1) ^ 2 + (y2 - y1) ^ 2)
+	local abstand = tonumber(p.spacing) or 4
+	if abstand <= 0 then abstand = 4 end
+	p.rows = 1
+	p.dx, p.dy = x2 - x1, y2 - y1
+	-- wie das Werkzeug: je Pflanze die Gelaendehoehe ab dem Anfangspunkt (im Spiel nachgemessen)
+	local z0 = naturHoehe(x1, y1)
+	local pflanzen = math.floor(laenge / abstand) + 1
+	p.heights = {}
+	for i = 1, pflanzen do
+		local t = (laenge > 0) and ((i - 1) * abstand / laenge) or 0
+		p.heights[i] = naturHoehe(x1 + p.dx * t, y1 + p.dy * t) - z0
+	end
+	p.anchorHeights = naturNullen(4)
+	p.footprintHeights = {}
+	p.rowSlopes = {}
+	p.seed = math.random(1, 2000000000)
+	return muster.fileName, p, naturTransf(x1, y1, z0), pflanzen
+end
+
+-- Ein gerades Mauerstueck von (x1, y1) nach (x2, y2) nach dem Muster
+local function naturMauerBau(muster, x1, y1, x2, y2)
+	local p = naturKopie(muster.params)
+	local laenge = math.sqrt((x2 - x1) ^ 2 + (y2 - y1) ^ 2)
+	local stueck = (type(p.lengths) == "table" and tonumber(p.lengths[1])) or 3.7
+	if stueck <= 0 then stueck = 3.7 end
+	local n = math.max(1, math.floor(laenge / stueck + 0.5))
+	local function erstes(t, ersatz)
+		if type(t) == "table" and t[1] ~= nil then return t[1] end
+		return ersatz
+	end
+	local seg = {
+		segmentConfigs = erstes(p.segmentConfigs, p.config), segmentSlopes = erstes(p.segmentSlopes, 1),
+		segmentGates = erstes(p.segmentGates, false), segmentTerrains = erstes(p.segmentTerrains, 1),
+		segmentSourceStyles = erstes(p.segmentSourceStyles, 1), segmentGateOffsets = erstes(p.segmentGateOffsets, 0),
+		segmentFaces = erstes(p.segmentFaces, 1),
+	}
+	local vx, vy = x2 - x1, y2 - y1
+	local z0 = naturHoehe(x1, y1)
+	local function dz(t) return naturHoehe(x1 + vx * t, y1 + vy * t) - z0 end
+	p.controlPoints = { { 0, 0, 0 }, { vx, vy, dz(1) } }
+	p.controlSnaps = { false, false }
+	p.suppressedPoles = {}
+	p.points, p.lengths = {}, {}
+	for name in pairs(seg) do p[name] = {} end
+	for i = 0, n do p.points[i + 1] = { vx * i / n, vy * i / n, dz(i / n) } end
+	for i = 1, n do
+		p.lengths[i] = stueck
+		for name, wert in pairs(seg) do p[name][i] = wert end
+	end
+	p.seed = math.random(1, 2000000000)
+	return muster.fileName, p, naturTransf(x1, y1, z0), 0
+end
+
+local function naturSende(fileName, params, transf, fertig)
+	local ce = api.type.SimpleProposal.ConstructionEntity.new()
+	ce.fileName = fileName
+	ce.params = params
+	ce.transf = transf
+	ce.playerEntity = api.engine.util.getPlayer()
+	ce.name = "OSM Natur"
+	local prop = api.type.SimpleProposal.new()
+	prop.constructionsToAdd = { ce }
+	local ctx = api.type.Context.new()
+	ctx.player = api.engine.util.getPlayer()
+	api.cmd.sendCommand(api.cmd.makeWorldBuildProposalCmd(prop, ctx, false, true), function(d, success, ents)
+		local grund = ""
+		if not success then
+			pcall(function()
+				local t = {}
+				for _, msg in ipairs(d.resultProposalData.errorState.messages) do t[#t + 1] = tostring(msg) end
+				grund = table.concat(t, " + ")
+			end)
+		end
+		fertig(success == true and ents ~= nil and #ents > 0, grund)
+	end)
+end
+
+local function naturEnde()
+	local Z = NATUR
+	NATUR = nil
+	logw(string.format("NATUR fertig: gebaut %d, Fehler %d, uebersprungen %d, Pflanzen %d",
+		Z.gebaut, Z.fehler, Z.ueber, Z.pflanzen))
+	local arten = {}
+	for art in pairs(Z.je) do arten[#arten + 1] = art end
+	table.sort(arten)
+	for _, art in ipairs(arten) do
+		local s = Z.je[art]
+		logw(string.format("NATUR   %s: gebaut %d, repariert %d, Fehler %d", art, s.gebaut, s.repariert, s.fehler))
+	end
+	local gr = {}
+	for g, n in pairs(Z.gruende) do gr[#gr + 1] = { g, n } end
+	table.sort(gr, function(a, b) return a[2] > b[2] end)
+	for i = 1, math.min(8, #gr) do logw("NATUR   Grund:", gr[i][1], "x", gr[i][2]) end
+	for i = 1, math.min(30, #Z.uebersprungen) do logw("NATUR   ausgelassen:", Z.uebersprungen[i]) end
+	if #Z.uebersprungen > 30 then logw("NATUR   ... und", #Z.uebersprungen - 30, "weitere ausgelassen") end
+end
+
+local function naturStat(art)
+	local s = NATUR.je[art]
+	if not s then s = { gebaut = 0, repariert = 0, fehler = 0 }; NATUR.je[art] = s end
+	return s
+end
+
+local naturWeiter
+
+-- Fehler: Reihe kuerzen, dann teilen; Mauer teilen; sonst aufgeben
+local function naturReparatur(a, grund)
+	local Z = NATUR
+	if grund ~= "" then Z.gruende[grund] = (Z.gruende[grund] or 0) + 1 end
+	if (a.versuch or 0) >= 2 then return false end
+	local x1, y1, x2, y2 = a.x1, a.y1, a.x2, a.y2
+	local neue = {}
+	if a.typ == "reihe" and (a.versuch or 0) == 0 then
+		local k = 0.1
+		neue[1] = { typ = a.typ, art = a.art, muster = a.muster, versuch = 1,
+			x1 = x1 + (x2 - x1) * k, y1 = y1 + (y2 - y1) * k, x2 = x2 - (x2 - x1) * k, y2 = y2 - (y2 - y1) * k }
+	else
+		local mx, my = (x1 + x2) / 2, (y1 + y2) / 2
+		local l = math.sqrt((x2 - x1) ^ 2 + (y2 - y1) ^ 2)
+		if l / 2 < NATUR_MIN_REIHE_M then return false end
+		neue[1] = { typ = a.typ, art = a.art, muster = a.muster, versuch = 2, x1 = x1, y1 = y1, x2 = mx, y2 = my }
+		neue[2] = { typ = a.typ, art = a.art, muster = a.muster, versuch = 2, x1 = mx, y1 = my, x2 = x2, y2 = y2 }
+	end
+	for j = #neue, 1, -1 do table.insert(Z.auftraege, Z.i + 1, neue[j]) end
+	return true
+end
+
+local function naturVerarbeite(a, ok, grund, pflanzen)
+	local Z = NATUR
+	local s = naturStat(a.art)
+	if ok then
+		Z.gebaut = Z.gebaut + 1
+		Z.pflanzen = Z.pflanzen + (pflanzen or 0)
+		s.gebaut = s.gebaut + 1
+		if (a.versuch or 0) > 0 then s.repariert = s.repariert + 1 end
+	elseif not naturReparatur(a, grund) then
+		Z.fehler = Z.fehler + 1
+		s.fehler = s.fehler + 1
+	end
+end
+
+naturWeiter = function()
+	local Z = NATUR
+	while Z and Z.i < #Z.auftraege do
+		Z.i = Z.i + 1
+		local a = Z.auftraege[Z.i]
+		if Z.pflanzen >= NATUR_MAX_PFLANZEN then
+			Z.ueber = Z.ueber + 1
+		elseif naturNass(a.x1, a.y1) or naturNass(a.x2, a.y2) then
+			Z.ueber = Z.ueber + 1
+			Z.gruende["Wasser"] = (Z.gruende["Wasser"] or 0) + 1
+		else
+			local okB, fileName, params, transf, pflanzen = pcall(function()
+				if a.typ == "reihe" then return naturReiheBau(a.muster, a.x1, a.y1, a.x2, a.y2) end
+				return naturMauerBau(a.muster, a.x1, a.y1, a.x2, a.y2)
+			end)
+			if not okB then
+				Z.fehler = Z.fehler + 1
+				naturStat(a.art).fehler = naturStat(a.art).fehler + 1
+				Z.gruende["Skriptfehler: " .. tostring(fileName)] = (Z.gruende["Skriptfehler: " .. tostring(fileName)] or 0) + 1
+			else
+				Z.imSenden, Z.zurueck = true, false
+				local okS, errS = pcall(naturSende, fileName, params, transf, function(ok, grund)
+					Z.zurueck = true
+					naturVerarbeite(a, ok, grund, pflanzen)
+					if not Z.imSenden then naturWeiter() end
+				end)
+				Z.imSenden = false
+				if not okS then
+					Z.fehler = Z.fehler + 1
+					Z.gruende["Senden: " .. tostring(errS)] = (Z.gruende["Senden: " .. tostring(errS)] or 0) + 1
+				elseif not Z.zurueck then
+					return -- Rueckmeldung kommt spaeter, dort geht es weiter
+				end
+			end
+		end
+		if Z.i % 200 == 0 then logw("NATUR", Z.i, "/", #Z.auftraege, "gebaut", Z.gebaut, "Fehler", Z.fehler) end
+	end
+	if Z then naturEnde() end
+end
+
+local function naturImport(nurMuster)
+	if NATUR then logw("NATUR laeuft schon") return end
+	local m = naturMuster()
+	naturMusterZeigen(m)
+	if nurMuster then return end
+	local ok, daten = pcall(function() return ug_require("map_studio_osm_import_1::/naturdata.lua") end)
+	if not ok or type(daten) ~= "table" then logw("NATUR: naturdata.lua fehlt oder ist fehlerhaft:", tostring(daten)) return end
+	local auftraege, uebersprungen = {}, {}
+	local jede = math.max(1, math.floor(tonumber(daten.reihe_jede) or 1)) -- nur jede N-te Reihe bauen (Studio-Einstellung)
+	local fi = 0
+	for _, f in ipairs(daten.flaechen or {}) do
+		local ring = {}
+		for k = 1, #f.p - 1, 2 do ring[#ring + 1] = { f.p[k], f.p[k + 1] } end
+		local muster, art = nil, f.k
+		if f.k == "vineyard" then
+			muster = m.wein
+		elseif f.k == "field" and #m.felder > 0 then
+			fi = fi + 1
+			muster = m.felder[(fi - 1) % #m.felder + 1]
+		end
+		local ha = naturFlaeche(ring) / 10000
+		if not muster then
+			uebersprungen[#uebersprungen + 1] = string.format("%s OSM %s: kein Muster", f.k, tostring(f.id))
+		elseif f.k == "field" and ha > NATUR_FELD_MAX_HA then
+			uebersprungen[#uebersprungen + 1] = string.format("Feld OSM %s: %.1f ha zu gross", tostring(f.id), ha)
+		else
+			local abstand = tonumber(muster.params.rowSpacing) or 2
+			if abstand < 1 then abstand = 1 end
+			for ri, r in ipairs(naturReihen(ring, f.r or 0, abstand, NATUR_MIN_REIHE_M)) do
+				if (ri - 1) % jede == 0 then auftraege[#auftraege + 1] = { typ = "reihe", art = art, muster = muster, x1 = r[1], y1 = r[2], x2 = r[3], y2 = r[4] } end
+			end
+		end
+	end
+	for _, l in ipairs(daten.linien or {}) do
+		if l.k == "wall" then
+			if not m.mauer then
+				uebersprungen[#uebersprungen + 1] = "Mauer OSM " .. tostring(l.id) .. ": kein Muster"
+			else
+				for k = 1, #l.p - 3, 2 do
+					local x1, y1, x2, y2 = l.p[k], l.p[k + 1], l.p[k + 2], l.p[k + 3]
+					if math.sqrt((x2 - x1) ^ 2 + (y2 - y1) ^ 2) >= 1 then
+						auftraege[#auftraege + 1] = { typ = "mauer", art = "wall", muster = m.mauer, x1 = x1, y1 = y1, x2 = x2, y2 = y2 }
+					end
+				end
+			end
+		end
+	end
+	logw("NATUR Import startet:", #auftraege, "Bauauftraege,", #uebersprungen, "Flaechen/Linien ausgelassen, jede", jede, ". Reihe")
+	NATUR = { auftraege = auftraege, i = 0, gebaut = 0, fehler = 0, ueber = 0, pflanzen = 0,
+		je = {}, gruende = {}, uebersprungen = uebersprungen }
+	naturWeiter()
+end
+-- Entfernt alles, was der Natur-Import gebaut hat (Name "OSM Natur"), in Paketen zu 100
+local function naturWeg()
+	local liste = {}
+	api.engine.forEachEntity(function(e)
+		local ok, nm = pcall(api.engine.getComponent, e, api.type.ComponentType.NAME)
+		if ok and nm and tostring(nm.name) == "OSM Natur" then
+			local ok2, c = pcall(api.engine.getComponent, e, api.type.ComponentType.CONSTRUCTION)
+			if ok2 and c then liste[#liste + 1] = e end
+		end
+	end)
+	logw("NATUR entfernen:", #liste, "Objekte")
+	local weg, fehler = 0, 0
+	for i = 1, #liste, 100 do
+		local paket = {}
+		for k = i, math.min(i + 99, #liste) do paket[#paket + 1] = liste[k] end
+		local prop = api.type.SimpleProposal.new()
+		prop.constructionsToRemove = paket
+		local ctx = api.type.Context.new()
+		ctx.player = api.engine.util.getPlayer()
+		local okS, errS = pcall(function()
+			api.cmd.sendCommand(api.cmd.makeWorldBuildProposalCmd(prop, ctx, false, true), function(d, success)
+				if success then weg = weg + #paket else fehler = fehler + #paket end
+				logw("NATUR entfernt:", weg, "Fehler:", fehler)
+			end)
+		end)
+		if not okS then logw("NATUR entfernen gescheitert:", tostring(errS)) return end
+	end
+end
+NATUR_IMPORT = naturImport
+-- ===================== Ende Natur-Import =====================
+
 function data()
 	local gemeldet = false
 
@@ -1975,6 +2814,32 @@ function data()
 			log("bereit, Version:", VERSION)
 		end,
 
+		-- v24: GUI-Sonde. guiUpdate laeuft im GUI-Thread (wie bei den HUD-Skripten des Spiels). Einmalig wird
+		-- aufgelistet, was api.gui bietet; daraus bauen wir spaeter das Aufgabenfenster.
+		guiUpdate = function(captureParams, guiStateRO, guiState)
+			local gs = guiState:get()
+			if gs.gemeldet then return end
+			guiState:set({ gemeldet = true })
+			pcall(function()
+				local namen = {}
+				for k in pairs(api.gui) do namen[#namen + 1] = tostring(k) end
+				table.sort(namen)
+				print("OSMBAU GUI bereit. api.gui: " .. table.concat(namen, ", "))
+				for _, k in ipairs(namen) do
+					pcall(function()
+						local inner = {}
+						for k2 in pairs(api.gui[k]) do inner[#inner + 1] = tostring(k2) end
+						table.sort(inner)
+						if #inner > 0 then
+							local zeige = {}
+							for i = 1, math.min(#inner, 60) do zeige[i] = inner[i] end
+							print("OSMBAU GUI api.gui." .. k .. " (" .. #inner .. "): " .. table.concat(zeige, ", "))
+						end
+					end)
+				end
+			end)
+		end,
+
 		handleEvent = function(userParams, state, src, id, name, param)
 			if id ~= "mapstudio" then return end
 			local ok, err = pcall(function()
@@ -1986,6 +2851,15 @@ function data()
 					if daten then importiere(daten, name == "import_cleanup") end
 					return
 				end
+				if name == "aufweiten" then aufweiten() return end
+				if name == "natur" then naturImport(false) return end
+				if name == "natur_muster" then naturImport(true) return end
+				if name == "natur_weg" then naturWeg() return end
+				if name == "aufgaben" then aufgaben(param) return end
+				local nrAufgabe = type(name) == "string" and name:match("^aufgabe_([%d,]+)$")
+				if nrAufgabe then aufgaben(nrAufgabe) return end
+				if name == "vorlagen" then vorlagenListe() return end
+				if name == "vorlagen_muster" then vorlagenMuster() return end
 				if name == "import_weiter" then importVoran() return end
 				if name == "import_gitter_flach" then
 					if IMPORT then logw("Import laeuft schon") return end

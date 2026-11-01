@@ -639,8 +639,8 @@ guide of the heightmap dialog (F1).</p>
         'Copernicus (worldwide, 30 m)',
     'DGM1 Deutschland (1 m, über hoehendaten.de)':
         'DGM1 Germany (1 m, via hoehendaten.de)',
-    'DGM1 aus eigenen GeoTIFF-Kacheln (Ordner)':
-        'DGM1 from own GeoTIFF tiles (folder)',
+    'Eigene H\u00f6hendateien (GeoTIFF/ASC, jedes Land, Ordner)':
+        'Own elevation files (GeoTIFF/ASC, any country, folder)',
     'swissALTI3D Schweiz (2 m, über data.geo.admin.ch)':
         'swissALTI3D Switzerland (2 m, via data.geo.admin.ch)',
     'Voreinstellung:':
@@ -2092,6 +2092,14 @@ guide of the heightmap dialog (F1).</p>
     'Überlastungsbremse: höchstens eine Serveranfrage gleichzeitig': 'Overload protection: at most one server request at a time',
     'OSM-Download: Server und Verlauf': 'OSM download: servers and history',
     'OSM-Download wird vorbereitet…': 'Preparing OSM download…',
+    'Geometrien werden aufgebaut…': 'Building geometries…',
+    'Karte wird gezeichnet…': 'Drawing the map…',
+    'Karte fertig.': 'Map ready.',
+    'Natur-Details-Plan (Weinberge, Obstwiesen, Mauern, Hecken) mitspeichern': 'Also save the nature details plan (vineyards, orchards, walls, hedges)',
+    "Speichert zusätzlich die Liste für den Natur-Details-Mod als CSV und JSON. Mauern und Hecken gibt es nur, wenn beim OSM-Laden 'Natur-Details' angehakt war.": "Also saves the list for the nature details mod as CSV and JSON. Walls and hedges only exist if 'Nature details' was ticked when loading OSM.",
+    'Der Natur-Details-Plan konnte nicht gespeichert werden: {error}': 'The nature details plan could not be saved: {error}',
+    'Natur-Details-Plan: keine Weinberge, Obstwiesen, Mauern oder Hecken gefunden.': 'Nature details plan: no vineyards, orchards, walls or hedges found.',
+    'Natur-Details-Plan: {csv} und {json}\nOrdner: {folder}': 'Nature details plan: {csv} and {json}\nFolder: {folder}',
     'Spur {lane}: Download beendet.': 'Worker {lane}: download ended.',
     'Alle OSM-Kacheln geladen.': 'All OSM tiles downloaded.',
     'Download abgebrochen.': 'Download cancelled.',
@@ -2255,4 +2263,13 @@ CATALOG.update({
         "Saved: {a}, {b}, {c}\n\nShare of the map: mountains {m:.1f} %, lakes {l:.1f} %, swamps {s:.1f} %\n\nThese are suggestions to paint over. Lakes and swamps only roughly match the game's masks.",
     "Schlägt aus der Höhenkarte Masken für Berge, Seen und Sümpfe vor und speichert sie als drei PNG-Dateien (0/255) für den Biome-Tab. Berge: die höchsten etwa 35 % der geglätteten Höhe. Seen: flaches Wasser kurz unter dem Wasserspiegel. Sümpfe: flaches Land direkt am Wasserspiegel. Die Regeln sind an Testkarten abgestimmt und eine Annäherung zum Nachmalen, besonders Seen und Sümpfe treffen die Masken des Spiels nur grob.":
         "Suggests masks for mountains, lakes and swamps from the height map and saves them as three PNG files (0/255) for the biome tab. Mountains: the highest ~35 % of the smoothed height. Lakes: shallow water just below the water level. Swamps: flat land right at the water level. The rules are tuned on test maps and are an approximation to paint over; lakes and swamps in particular only roughly match the game's masks.",
+})
+
+CATALOG.update({
+    'Schnell- und Bundesstra\xdfen breit bauen (4 Spuren, im Spiel ungetestet)':
+        'Build trunk and primary roads wide (4 lanes, untested in game)',
+    'Der Mod baut diese Stra\xdfen zuerst schmal und weitet sie danach mit dem Konsolenbefehl \u201eaufweiten\u201c auf (sonst st\xfcrzt das Spiel an Kreuzungen ab).':
+        'The mod first builds these roads narrow and then widens them with the console command \u201caufweiten\u201d (otherwise the game crashes at junctions).',
+    '\n\nDanach (breite Stra\xdfen), wenn \u201eImport fertig\u201c steht:\n{cmd}':
+        '\n\nAfterwards (wide roads), once \u201cImport fertig\u201d appears:\n{cmd}',
 })
